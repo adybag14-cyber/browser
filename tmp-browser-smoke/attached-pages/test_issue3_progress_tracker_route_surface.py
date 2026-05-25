@@ -20,9 +20,14 @@ FIXTURE_FILES = {
     - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
     - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
     - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+    - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
     - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
     - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
     - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+    - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+    - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+    - `scripts/check_issue3_saved_rust_archive_candidates.py`
+    - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
     - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
     - `scripts/check_issue3_saved_zig_archive_candidates.py`
@@ -30,6 +35,7 @@ FIXTURE_FILES = {
     - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
     - `scripts/check_linux_build_readiness.py`
     - `show_issue3_saved_memory_inputs_route.sh`
+    - `show_issue3_saved_rust_toolchain_route.sh`
     - `show_issue3_linux_build_readiness_route.sh`
     - `show_issue3_zig_toolchain_recovery_route.sh`
     - `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
@@ -53,12 +59,17 @@ FIXTURE_FILES = {
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
     docs/ISSUE3_RUNTIME_REENTRY_GATES.md
     docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+    docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
     docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md
     docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
     docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
     scripts/linux/check_issue3_progress_tracker_route_surface.sh
     scripts/linux/show_issue3_progress_tracker_route.sh
+    scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
+    scripts/linux/show_issue3_saved_rust_toolchain_route.sh
+    scripts/check_issue3_saved_rust_archive_candidates.py
+    scripts/check_issue3_staged_rust_toolchain_candidates.py
     scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
     scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
     scripts/linux/check_issue3_zig_toolchain_match.sh
@@ -73,6 +84,10 @@ FIXTURE_FILES = {
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Goal:
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Achieved:
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_rust_toolchain_route.sh
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_rust_toolchain_route_surface.sh
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_rust_archive_candidates.py
+    docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_staged_rust_toolchain_candidates.py
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_linux_build_readiness_route.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_zig_toolchain_recovery_route.sh
     docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_memory_inputs_route.sh
@@ -86,6 +101,10 @@ FIXTURE_FILES = {
     scripts/linux/show_issue3_progress_tracker_route.sh|issue #11 progress-tracker route
     scripts/linux/show_issue3_progress_tracker_route.sh|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
     scripts/linux/show_issue3_progress_tracker_route.sh|fallback_zig_archive
+    scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_rust_toolchain_route_surface.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|saved_rust_toolchain_route_surface
+    scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_rust_toolchain_route.sh
+    scripts/linux/show_issue3_progress_tracker_route.sh|saved_rust_toolchain_route
     scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_zig_archive_candidates_route_surface.sh
     scripts/linux/show_issue3_progress_tracker_route.sh|saved_zig_archive_route_surface
     scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_zig_archive_candidates_route.sh
@@ -109,6 +128,10 @@ FIXTURE_FILES = {
         [--json]
     Google issue #3 issue #11 progress-tracker route
     fallback_zig_archive
+    check_issue3_saved_rust_toolchain_route_surface.sh
+    saved_rust_toolchain_route_surface
+    show_issue3_saved_rust_toolchain_route.sh
+    saved_rust_toolchain_route
     check_issue3_saved_zig_archive_candidates_route_surface.sh
     saved_zig_archive_route_surface
     show_issue3_saved_zig_archive_candidates_route.sh
@@ -127,12 +150,14 @@ FIXTURE_FILES = {
     Commit:
     Validation:
     show_issue3_saved_memory_inputs_route.sh
+    show_issue3_saved_rust_toolchain_route.sh
     show_issue3_linux_build_readiness_route.sh
     show_issue3_zig_toolchain_recovery_route.sh
     Route surface check:
     Saved-Memory follow-up route:
-    Issue #11 progress-tracker route:
-    Broader Zig recovery route:
+    Saved Rust route surface check:
+    Saved Rust toolchain route:
+    Zig toolchain recovery route:
     """,
 }
 
@@ -173,7 +198,7 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             cls.repo_root / "scripts/linux/show_issue3_progress_tracker_route.sh"
         )
 
-    def test_progress_note_keeps_issue11_handoff_and_saved_zig_followups_visible(self) -> None:
+    def test_progress_note_keeps_issue11_handoff_and_saved_toolchain_followups_visible(self) -> None:
         for fragment in (
             "issue `#11`",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
@@ -181,9 +206,14 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
             "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+            "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
             "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
             "scripts/check_issue3_saved_zig_archive_candidates.py",
@@ -191,6 +221,7 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
             "scripts/check_linux_build_readiness.py",
             "show_issue3_saved_memory_inputs_route.sh",
+            "show_issue3_saved_rust_toolchain_route.sh",
             "show_issue3_linux_build_readiness_route.sh",
             "show_issue3_zig_toolchain_recovery_route.sh",
             "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
@@ -213,17 +244,22 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.build_readiness_note)
 
-    def test_surface_checker_keeps_saved_zig_and_fallback_contract_visible(self) -> None:
+    def test_surface_checker_keeps_saved_rust_saved_zig_and_fallback_contract_visible(self) -> None:
         for fragment in (
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
             "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh",
+            "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
             "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
             "scripts/linux/check_issue3_zig_toolchain_match.sh",
@@ -234,6 +270,10 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "scripts/check_linux_build_readiness.py",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue `#11`",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_rust_toolchain_route.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_rust_toolchain_route_surface.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_rust_archive_candidates.py",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_staged_rust_toolchain_candidates.py",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates_route_surface.sh",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh",
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_saved_zig_archive_candidates.py",
@@ -241,6 +281,10 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_zig_toolchain_archive_restore_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "scripts/linux/show_issue3_progress_tracker_route.sh|fallback_zig_archive",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_rust_toolchain_route_surface.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|saved_rust_toolchain_route_surface",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/linux/show_issue3_progress_tracker_route.sh|saved_rust_toolchain_route",
             "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_saved_zig_archive_candidates_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh|saved_zig_archive_route_surface",
             "scripts/linux/show_issue3_progress_tracker_route.sh|show_issue3_saved_zig_archive_candidates_route.sh",
@@ -254,11 +298,15 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.surface_script)
 
-    def test_route_printer_keeps_saved_zig_followups_and_templates_together(self) -> None:
+    def test_route_printer_keeps_saved_rust_saved_zig_followups_and_templates_together(self) -> None:
         for fragment in (
             "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "Google issue #3 issue #11 progress-tracker route",
             "fallback_zig_archive",
+            "check_issue3_saved_rust_toolchain_route_surface.sh",
+            "saved_rust_toolchain_route_surface",
+            "show_issue3_saved_rust_toolchain_route.sh",
+            "saved_rust_toolchain_route",
             "check_issue3_saved_zig_archive_candidates_route_surface.sh",
             "saved_zig_archive_route_surface",
             "show_issue3_saved_zig_archive_candidates_route.sh",
@@ -277,22 +325,26 @@ class Issue3ProgressTrackerRouteSurfaceTest(unittest.TestCase):
             "Commit:",
             "Validation:",
             "show_issue3_saved_memory_inputs_route.sh",
+            "show_issue3_saved_rust_toolchain_route.sh",
             "show_issue3_linux_build_readiness_route.sh",
             "show_issue3_zig_toolchain_recovery_route.sh",
             "Route surface check:",
             "Saved-Memory follow-up route:",
-            "Issue #11 progress-tracker route:",
-            "Broader Zig recovery route:",
+            "Saved Rust route surface check:",
+            "Saved Rust toolchain route:",
+            "Zig toolchain recovery route:",
         ):
             self.assertIn(fragment, self.route_script)
 
         surface_index = self.route_script.index("Route surface check:")
         saved_memory_index = self.route_script.index("Saved-Memory follow-up route:")
-        issue11_index = self.route_script.index("Issue #11 progress-tracker route:")
-        zig_index = self.route_script.index("Broader Zig recovery route:")
+        saved_rust_surface_index = self.route_script.index("Saved Rust route surface check:")
+        saved_rust_route_index = self.route_script.index("Saved Rust toolchain route:")
+        zig_index = self.route_script.index("Zig toolchain recovery route:")
         self.assertLess(surface_index, saved_memory_index)
-        self.assertLess(saved_memory_index, issue11_index)
-        self.assertLess(issue11_index, zig_index)
+        self.assertLess(saved_memory_index, saved_rust_surface_index)
+        self.assertLess(saved_rust_surface_index, saved_rust_route_index)
+        self.assertLess(saved_rust_route_index, zig_index)
 
 
 if __name__ == "__main__":
