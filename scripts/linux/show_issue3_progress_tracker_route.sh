@@ -58,6 +58,7 @@ ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 ZIG_RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 
@@ -77,6 +78,7 @@ print(json.dumps({
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "saved_memory_inputs_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
+        "saved_zig_archive_candidates_route": ${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND@Q},
         "linux_build_readiness_route": ${BUILD_ROUTE_COMMAND@Q},
         "zig_toolchain_recovery_route": ${ZIG_RECOVERY_ROUTE_COMMAND@Q}
     },
@@ -85,9 +87,10 @@ print(json.dumps({
     "notes": [
         "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.",
         "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.",
+        "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.",
         "Keep the start comment compact with Goal, Started, and Next.",
         "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.",
-        "When the next step is still environment-gated, follow the saved-memory, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch."
+        "When the next step is still environment-gated, follow the saved-memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch."
     ]
 }, indent=2))
 PY
@@ -107,6 +110,7 @@ Read first
   docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+  docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
   docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
 
@@ -117,6 +121,9 @@ Suggested route
 
   Saved-Memory follow-up route:
     ${SAVED_MEMORY_ROUTE_COMMAND}
+
+  Saved Zig archive candidates route:
+    ${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND}
 
   Linux or WSL build-readiness route:
     ${BUILD_ROUTE_COMMAND}
@@ -141,7 +148,8 @@ Working rules
 =============
   - Run the route surface check first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
+  - When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.
   - Keep the start comment compact with Goal, Started, and Next.
   - Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.
-  - When the next step is still environment-gated, follow the saved-Memory, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
+  - When the next step is still environment-gated, follow the saved-Memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
 EOF
