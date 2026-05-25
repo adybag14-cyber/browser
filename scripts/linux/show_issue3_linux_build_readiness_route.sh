@@ -139,6 +139,7 @@ SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_save
 SAVED_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh"
 ZIG_TOOLCHAIN_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
 ZIG_TOOLCHAIN_MATCH_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_zig_toolchain_match.sh"
+SAVED_ZIG_ARCHIVE_CANDIDATES_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_zig_archive_candidates.py"
 ZIG_ARCHIVE_RESTORE_SCRIPT="${REPO_ROOT}/scripts/linux/restore_zig_toolchain_archive.sh"
 SAVED_RUST_SURFACE_SCRIPT_PATH="${REPO_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh"
 SAVED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
@@ -163,6 +164,7 @@ SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_RO
 SAVED_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 TOOLCHAIN_ROUTE_COMMAND="bash $(format_shell_arg "${ZIG_TOOLCHAIN_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 TOOLCHAIN_MATCH_COMMAND="bash $(format_shell_arg "${ZIG_TOOLCHAIN_MATCH_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
+SAVED_ZIG_ARCHIVE_CANDIDATES_COMMAND="python $(format_shell_arg "${SAVED_ZIG_ARCHIVE_CANDIDATES_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 ZIG_ARCHIVE_RESTORE_CHECK_COMMAND="bash $(format_shell_arg "${ZIG_ARCHIVE_RESTORE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --archive /path/to/zig-0.15.2.tar.xz --check-only"
 SAVED_RUST_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_SURFACE_SCRIPT_PATH}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ROUTE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
@@ -195,6 +197,7 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_ARCHIVE_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     TOOLCHAIN_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     TOOLCHAIN_MATCH_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ZIG_ARCHIVE_CANDIDATES_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     OFFLINE_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     WORKSPACE_CONTEXT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_INPUTS_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -248,6 +251,7 @@ print(json.dumps({
         "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "zig_toolchain_route": ${TOOLCHAIN_ROUTE_COMMAND@Q},
         "zig_toolchain_match": ${TOOLCHAIN_MATCH_COMMAND@Q},
+        "saved_zig_archive_candidates": ${SAVED_ZIG_ARCHIVE_CANDIDATES_COMMAND@Q},
         "zig_archive_restore_check": ${ZIG_ARCHIVE_RESTORE_CHECK_COMMAND@Q},
         "saved_rust_surface_check": ${SAVED_RUST_SURFACE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
@@ -274,6 +278,7 @@ print(json.dumps({
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
         "Run the zig_toolchain_match command right after the broader Zig recovery route so the same derived toolchains root has to prove a real 0.15.x candidate exists before the wider readiness rerun is trusted.",
+        "Run the saved_zig_archive_candidates command when a real 0.15.x archive may already be present under the saved archives root but the exact archive path is not known yet, so the archive-restore route can reuse the preferred surfaced candidate instead of a hand-built archive argument.",
         "A caller-provided rust_toolchain_dir now also defines the derived toolchains root used by the Zig recovery route and matching-line gate so those follow-up checks stay aligned with the same shared toolchain area.",
         "Run the zig_archive_restore_check command when a real 0.15.x archive exists but has not been staged under ../toolchains yet.",
         "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
@@ -375,6 +380,9 @@ Suggested route
   Zig matching-line gate:
     ${TOOLCHAIN_MATCH_COMMAND}
 
+  Saved Zig archive candidate discovery when the exact 0.15.x archive path is not known yet:
+    ${SAVED_ZIG_ARCHIVE_CANDIDATES_COMMAND}
+
   Zig archive restore route when a real 0.15.x archive exists but is not staged yet:
     ${ZIG_ARCHIVE_RESTORE_CHECK_COMMAND}
 
@@ -425,6 +433,7 @@ Working rules
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged Zig candidates need a quick 0.15.x decision.
   - Run the Zig matching-line gate right after the Zig toolchain recovery route so the same derived toolchains root proves a real 0.15.x candidate exists before the broader readiness helper is trusted.
+  - Run the saved Zig archive candidate discovery command when a real 0.15.x archive may already be present under the saved archives root but the exact archive path is not known yet, so the archive-restore route can reuse the preferred surfaced candidate instead of a hand-built archive argument.
   - A caller-provided Rust toolchain dir now also defines the derived toolchains root used by the Zig recovery route and matching-line gate, so those follow-up checks stay aligned with the same shared toolchain area.
   - Run the Zig archive restore route when a real 0.15.x archive exists but has not been staged under ../toolchains yet.
   - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
