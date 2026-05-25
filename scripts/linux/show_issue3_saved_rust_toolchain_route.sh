@@ -27,6 +27,38 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
+resolve_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+locate_first_existing() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+start = pathlib.Path(sys.argv[1]).resolve()
+relative = pathlib.Path(sys.argv[2])
+for ancestor in (start, *start.parents):
+    candidate = ancestor / relative
+    if candidate.exists():
+        print(candidate.resolve())
+        break
+PY
+}
+
+normalize_dependencies_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    resolve_path "${raw_root}"
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_TOOLCHAIN_DIR_NAME="rust-1.79.0"
@@ -81,17 +113,31 @@ while [[ $# -gt 0 ]]; do
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 WORKSPACE_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)"
 if [[ -z "${TOOLCHAIN_PARENT}" ]]; then
-    TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
+    DISCOVERED_TOOLCHAIN_PARENT="$(locate_first_existing "${BROWSER_ROOT}" "toolchains" || true)"
+    if [[ -n "${DISCOVERED_TOOLCHAIN_PARENT}" ]]; then
+        TOOLCHAIN_PARENT="${DISCOVERED_TOOLCHAIN_PARENT}"
+    else
+        TOOLCHAIN_PARENT="${WORKSPACE_ROOT}/toolchains"
+    fi
 fi
 if [[ -z "${DEPENDENCIES_ROOT}" ]]; then
-    DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser/dependencies"
+    DISCOVERED_DEPENDENCIES_ROOT="$(locate_first_existing "${BROWSER_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -n "${DISCOVERED_DEPENDENCIES_ROOT}" ]]; then
+        DEPENDENCIES_ROOT="${DISCOVERED_DEPENDENCIES_ROOT}"
+    else
+        DEPENDENCIES_ROOT="${WORKSPACE_ROOT}/memory/repo_archives/browser"
+    fi
 fi
+TOOLCHAIN_PARENT="$(resolve_path "${TOOLCHAIN_PARENT}")"
+DEPENDENCIES_ROOT="$(normalize_dependencies_root "${DEPENDENCIES_ROOT}")"
 if [[ -z "${TOOLCHAIN_ROOT}" ]]; then
     TOOLCHAIN_ROOT="${TOOLCHAIN_PARENT}/${DEFAULT_TOOLCHAIN_DIR_NAME}"
 fi
+TOOLCHAIN_ROOT="$(resolve_path "${TOOLCHAIN_ROOT}")"
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${DEPENDENCIES_ROOT}/${DEFAULT_ARCHIVE_NAME}"
 fi
+ARCHIVE_PATH="$(resolve_path "${ARCHIVE_PATH}")"
 
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
 SAVED_ARCHIVE_CANDIDATES_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_issue3_saved_rust_archive_candidates.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --saved-archives-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAIN_PARENT}")"
@@ -132,7 +178,8 @@ print(json.dumps({
         "Run the check_only command next when the archive or destination path may have drifted.",
         "Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.",
         "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks.",
-        "By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper."
+        "By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper.",
+        "When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor memory and toolchains roots before it falls back to the simple sibling layout."
     ]
 }, indent=2))
 PY
@@ -188,4 +235,5 @@ Working rules
   - Use the restore command instead of rebuilding the tar extraction path by hand.
   - Reuse the exported PATH, CARGO, and RUSTC values before rerunning Linux or WSL build-readiness helpers.
   - The default restore location now matches the broader Linux build-readiness route: ../toolchains/rust-1.79.0.
+  - When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor Memory and toolchains roots before it falls back to the simple sibling layout.
 EOF_ROUTE
