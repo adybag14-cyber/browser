@@ -134,6 +134,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/check_issue3_workspace_context.py"
     "scripts/check_issue3_saved_zig_archive_candidates.py"
     "scripts/check_linux_build_readiness.py"
+    "scripts/linux/check_issue3_progress_tracker_route_surface.sh"
+    "scripts/linux/show_issue3_progress_tracker_route.sh"
     "scripts/windows/HeadedValidationHelpers.ps1"
     "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
     "scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1"
