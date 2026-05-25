@@ -9,6 +9,7 @@ helpers:
 
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
@@ -17,6 +18,8 @@ helpers:
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
 - `docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
@@ -118,15 +121,23 @@ bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 That route prints the same saved-input preflight with the resolved repo,
 Memory, helper, restored-checkout, and fallback Zig paths already filled in.
 
-The raw preflight remains:
+## Keep The Progress Tracker Route Visible
+
+If this run is still working in the Linux or WSL re-entry lane and the direct
+runtime patch is not ready to reopen yet, keep the lower-volume tracker handoff
+visible before broader build-readiness or Zig helper output is treated as the
+current status lane:
 
 ```bash
-python scripts/check_issue3_saved_memory_inputs.py --repo-root .
+bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
+bash ./scripts/linux/show_issue3_progress_tracker_route.sh
 ```
 
-Use `--fallback-zig-archive` when the attached
-`zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle lives somewhere other
-than the default `../agent_files/` location beside the repo workspace.
+That route keeps the issue `#11` start and completion update format, the saved-
+Memory follow-up, the Linux build-readiness follow-up, and the Zig recovery
+follow-up on one compact helper surface so scheduled runs do not fall back to
+the capped issue `#2` or issue `#3` threads while the environment gates are
+still closed.
 
 ## Verify Archive Integrity Before Offline Staging
 
@@ -258,32 +269,36 @@ The Linux route now stays short and ordered:
    `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 5. A saved-Memory route printer using
    `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
-6. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-7. A saved-archive integrity preflight using
+6. An issue `#11` progress-tracker route surface check using
+   `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+7. An issue `#11` progress-tracker route printer using
+   `scripts/linux/show_issue3_progress_tracker_route.sh`
+8. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+9. A saved-archive integrity preflight using
    `scripts/check_issue3_saved_archive_integrity.py`
-8. A Zig-line recovery helper using
-   `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-9. A dedicated Zig matching-line gate using
-   `scripts/linux/check_issue3_zig_toolchain_match.sh`
-10. A Zig archive-restore surface check using
+10. A Zig-line recovery helper using
+    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+11. A dedicated Zig matching-line gate using
+    `scripts/linux/check_issue3_zig_toolchain_match.sh`
+12. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-11. A saved Rust route surface check using
+13. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-12. A saved Rust restore route using
+14. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-13. A dedicated offline build-inputs route using
+15. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-14. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-15. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+16. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+17. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-16. A saved Rust `1.79.0` restore command
-17. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-18. The attached fallback Zig archive location when it is present beside the
+18. A saved Rust `1.79.0` restore command
+19. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+20. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-19. A full readiness command that expects the saved archives, offline deps, and
+21. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-20. A direct handoff back to the smaller Windows runtime revalidation route once
+22. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
