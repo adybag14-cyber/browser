@@ -10,6 +10,9 @@ Usage:
     [--toolchains-root /path/to/toolchains] \
     [--archive /path/to/zig-archive.tar.xz] \
     [--destination /path/to/toolchains/zig-0.15.2] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
+    [--offline-deps-root /path/to/offline-deps] \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--check-only] \
     [--json] \
     [--force]
@@ -19,10 +22,12 @@ the issue #3 Linux or WSL recovery helpers, or print the derived paths without
 extracting it.
 
 Defaults:
-  browser root     parent of this script
-  toolchains root  <browser-root>/../toolchains
-  archive          <browser-root>/../agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz if present
-  destination      <toolchains-root>/<archive top-level folder>
+  browser root        parent of this script
+  toolchains root     <browser-root>/../toolchains
+  archive             <browser-root>/../agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz if present
+  saved archives root <browser-root>/../memory/repo_archives/browser (normalized to dependencies/ when present)
+  offline deps root   <browser-root>/../offline-deps
+  destination         <toolchains-root>/<archive top-level folder>
 
 Supported archive types:
   .tar, .tar.gz, .tgz, .tar.xz, .zip
@@ -38,6 +43,21 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_BROWSER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_FALLBACK_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
@@ -46,6 +66,9 @@ BROWSER_ROOT="${DEFAULT_BROWSER_ROOT}"
 TOOLCHAINS_ROOT=""
 ARCHIVE_PATH=""
 DESTINATION=""
+SAVED_ARCHIVES_ROOT=""
+OFFLINE_DEPS_ROOT=""
+FALLBACK_ZIG_ARCHIVE=""
 CHECK_ONLY=false
 JSON=false
 FORCE_RESTORE=false
@@ -66,6 +89,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --destination)
             DESTINATION="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
+            shift 2
+            ;;
+        --fallback-zig-archive)
+            FALLBACK_ZIG_ARCHIVE="$2"
             shift 2
             ;;
         --check-only)
@@ -100,10 +135,22 @@ BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/toolchains"
 fi
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/offline-deps"
+fi
+if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+    SAVED_ARCHIVES_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/memory/repo_archives/browser"
+fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ARCHIVE="$(cd "${BROWSER_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ARCHIVE_NAME}"
+    if [[ -f "${CANDIDATE_FALLBACK_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ARCHIVE}"
+    fi
+fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
-    CANDIDATE_ARCHIVE="$(cd "${BROWSER_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ARCHIVE_NAME}"
-    if [[ -f "${CANDIDATE_ARCHIVE}" ]]; then
-        ARCHIVE_PATH="${CANDIDATE_ARCHIVE}"
+    if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+        ARCHIVE_PATH="${FALLBACK_ZIG_ARCHIVE}"
     fi
 fi
 
@@ -175,13 +222,22 @@ if [[ "${CHECK_ONLY}" != "true" ]]; then
 fi
 FOLLOW_UP_DISCOVERY_SCRIPT="${BROWSER_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
 FOLLOW_UP_BUILD_READINESS_SCRIPT="${BROWSER_ROOT}/scripts/check_linux_build_readiness.py"
-FOLLOW_UP_DISCOVERY="bash '${FOLLOW_UP_DISCOVERY_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}'"
-FOLLOW_UP_BUILD_READINESS_TEMPLATE="python '${FOLLOW_UP_BUILD_READINESS_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}' --zig <restored-zig-path>"
+FOLLOW_UP_DISCOVERY="bash '${FOLLOW_UP_DISCOVERY_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}' --saved-archives-root '${SAVED_ARCHIVES_ROOT}' --offline-deps-root '${OFFLINE_DEPS_ROOT}'"
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    FOLLOW_UP_DISCOVERY="${FOLLOW_UP_DISCOVERY} --fallback-zig-archive '${FALLBACK_ZIG_ARCHIVE}'"
+fi
+FOLLOW_UP_BUILD_READINESS_TEMPLATE="python '${FOLLOW_UP_BUILD_READINESS_SCRIPT}' --repo-root '${BROWSER_ROOT}' --toolchains-root '${TOOLCHAINS_ROOT}' --saved-archives-root '${SAVED_ARCHIVES_ROOT}' --offline-deps-root '${OFFLINE_DEPS_ROOT}' --expect-saved-archives --expect-offline-deps --require-prebuilt-v8 --zig <restored-zig-path>"
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    FOLLOW_UP_BUILD_READINESS_TEMPLATE="${FOLLOW_UP_BUILD_READINESS_TEMPLATE} --fallback-zig-archive '${FALLBACK_ZIG_ARCHIVE}'"
+fi
 
 if [[ "${JSON}" == "true" ]]; then
     printf '{\n'
     printf '  "browser_root": %s,\n' "$(json_escape "${BROWSER_ROOT}")"
     printf '  "toolchains_root": %s,\n' "$(json_escape "${TOOLCHAINS_ROOT}")"
+    printf '  "saved_archives_root": %s,\n' "$(json_escape "${SAVED_ARCHIVES_ROOT}")"
+    printf '  "offline_deps_root": %s,\n' "$(json_escape "${OFFLINE_DEPS_ROOT}")"
+    printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "archive_path": %s,\n' "$(json_escape "${ARCHIVE_PATH}")"
     printf '  "archive_top_level": %s,\n' "$(json_escape "${ARCHIVE_TOP_LEVEL}")"
     printf '  "destination": %s,\n' "$(json_escape "${DESTINATION}")"
@@ -198,6 +254,11 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo "Saved Zig toolchain restore surface check passed."
     echo "Browser root:        ${BROWSER_ROOT}"
     echo "Toolchains root:     ${TOOLCHAINS_ROOT}"
+    echo "Saved archives root: ${SAVED_ARCHIVES_ROOT}"
+    echo "Offline deps root:   ${OFFLINE_DEPS_ROOT}"
+    if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+        echo "Fallback archive:    ${FALLBACK_ZIG_ARCHIVE}"
+    fi
     echo "Zig archive:         ${ARCHIVE_PATH}"
     echo "Archive top level:   ${ARCHIVE_TOP_LEVEL}"
     echo "Destination:         ${DESTINATION}"
@@ -254,11 +315,17 @@ fi
 
 echo
 echo "Saved Zig toolchain is ready."
+echo "Saved archives root: ${SAVED_ARCHIVES_ROOT}"
+echo "Offline deps root: ${OFFLINE_DEPS_ROOT}"
 echo "Destination: ${DESTINATION}"
 echo "zig: ${ZIG_BIN}"
 echo "zig version: $("${ZIG_BIN}" version | tr -d '\r')"
 echo
 echo "Suggested follow-up commands:"
 printf "  %s\n" "${FOLLOW_UP_DISCOVERY}"
-printf "  python '%s' --repo-root '%s' --toolchains-root '%s' --zig '%s'\n" \
-    "${FOLLOW_UP_BUILD_READINESS_SCRIPT}" "${BROWSER_ROOT}" "${TOOLCHAINS_ROOT}" "${ZIG_BIN}"
+printf "  python '%s' --repo-root '%s' --toolchains-root '%s' --saved-archives-root '%s' --offline-deps-root '%s' --expect-saved-archives --expect-offline-deps --require-prebuilt-v8 --zig '%s'" \
+    "${FOLLOW_UP_BUILD_READINESS_SCRIPT}" "${BROWSER_ROOT}" "${TOOLCHAINS_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${OFFLINE_DEPS_ROOT}" "${ZIG_BIN}"
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    printf " --fallback-zig-archive '%s'" "${FALLBACK_ZIG_ARCHIVE}"
+fi
+printf "\n"
