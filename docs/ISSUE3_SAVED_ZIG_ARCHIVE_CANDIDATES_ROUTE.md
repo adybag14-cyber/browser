@@ -6,7 +6,10 @@ candidate before broader build-readiness work is retried.
 
 This route exists to keep saved-archive discovery on a branch-local helper
 surface instead of forcing future runs to hand-scan `repo_archives/browser` for
-possible Zig bundles.
+possible Zig bundles. It also keeps generic archive filenames on a safe helper
+path, because the candidate helper can infer the Zig version from the archive's
+top-level extracted directory when the filename alone is not descriptive
+enough.
 
 Companion helpers:
 
@@ -27,6 +30,8 @@ Use this route when any of these are true:
 - a run needs to know whether the saved dependency archive area already contains
   a real `0.15.x` toolchain archive before falling back to the attached `0.17`
   archive
+- the visible saved archive filename is generic, so the branch-compatible Zig
+  line has to be inferred from the archive layout instead of the filename alone
 - a run wants the exact restore commands for the preferred saved Zig archive
   without rebuilding them by hand
 - a route wants to fail fast if the saved-archive helper, restore helper, or
@@ -58,6 +63,10 @@ python ./scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
 Use `--json` when another helper wants the discovered archive list, preferred
 saved archive, or restore commands as structured output.
 
+That helper can still surface a valid `0.15.x` candidate when the saved archive
+filename is generic, because it can infer the Zig version from the archive's
+top-level extracted directory before ranking the preferred restore target.
+
 ## Restore The Preferred Saved Archive
 
 When the helper reports a preferred saved archive, run its surfaced restore
@@ -76,6 +85,8 @@ current workspace.
 
 - Run the saved-archive candidate surface check first so helper drift fails
   before the route blames missing toolchains.
+- Prefer the saved archive candidate helper over ad hoc filename scanning when
+  the saved archive name is generic or reused across multiple toolchain drops.
 - Prefer a saved Zig `0.15.2` or other `0.15.x` archive over the attached
   fallback `0.17` bundle whenever one is available.
 - Treat the attached Zig `0.17` bundle as a surfaced stopgap only, not as
