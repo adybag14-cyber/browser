@@ -7,7 +7,8 @@ This helper compares the helper-surface path inventories embedded in:
 - scripts/check_issue3_saved_memory_inputs.py
 - scripts/check_issue3_restored_checkout.py
 
-It is intended as a small regression guard for the saved-snapshot restore route.
+It also guards a small set of critical Linux/WSL re-entry surfaces so all three
+inventories cannot drift together silently.
 """
 
 from __future__ import annotations
@@ -30,6 +31,14 @@ RESTORED_CHECKOUT_RELATIVE_PATH = "scripts/check_issue3_restored_checkout.py"
 RESTORE_ARRAY_NAME = "HELPER_SURFACE_PATHS"
 SAVED_MEMORY_TUPLE_NAME = "REQUIRED_RESTORED_HELPER_FILES"
 RESTORED_CHECKOUT_TUPLE_NAME = "HELPER_SURFACE_PATHS"
+CRITICAL_ALIGNMENT_PATHS: tuple[str, ...] = (
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+    "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+    "scripts/linux/show_issue3_progress_tracker_route.sh",
+    "scripts/check_issue3_saved_zig_archive_candidates.py",
+    "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
+    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,14 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
 def parse_restore_helper_surface_paths(script_path: Path) -> list[str]:
     text = script_path.read_text(encoding="utf-8")
     match = re.search(
-        r"declare -a\s+HELPER_SURFACE_PATHS=\(\n(?P<body>.*?)\n\)",
+        r"declare -a\s+HELPER_SURFACE_PATHS=\(\s*\n(?P<body>.*?)\n\s*\)",
         text,
         flags=re.DOTALL,
     )
     if match is None:
-        raise ValueError(
-            f"Could not find {RESTORE_ARRAY_NAME} in {script_path}"
-        )
+        raise ValueError(f"Could not find {RESTORE_ARRAY_NAME} in {script_path}")
 
     paths: list[str] = []
     for raw_line in match.group("body").splitlines():
@@ -83,17 +90,22 @@ def parse_restore_helper_surface_paths(script_path: Path) -> list[str]:
 def parse_python_tuple_paths(script_path: Path, variable_name: str) -> list[str]:
     module = ast.parse(script_path.read_text(encoding="utf-8"), filename=str(script_path))
     for node in module.body:
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == variable_name:
-                return extract_paths_from_tuple(node.value, script_path, variable_name)
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == variable_name:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == variable_name:
+                    return extract_paths_from_tuple(node.value, script_path, variable_name)
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == variable_name
+        ):
             return extract_paths_from_tuple(node.value, script_path, variable_name)
     raise ValueError(f"Could not find {variable_name} in {script_path}")
 
 
-def extract_paths_from_tuple(value: ast.AST | None, script_path: Path, variable_name: str) -> list[str]:
+def extract_paths_from_tuple(
+    value: ast.AST | None, script_path: Path, variable_name: str
+) -> list[str]:
     if value is None or not isinstance(value, (ast.Tuple, ast.List)):
         raise ValueError(f"{variable_name} in {script_path} is not a tuple/list literal")
     paths: list[str] = []
@@ -126,6 +138,11 @@ def diff_paths(source_paths: list[str], expected_paths: list[str]) -> dict[str, 
     }
 
 
+def missing_critical_paths(paths: list[str]) -> list[str]:
+    path_set = set(paths)
+    return sorted(path for path in CRITICAL_ALIGNMENT_PATHS if path not in path_set)
+
+
 def collect_results(repo_root: Path) -> dict[str, object]:
     repo_root = repo_root.resolve()
     restore_script_path = repo_root / RESTORE_SCRIPT_RELATIVE_PATH
@@ -137,9 +154,7 @@ def collect_results(repo_root: Path) -> dict[str, object]:
         "saved_memory_inputs": str(saved_memory_inputs_path),
         "restored_checkout": str(restored_checkout_path),
     }
-    missing_files = [
-        path for path in files.values() if not Path(path).is_file()
-    ]
+    missing_files = [path for path in files.values() if not Path(path).is_file()]
     if missing_files:
         return {
             "ok": False,
@@ -148,6 +163,7 @@ def collect_results(repo_root: Path) -> dict[str, object]:
             "files": files,
             "inventories": {},
             "alignment": {},
+            "critical_alignment": {},
         }
 
     restore_paths = parse_restore_helper_surface_paths(restore_script_path)
@@ -179,7 +195,14 @@ def collect_results(repo_root: Path) -> dict[str, object]:
     alignment = {
         "restore_vs_saved_memory_inputs": diff_paths(restore_paths, saved_memory_paths),
         "restore_vs_restored_checkout": diff_paths(restore_paths, restored_checkout_paths),
-        "saved_memory_inputs_vs_restored_checkout": diff_paths(saved_memory_paths, restored_checkout_paths),
+        "saved_memory_inputs_vs_restored_checkout": diff_paths(
+            saved_memory_paths, restored_checkout_paths
+        ),
+    }
+    critical_alignment = {
+        "restore_script": missing_critical_paths(restore_paths),
+        "saved_memory_inputs": missing_critical_paths(saved_memory_paths),
+        "restored_checkout": missing_critical_paths(restored_checkout_paths),
     }
 
     ok = (
@@ -192,6 +215,9 @@ def collect_results(repo_root: Path) -> dict[str, object]:
         and not alignment["restore_vs_restored_checkout"]["extra"]
         and not alignment["saved_memory_inputs_vs_restored_checkout"]["missing"]
         and not alignment["saved_memory_inputs_vs_restored_checkout"]["extra"]
+        and not critical_alignment["restore_script"]
+        and not critical_alignment["saved_memory_inputs"]
+        and not critical_alignment["restored_checkout"]
     )
 
     return {
@@ -201,6 +227,7 @@ def collect_results(repo_root: Path) -> dict[str, object]:
         "files": files,
         "inventories": inventories,
         "alignment": alignment,
+        "critical_alignment": critical_alignment,
     }
 
 
@@ -214,6 +241,7 @@ def emit_text(result: dict[str, object]) -> None:
 
     inventories = result["inventories"]
     alignment = result["alignment"]
+    critical_alignment = result["critical_alignment"]
 
     print(f"Restore script paths: {inventories['restore_script']['count']}")
     print(f"Saved-memory helper paths: {inventories['saved_memory_inputs']['count']}")
@@ -234,7 +262,17 @@ def emit_text(result: dict[str, object]) -> None:
         for extra_path in comparison["extra"]:
             print(f"  extra: {extra_path}")
 
-    print("\nHelper-surface alignment check passed." if result["ok"] else "\nHelper-surface alignment check failed.")
+    for inventory_name, missing_paths in critical_alignment.items():
+        status = "PASS" if not missing_paths else "FAIL"
+        print(f"{inventory_name} critical coverage: [{status}]")
+        for missing_path in missing_paths:
+            print(f"  missing critical path: {missing_path}")
+
+    print(
+        "\nHelper-surface alignment check passed."
+        if result["ok"]
+        else "\nHelper-surface alignment check failed."
+    )
 
 
 class HelperSurfaceAlignmentTests(unittest.TestCase):
@@ -243,39 +281,41 @@ class HelperSurfaceAlignmentTests(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(textwrap.dedent(content).lstrip(), encoding="utf-8")
 
+    def write_matching_fixture(self, root: Path, paths: list[str]) -> None:
+        restore_body = "\n".join(f'    "{path}"' for path in paths)
+        python_body = "\n".join(f'    ("{path}", "{path}"),' for path in paths)
+        self.write_fixture(
+            root,
+            RESTORE_SCRIPT_RELATIVE_PATH,
+            f"""
+            declare -a HELPER_SURFACE_PATHS=(
+            {restore_body}
+            )
+            """,
+        )
+        self.write_fixture(
+            root,
+            SAVED_MEMORY_INPUTS_RELATIVE_PATH,
+            f"""
+            REQUIRED_RESTORED_HELPER_FILES = (
+            {python_body}
+            )
+            """,
+        )
+        self.write_fixture(
+            root,
+            RESTORED_CHECKOUT_RELATIVE_PATH,
+            f"""
+            HELPER_SURFACE_PATHS = (
+            {python_body}
+            )
+            """,
+        )
+
     def test_collect_results_passes_when_inventories_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            self.write_fixture(
-                root,
-                RESTORE_SCRIPT_RELATIVE_PATH,
-                """
-                declare -a HELPER_SURFACE_PATHS=(
-                    "docs/a.md"
-                    "scripts/b.py"
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
-                """
-                REQUIRED_RESTORED_HELPER_FILES = (
-                    ("docs/a.md", "a"),
-                    ("scripts/b.py", "b"),
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                RESTORED_CHECKOUT_RELATIVE_PATH,
-                """
-                HELPER_SURFACE_PATHS = (
-                    ("docs/a.md", "a"),
-                    ("scripts/b.py", "b"),
-                )
-                """,
-            )
+            self.write_matching_fixture(root, list(CRITICAL_ALIGNMENT_PATHS))
 
             result = collect_results(root)
             self.assertTrue(result["ok"])
@@ -283,71 +323,40 @@ class HelperSurfaceAlignmentTests(unittest.TestCase):
     def test_collect_results_reports_missing_restore_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
+            self.write_matching_fixture(root, list(CRITICAL_ALIGNMENT_PATHS))
             self.write_fixture(
                 root,
                 RESTORE_SCRIPT_RELATIVE_PATH,
                 """
                 declare -a HELPER_SURFACE_PATHS=(
-                    "docs/a.md"
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
-                """
-                REQUIRED_RESTORED_HELPER_FILES = (
-                    ("docs/a.md", "a"),
-                    ("scripts/b.py", "b"),
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                RESTORED_CHECKOUT_RELATIVE_PATH,
-                """
-                HELPER_SURFACE_PATHS = (
-                    ("docs/a.md", "a"),
-                    ("scripts/b.py", "b"),
+                    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
                 )
                 """,
             )
 
             result = collect_results(root)
             self.assertFalse(result["ok"])
-            self.assertEqual(
+            self.assertIn(
+                "scripts/check_issue3_saved_zig_archive_candidates.py",
                 result["alignment"]["restore_vs_saved_memory_inputs"]["missing"],
-                ["scripts/b.py"],
             )
 
     def test_collect_results_reports_duplicate_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
+            self.write_matching_fixture(root, list(CRITICAL_ALIGNMENT_PATHS))
             self.write_fixture(
                 root,
                 RESTORE_SCRIPT_RELATIVE_PATH,
                 """
                 declare -a HELPER_SURFACE_PATHS=(
-                    "docs/a.md"
-                    "docs/a.md"
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
-                """
-                REQUIRED_RESTORED_HELPER_FILES = (
-                    ("docs/a.md", "a"),
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                RESTORED_CHECKOUT_RELATIVE_PATH,
-                """
-                HELPER_SURFACE_PATHS = (
-                    ("docs/a.md", "a"),
+                    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
+                    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
+                    "scripts/linux/check_issue3_progress_tracker_route_surface.sh"
+                    "scripts/linux/show_issue3_progress_tracker_route.sh"
+                    "scripts/check_issue3_saved_zig_archive_candidates.py"
+                    "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh"
+                    "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
                 )
                 """,
             )
@@ -356,50 +365,23 @@ class HelperSurfaceAlignmentTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(
                 result["inventories"]["restore_script"]["duplicates"],
-                ["docs/a.md"],
+                ["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
             )
 
-    def test_collect_results_reports_attached_page_sync_drift(self) -> None:
+    def test_collect_results_reports_critical_path_gaps_even_when_inventories_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            self.write_fixture(
-                root,
-                RESTORE_SCRIPT_RELATIVE_PATH,
-                """
-                declare -a HELPER_SURFACE_PATHS=(
-                    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
-                    "scripts/check_issue3_saved_memory_inputs.py"
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                SAVED_MEMORY_INPUTS_RELATIVE_PATH,
-                """
-                REQUIRED_RESTORED_HELPER_FILES = (
-                    ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime"),
-                    ("scripts/check_issue3_saved_memory_inputs.py", "preflight"),
-                    ("tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py", "catalog"),
-                )
-                """,
-            )
-            self.write_fixture(
-                root,
-                RESTORED_CHECKOUT_RELATIVE_PATH,
-                """
-                HELPER_SURFACE_PATHS = (
-                    ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime"),
-                    ("scripts/check_issue3_saved_memory_inputs.py", "preflight"),
-                    ("tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py", "catalog"),
-                )
-                """,
-            )
+            partial_paths = [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+            ]
+            self.write_matching_fixture(root, partial_paths)
 
             result = collect_results(root)
             self.assertFalse(result["ok"])
-            self.assertEqual(
-                result["alignment"]["restore_vs_saved_memory_inputs"]["missing"],
-                ["tmp-browser-smoke/attached-pages/start_attached_pages_catalog.py"],
+            self.assertIn(
+                "scripts/check_issue3_saved_zig_archive_candidates.py",
+                result["critical_alignment"]["saved_memory_inputs"],
             )
 
 
