@@ -7,16 +7,14 @@ usage() {
 Usage:
   bash scripts/linux/show_issue3_helper_surface_alignment_route.sh \
     [--repo-root /path/to/browser-repo] \
-    [--helper-root /path/to/live/browser-repo] \
-    [--destination /path/to/restored/browser-checkout] \
     [--json]
 
-Print the issue #3 helper-surface alignment route for the saved-Memory and
-saved-browser-snapshot recovery path.
+Print the helper-surface alignment route for the blocked issue #3 Linux or WSL
+re-entry lane.
 EOF
 }
 
-quote_arg() {
+format_shell_arg() {
     python3 - "$1" <<'PY'
 import shlex
 import sys
@@ -25,27 +23,17 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-DEFAULT_DESTINATION_NAME="browser-memory-snapshot"
 
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
-HELPER_ROOT=""
-DESTINATION=""
 JSON=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
-            shift 2
-            ;;
-        --helper-root)
-            HELPER_ROOT="$2"
-            shift 2
-            ;;
-        --destination)
-            DESTINATION="$2"
             shift 2
             ;;
         --json)
@@ -65,19 +53,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
-if [[ -z "${HELPER_ROOT}" ]]; then
-    HELPER_ROOT="${REPO_ROOT}"
-fi
-HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
-if [[ -z "${DESTINATION}" ]]; then
-    DESTINATION="$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}"
-fi
 
-ALIGNMENT_COMMAND="python $(quote_arg "${HELPER_ROOT}/scripts/check_issue3_helper_surface_alignment.py") --repo-root $(quote_arg "${HELPER_ROOT}")"
-RESTORED_ALIGNMENT_COMMAND="python $(quote_arg "${HELPER_ROOT}/scripts/check_issue3_helper_surface_alignment.py") --repo-root $(quote_arg "${DESTINATION}")"
-SNAPSHOT_ROUTE_COMMAND="bash $(quote_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(quote_arg "${REPO_ROOT}") --helper-root $(quote_arg "${HELPER_ROOT}") --destination $(quote_arg "${DESTINATION}")"
-SYNCED_SNAPSHOT_ROUTE_COMMAND="${SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
-RESTORED_CHECK_COMMAND="python $(quote_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(quote_arg "${DESTINATION}") --helper-root $(quote_arg "${HELPER_ROOT}") --expect-helper-surface"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_helper_surface_alignment_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+ALIGNMENT_CHECK_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_helper_surface_alignment.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+RESTORED_CHECKOUT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${REPO_ROOT}/../browser-memory-snapshot")"
+PROGRESS_TRACKER_ROUTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -86,20 +68,21 @@ import json
 print(json.dumps({
     "issue": "Google issue #3 helper-surface alignment route",
     "repo_root": ${REPO_ROOT@Q},
-    "helper_root": ${HELPER_ROOT@Q},
-    "destination": ${DESTINATION@Q},
+    "progress_tracker_route_path": ${PROGRESS_TRACKER_ROUTE_PATH@Q},
     "commands": {
-        "alignment": ${ALIGNMENT_COMMAND@Q},
-        "snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
-        "synced_snapshot_route": ${SYNCED_SNAPSHOT_ROUTE_COMMAND@Q},
-        "restored_alignment": ${RESTORED_ALIGNMENT_COMMAND@Q},
-        "restored_checkout_check": ${RESTORED_CHECK_COMMAND@Q}
+        "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "alignment_check": ${ALIGNMENT_CHECK_COMMAND@Q},
+        "saved_memory_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
+        "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
+        "restored_checkout_check": ${RESTORED_CHECKOUT_COMMAND@Q}
     },
     "notes": [
-        "Run the live helper-root alignment check before trusting a saved-browser-snapshot restore plan.",
-        "If the live helper surface is already drifted, fix that first before copying helpers into a restored checkout.",
-        "Use the synced snapshot route when the restored checkout should become its own follow-up helper root.",
-        "After a synced restore, rerun the alignment checker against the restored checkout and then run the restored-checkout readiness helper."
+        "Run route_surface first so missing notes or helper scripts fail before the inventory comparison is blamed.",
+        "Run alignment_check before trusting a restored checkout that was synced from a live helper surface.",
+        "Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when helper drift is being fixed so issue #11 remains the low-volume progress-update lane.",
+        "Use saved_memory_route when the saved-memory preflight inventory is the drift source.",
+        "Use saved_browser_snapshot_route when the restore helper surface is the drift source or the run still needs a refreshed self-contained checkout.",
+        "Use restored_checkout_check when a synced checkout already exists and the next question is whether its helper surface is trustworthy."
     ]
 }, indent=2))
 PY
@@ -109,37 +92,41 @@ fi
 cat <<EOF
 Google issue #3 helper-surface alignment route
 
-Repo root:        ${REPO_ROOT}
-Live helper root: ${HELPER_ROOT}
-Restore target:   ${DESTINATION}
+Repo root:              ${REPO_ROOT}
+Progress tracker route: ${PROGRESS_TRACKER_ROUTE_PATH}
 
 Read first
 ==========
-  scripts/check_issue3_helper_surface_alignment.py
+  docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md
+  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
+  docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
-  docs/ISSUE3_RUNTIME_REENTRY_GATES.md
+  docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
 
 Suggested route
 ===============
-  1. Check the live helper surface before planning a restore:
-     ${ALIGNMENT_COMMAND}
+  Surface check:
+    ${ROUTE_SURFACE_COMMAND}
 
-  2. Print the saved-browser-snapshot route:
-     ${SNAPSHOT_ROUTE_COMMAND}
+  Helper-surface alignment check:
+    ${ALIGNMENT_CHECK_COMMAND}
 
-  3. Prefer the synced restore route when the restored checkout should carry the current helper surface:
-     ${SYNCED_SNAPSHOT_ROUTE_COMMAND}
+  Saved-memory route when the preflight inventory is stale:
+    ${SAVED_MEMORY_ROUTE_COMMAND}
 
-  4. After a synced restore, re-check alignment against the restored checkout:
-     ${RESTORED_ALIGNMENT_COMMAND}
+  Restore route when the restore-helper inventory is stale:
+    ${SNAPSHOT_ROUTE_COMMAND}
 
-  5. Confirm the restored checkout is ready for follow-up:
-     ${RESTORED_CHECK_COMMAND}
+  Restored-checkout check when a synced checkout already exists:
+    ${RESTORED_CHECKOUT_COMMAND}
 
 Working rules
 =============
-  - Run the live alignment check first so helper-surface drift is caught before a restore flow copies stale assumptions forward.
-  - Prefer the synced restore route when the saved archive helper surface is older than the live branch-local helper surface.
-  - Re-run the alignment checker against the restored checkout after a synced restore so drift is caught before Linux or WSL follow-up work starts.
-  - Use the restored-checkout readiness helper only after the alignment check passes for the target helper root.
+  - Run the surface check first so missing notes or helper scripts fail before the inventory comparison is blamed.
+  - Run the alignment check before trusting a restored checkout that was synced from a live helper surface.
+  - Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the route is still blocked on helper drift so issue #11 remains the practical progress-tracker handoff.
+  - Use the saved-memory route when the saved-memory preflight inventory is the drift source.
+  - Use the restore route when the restore-helper inventory is the drift source or when the run still needs a refreshed self-contained checkout.
+  - Use the restored-checkout check when a synced checkout already exists and the next question is whether its helper surface is trustworthy.
+  - Treat this route as a restore and preflight guard rail, not as proof that the direct Page.zig plus win32_backend.zig runtime patch is ready to reopen.
 EOF
