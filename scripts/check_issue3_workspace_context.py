@@ -187,6 +187,38 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(restored_checkout_root),
         "--sync-helper-surface",
     ]
+    zig_recovery_route_command = [
+        "bash",
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--offline-deps-root",
+        str(offline_deps_root),
+    ]
+    zig_match_command = [
+        "bash",
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+    ]
+    saved_zig_archive_candidates_command = [
+        "python",
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
     if fallback_zig_archive is not None:
         readiness_command.extend(
             ("--fallback-zig-archive", str(fallback_zig_archive))
@@ -195,6 +227,15 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
             ("--fallback-zig-archive", str(fallback_zig_archive))
         )
         saved_snapshot_route_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        zig_recovery_route_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        zig_match_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        saved_zig_archive_candidates_command.extend(
             ("--fallback-zig-archive", str(fallback_zig_archive))
         )
 
@@ -225,6 +266,9 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "suggested_progress_tracker_route_command": progress_tracker_route_command,
         "suggested_build_readiness_route_command": build_readiness_route_command,
         "suggested_saved_snapshot_route_command": saved_snapshot_route_command,
+        "suggested_zig_recovery_route_command": zig_recovery_route_command,
+        "suggested_zig_match_command": zig_match_command,
+        "suggested_saved_zig_archive_candidates_command": saved_zig_archive_candidates_command,
         "failures": failures,
     }
 
@@ -268,6 +312,12 @@ def emit_text(context: dict[str, object]) -> None:
     print("  " + " ".join(context["suggested_build_readiness_route_command"]))
     print("Suggested synced saved-snapshot route command:")
     print("  " + " ".join(context["suggested_saved_snapshot_route_command"]))
+    print("Suggested Zig recovery route command:")
+    print("  " + " ".join(context["suggested_zig_recovery_route_command"]))
+    print("Suggested Zig matching-line gate command:")
+    print("  " + " ".join(context["suggested_zig_match_command"]))
+    print("Suggested saved Zig archive candidates command:")
+    print("  " + " ".join(context["suggested_saved_zig_archive_candidates_command"]))
     if context["failures"]:
         print("\nWorkspace-context check failed:", file=sys.stderr)
         for failure in context["failures"]:
@@ -321,6 +371,26 @@ class WorkspaceContextTests(unittest.TestCase):
                 "--sync-helper-surface",
                 context["suggested_saved_snapshot_route_command"],
             )
+            self.assertIn(
+                "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+                context["suggested_zig_recovery_route_command"],
+            )
+            self.assertIn(
+                str(saved_archives_root.resolve()),
+                context["suggested_zig_recovery_route_command"],
+            )
+            self.assertIn(
+                str(offline_deps_root.resolve()),
+                context["suggested_zig_recovery_route_command"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_zig_toolchain_match.sh",
+                context["suggested_zig_match_command"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_zig_archive_candidates.py",
+                context["suggested_saved_zig_archive_candidates_command"],
+            )
 
     def test_defaults_when_ancestor_roots_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -342,6 +412,14 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
             )
+            self.assertIn(
+                "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+                context["suggested_zig_recovery_route_command"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_zig_toolchain_match.sh",
+                context["suggested_zig_match_command"],
+            )
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -357,6 +435,12 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertEqual(context["fallback_zig_archive"], str(explicit_archive.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_snapshot_route_command"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_recovery_route_command"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_match_command"])
+            self.assertIn(
+                str(explicit_archive.resolve()),
+                context["suggested_saved_zig_archive_candidates_command"],
+            )
 
     def test_missing_build_zon_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
