@@ -38,6 +38,77 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+read_minimum_zig_version() {
+    python3 - "$1" <<'PY'
+import pathlib
+import re
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(r'\.minimum_zig_version\s*=\s*"([^"]+)"', text)
+if match:
+    print(match.group(1))
+PY
+}
+
+infer_archive_version() {
+    if [[ -z "${1:-}" ]]; then
+        return 0
+    fi
+    python3 - "$1" <<'PY'
+import pathlib
+import re
+import sys
+
+match = re.search(r'(\d+\.\d+\.\d+)', pathlib.Path(sys.argv[1]).name)
+if match:
+    print(match.group(1))
+PY
+}
+
+expected_zig_line() {
+    if [[ -z "${1:-}" ]]; then
+        return 0
+    fi
+    python3 - "$1" <<'PY'
+import re
+import sys
+
+match = re.match(r'^(\d+)\.(\d+)\.', sys.argv[1])
+if match:
+    print(f"{match.group(1)}.{match.group(2)}.x")
+PY
+}
+
+describe_fallback_zig_status() {
+    local minimum_zig="$1"
+    local fallback_archive="$2"
+    local fallback_version="$3"
+    local expected_line="$4"
+
+    if [[ -z "${fallback_archive}" ]]; then
+        printf '%s' "not found beside the repo workspace"
+        return 0
+    fi
+    if [[ ! -f "${fallback_archive}" ]]; then
+        printf '%s' "configured path does not exist"
+        return 0
+    fi
+    if [[ -z "${fallback_version}" || -z "${expected_line}" ]]; then
+        printf '%s' "could not infer archive or branch Zig line"
+        return 0
+    fi
+
+    local minimum_line="${minimum_zig%.*}"
+    local fallback_line="${fallback_version%.*}"
+    if [[ "${minimum_line}" == "${fallback_line}" ]]; then
+        printf '%s' "matches expected ${expected_line} line"
+        return 0
+    fi
+
+    printf '%s' "mismatched: branch expects ${expected_line}, fallback archive carries ${fallback_version}"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -86,6 +157,12 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
 fi
+
+BUILD_ZON_PATH="${REPO_ROOT}/build.zig.zon"
+MINIMUM_ZIG_VERSION="$(read_minimum_zig_version "${BUILD_ZON_PATH}")"
+EXPECTED_ZIG_LINE="$(expected_zig_line "${MINIMUM_ZIG_VERSION}")"
+FALLBACK_ZIG_VERSION="$(infer_archive_version "${FALLBACK_ZIG_ARCHIVE}")"
+FALLBACK_ZIG_STATUS="$(describe_fallback_zig_status "${MINIMUM_ZIG_VERSION}" "${FALLBACK_ZIG_ARCHIVE}" "${FALLBACK_ZIG_VERSION}" "${EXPECTED_ZIG_LINE}")"
 
 RESTORED_CHECKOUT_DESTINATION="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
 PAGE_SOURCE_PATH="${REPO_ROOT}/src/browser/Page.zig"
@@ -139,7 +216,11 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "issue": %s,\n' "$(json_escape "Google issue #3 Enter-submit runtime revalidation")"
     printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
     printf '  "browser_exe": %s,\n' "$(json_escape "${BROWSER_EXE}")"
+    printf '  "minimum_zig_version": %s,\n' "$(json_escape "${MINIMUM_ZIG_VERSION}")"
+    printf '  "expected_zig_line": %s,\n' "$(json_escape "${EXPECTED_ZIG_LINE}")"
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
+    printf '  "fallback_zig_version": %s,\n' "$(json_escape "${FALLBACK_ZIG_VERSION}")"
+    printf '  "fallback_zig_status": %s,\n' "$(json_escape "${FALLBACK_ZIG_STATUS}")"
     printf '  "read_first": [\n'
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_RUNTIME_REENTRY_GATES.md")"
     printf '    %s,\n' "$(json_escape "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md")"
@@ -177,6 +258,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  },\n'
     printf '  "notes": [\n'
     printf '    %s,\n' "$(json_escape "Run surface_check first when the branch may have moved and you want the direct issue #3 docs and helper surfaces checked before replay.")"
+    printf '    %s,\n' "$(json_escape "This branch declares minimum Zig ${MINIMUM_ZIG_VERSION:-unknown}; keep looking for a ${EXPECTED_ZIG_LINE:-branch-compatible} toolchain before trusting focused file-level validation.")"
+    printf '    %s,\n' "$(json_escape "Current fallback Zig status: ${FALLBACK_ZIG_STATUS}.")"
     printf '    %s,\n' "$(json_escape "If no reusable checkout exists yet, run saved_browser_snapshot_surface and then saved_browser_snapshot_route before trusting follow-up Linux or WSL helper output.")"
     printf '    %s,\n' "$(json_escape "If that saved snapshot route is creating or reusing ../browser-memory-snapshot, run restored_checkout_check before the saved-memory preflight so checkout drift is caught before the route widens again.")"
     printf '    %s,\n' "$(json_escape "Use synced_restored_checkout_check after a helper-surface sync restore when the restored checkout should become its own follow-up root.")"
@@ -201,7 +284,11 @@ Google issue #3 Enter-submit runtime revalidation
 
 Repo root:            ${REPO_ROOT}
 Browser exe:          ${BROWSER_EXE}
+Branch minimum Zig:   ${MINIMUM_ZIG_VERSION:-unknown}
+Expected Zig line:    ${EXPECTED_ZIG_LINE:-unknown}
 Fallback Zig archive: ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
+Fallback Zig version: ${FALLBACK_ZIG_VERSION:-unknown}
+Fallback Zig status:  ${FALLBACK_ZIG_STATUS}
 
 Read first
 ==========
@@ -265,6 +352,8 @@ Suggested route
 Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before replay widens back out.
+  - This branch declares minimum Zig ${MINIMUM_ZIG_VERSION:-unknown}; do not trust focused runtime validation until a ${EXPECTED_ZIG_LINE:-branch-compatible} toolchain is actually staged.
+  - Treat the surfaced fallback archive status as the quick yes-or-no answer before burning time on untouched-file failures: ${FALLBACK_ZIG_STATUS}.
   - If no reusable checkout exists yet, reopen the saved-browser-snapshot route before trusting follow-up Linux or WSL helper output.
   - If that saved snapshot route is creating or reusing ../browser-memory-snapshot, run the restored-checkout readiness step before saved-memory or archive-focused preflights.
   - Use the synced restored-checkout step after a helper-surface sync restore when the restored checkout should become its own follow-up root.
