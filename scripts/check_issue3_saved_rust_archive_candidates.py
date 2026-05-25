@@ -39,6 +39,25 @@ def classify_version(expected: str, actual: str) -> str:
     return "mismatched-line"
 
 
+def ancestor_chain(start: pathlib.Path) -> list[pathlib.Path]:
+    chain: list[pathlib.Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: pathlib.Path, relative_path: str) -> pathlib.Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
     dependencies_root = saved_archives_root / "dependencies"
     if dependencies_root.is_dir():
@@ -47,10 +66,16 @@ def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.
 
 
 def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "memory/repo_archives/browser")
+    if located is not None and located.is_dir():
+        return normalize_saved_archives_root(located)
     return normalize_saved_archives_root(repo_root.parent / "memory" / "repo_archives" / "browser")
 
 
 def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
@@ -196,7 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the shared toolchains directory (default: ../toolchains beside the repo)",
+        help="Path to the shared toolchains directory (default: nearest ancestor toolchains root or ../toolchains)",
     )
     parser.add_argument(
         "--expected-rust",
@@ -260,6 +285,20 @@ class SavedRustArchiveHelperTests(unittest.TestCase):
         )
         self.assertIn("/tmp/toolchains/rust-1.79.0", command)
         self.assertEqual(command[-1], "--check-only")
+
+    def test_default_roots_discover_ancestor_workspace_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = pathlib.Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            saved_archives_root = workspace_root / "memory" / "repo_archives" / "browser"
+            dependencies_root = saved_archives_root / "dependencies"
+            dependencies_root.mkdir(parents=True)
+            toolchains_root = workspace_root / "toolchains"
+            toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_saved_archives_root(repo_root), dependencies_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
 
     def test_build_report_fails_without_matching_archive(self) -> None:
         report = build_report(
