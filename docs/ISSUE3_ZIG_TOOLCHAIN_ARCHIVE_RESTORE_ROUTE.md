@@ -11,6 +11,7 @@ build-readiness helpers can see the candidate.
 Companion helpers:
 
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+- `scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/check_linux_build_readiness.py`
@@ -24,8 +25,8 @@ Use this route when any of these are true:
 - a matching Zig `0.15.x` archive is available, but it is not staged under
   `../toolchains` yet
 - the recovery route still reports no branch-compatible Zig candidate
-- the run wants a check-only surface for where a Zig archive would extract
-  before touching the filesystem
+- the run wants a compact surface for the exact archive-restore, recovery, and
+  readiness commands before touching the filesystem
 
 ## Run The Surface Check First
 
@@ -38,7 +39,30 @@ bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh
 Use `--json` when another helper needs the surface-check result as structured
 output.
 
-## Run The Helper
+## Print The Route
+
+From the browser repo root:
+
+```bash
+bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh
+```
+
+If the archive path or workspace roots need an override, keep that on the route
+printer instead of rebuilding the restore command by hand:
+
+```bash
+bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh \
+  --repo-root /path/to/browser \
+  --toolchains-root /path/to/toolchains \
+  --archive /path/to/zig-0.15.2.tar.xz \
+  --saved-archives-root /path/to/memory/repo_archives/browser/dependencies \
+  --offline-deps-root /path/to/offline-deps
+```
+
+Use `--json` when another helper wants the exact surface-check, restore,
+recovery, or readiness commands as structured output.
+
+## Run The Restore Helper
 
 From the browser repo root:
 
@@ -74,8 +98,11 @@ The helper:
 ## Working Rules
 
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-  before the restore helper so route drift fails fast before toolchain staging
-  starts.
+  before the route printer or restore helper so route drift fails fast before
+  toolchain staging starts.
+- Use `bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
+  when the next rerun needs the compact route printer for the archive-restore,
+  recovery, and readiness commands on one branch-local surface.
 - Prefer a Zig `0.15.2` or other `0.15.x` archive for honest validation on this
   branch.
 - Treat the attached Zig `0.17` dev bundle as a surfaced fallback input only,
