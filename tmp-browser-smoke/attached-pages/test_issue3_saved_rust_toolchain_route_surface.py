@@ -16,12 +16,14 @@ FIXTURE_FILES = {
 
     - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
     - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+    - `scripts/check_issue3_saved_rust_archive_candidates.py`
     - `scripts/linux/restore_saved_rust_toolchain.sh`
     - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
     - `scripts/check_linux_build_readiness.py`
     - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
     - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
     - `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+    - `python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .`
     - `bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
     - `--browser-root /path/to/browser`
     - `--dependencies-root /path/to/memory/repo_archives/browser/dependencies`
@@ -29,6 +31,7 @@ FIXTURE_FILES = {
     - `PATH`, `CARGO`, and `RUSTC`
     - `check_linux_build_readiness.py`
     - `../toolchains/rust-1.79.0`
+    - `Surface Saved Archive Candidates Before Restore`
     """,
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md": """
     # Issue #3 Linux Build-Readiness Route
@@ -51,14 +54,19 @@ FIXTURE_FILES = {
     docs/ISSUE3_RUNTIME_REENTRY_GATES.md
     scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
     scripts/linux/show_issue3_saved_rust_toolchain_route.sh
+    scripts/check_issue3_saved_rust_archive_candidates.py
     scripts/linux/restore_saved_rust_toolchain.sh
     scripts/check_linux_build_readiness.py
     docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
     docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
+    docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|check_issue3_saved_rust_archive_candidates.py
     docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|restore_saved_rust_toolchain.sh
     docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/check_linux_build_readiness.py
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|check_issue3_saved_rust_toolchain_route_surface.sh
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_saved_rust_toolchain_route.sh
+    scripts/linux/show_issue3_saved_rust_toolchain_route.sh|check_issue3_saved_rust_toolchain_route_surface.sh
+    scripts/linux/show_issue3_saved_rust_toolchain_route.sh|check_issue3_saved_rust_archive_candidates.py
+    scripts/linux/show_issue3_saved_rust_toolchain_route.sh|Saved archive candidate discovery:
     scripts/linux/show_issue3_saved_rust_toolchain_route.sh|Saved Rust restore surface check:
     scripts/linux/restore_saved_rust_toolchain.sh|--check-only
     scripts/linux/restore_saved_rust_toolchain.sh|Suggested shell setup:
@@ -68,9 +76,11 @@ FIXTURE_FILES = {
     docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
     docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
     check_issue3_saved_rust_toolchain_route_surface.sh
+    check_issue3_saved_rust_archive_candidates.py
     restore_saved_rust_toolchain.sh
     check_linux_build_readiness.py
     Surface check:
+    Saved archive candidate discovery:
     Saved Rust restore surface check:
     Restore the saved Rust 1.79.0 toolchain:
     Quick readiness preflight after restore:
@@ -78,6 +88,7 @@ FIXTURE_FILES = {
     export CARGO=
     export RUSTC=
     ../toolchains/rust-1.79.0
+    saved_archive_candidates
     """,
     "scripts/linux/restore_saved_rust_toolchain.sh": """
     --browser-root /path/to/browser-repo
@@ -97,6 +108,29 @@ FIXTURE_FILES = {
     echo "Suggested preflight:"
     echo "Suggested build:"
     PREBUILT_V8_GLOB="libc_v8_*.a"
+    """,
+    "scripts/check_issue3_saved_rust_archive_candidates.py": """
+    DEFAULT_EXPECTED_RUST = "1.79.0"
+    ARCHIVE_RE = re.compile(r"01-rust-(\\d+\\.\\d+\\.\\d+)-([^.]+(?:\\.[^.]+)*)\\.tar\\.xz$")
+    def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
+    def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:
+    def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    def discover_rust_archives(root: pathlib.Path) -> list[pathlib.Path]:
+    def infer_archive_metadata(path: pathlib.Path) -> tuple[str | None, str]:
+    def describe_archive(expected: str, path: pathlib.Path) -> dict[str, str]:
+    def choose_preferred_archive(expected: str, archive_reports: list[dict[str, str]]) -> dict[str, str] | None:
+    def build_restore_command(
+    def build_report(
+    --saved-archives-root
+    --toolchains-root
+    --expected-rust
+    --self-test
+    "restore_check"
+    "restore"
+    "rust_archives"
+    "preferred_archive"
+    "Issue #11 saved Rust archive candidates"
+    "Preferred restore commands:"
     """,
     "scripts/check_linux_build_readiness.py": """
     parser.add_argument(
@@ -164,6 +198,9 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
         cls.restore_helper = read_text(
             cls.repo_root / "scripts/linux/restore_saved_rust_toolchain.sh"
         )
+        cls.archive_helper = read_text(
+            cls.repo_root / "scripts/check_issue3_saved_rust_archive_candidates.py"
+        )
         cls.build_readiness_helper = read_text(
             cls.repo_root / "scripts/check_linux_build_readiness.py"
         )
@@ -172,18 +209,21 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
         for fragment in (
             "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
             "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
             "scripts/linux/restore_saved_rust_toolchain.sh",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh",
             "scripts/check_linux_build_readiness.py",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+            "python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .",
             "bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
             "--browser-root /path/to/browser",
             "--dependencies-root /path/to/memory/repo_archives/browser/dependencies",
             "--toolchain-root /path/to/toolchains/rust-1.79.0",
             "PATH`, `CARGO`, and `RUSTC`",
             "../toolchains/rust-1.79.0",
+            "Surface Saved Archive Candidates Before Restore",
         ):
             self.assertIn(fragment, self.saved_rust_route)
 
@@ -210,15 +250,19 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
             "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
             "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
             "scripts/linux/restore_saved_rust_toolchain.sh",
             "scripts/check_linux_build_readiness.py",
             "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
             "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+            "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|check_issue3_saved_rust_archive_candidates.py",
             "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|restore_saved_rust_toolchain.sh",
             "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/check_linux_build_readiness.py",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|check_issue3_saved_rust_toolchain_route_surface.sh",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|show_issue3_saved_rust_toolchain_route.sh",
-            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|Saved Rust restore surface check:",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|check_issue3_saved_rust_toolchain_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|check_issue3_saved_rust_archive_candidates.py",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|Saved archive candidate discovery:",
             'scripts/linux/restore_saved_rust_toolchain.sh|--check-only',
             'scripts/linux/restore_saved_rust_toolchain.sh|Suggested shell setup:',
         ):
@@ -230,8 +274,10 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "check_issue3_saved_rust_toolchain_route_surface.sh",
+            "check_issue3_saved_rust_archive_candidates.py",
             "restore_saved_rust_toolchain.sh",
             "check_linux_build_readiness.py",
+            "Saved archive candidate discovery:",
             "Saved Rust restore surface check:",
             "Surface check:",
             "Restore the saved Rust 1.79.0 toolchain:",
@@ -240,10 +286,12 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
             "export CARGO=",
             "export RUSTC=",
             "../toolchains/rust-1.79.0",
+            "saved_archive_candidates",
         ):
             self.assertIn(fragment, self.route_printer)
 
         surface_index = self.route_printer.index("Surface check:")
+        archive_index = self.route_printer.index("Saved archive candidate discovery:")
         check_only_index = self.route_printer.index("Saved Rust restore surface check:")
         restore_index = self.route_printer.index(
             "Restore the saved Rust 1.79.0 toolchain:"
@@ -251,7 +299,8 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
         preflight_index = self.route_printer.index(
             "Quick readiness preflight after restore:"
         )
-        self.assertLess(surface_index, check_only_index)
+        self.assertLess(surface_index, archive_index)
+        self.assertLess(archive_index, check_only_index)
         self.assertLess(check_only_index, restore_index)
         self.assertLess(restore_index, preflight_index)
 
@@ -276,6 +325,32 @@ class Issue3SavedRustToolchainRouteSurfaceTest(unittest.TestCase):
             'PREBUILT_V8_GLOB="libc_v8_*.a"',
         ):
             self.assertIn(fragment, self.restore_helper)
+
+    def test_archive_helper_keeps_saved_rust_archive_discovery_contract_visible(self) -> None:
+        for fragment in (
+            'DEFAULT_EXPECTED_RUST = "1.79.0"',
+            'ARCHIVE_RE = re.compile(r"01-rust-(\\d+\\.\\d+\\.\\d+)-([^.]+(?:\\.[^.]+)*)\\.tar\\.xz$")',
+            "def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:",
+            "def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:",
+            "def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:",
+            "def discover_rust_archives(root: pathlib.Path) -> list[pathlib.Path]:",
+            "def infer_archive_metadata(path: pathlib.Path) -> tuple[str | None, str]:",
+            "def describe_archive(expected: str, path: pathlib.Path) -> dict[str, str]:",
+            "def choose_preferred_archive(expected: str, archive_reports: list[dict[str, str]]) -> dict[str, str] | None:",
+            "def build_restore_command(",
+            "def build_report(",
+            "--saved-archives-root",
+            "--toolchains-root",
+            "--expected-rust",
+            "--self-test",
+            '"restore_check"',
+            '"restore"',
+            '"rust_archives"',
+            '"preferred_archive"',
+            "Issue #11 saved Rust archive candidates",
+            "Preferred restore commands:",
+        ):
+            self.assertIn(fragment, self.archive_helper)
 
     def test_build_readiness_helper_keeps_saved_rust_and_archive_inputs_in_scope(self) -> None:
         for fragment in (
