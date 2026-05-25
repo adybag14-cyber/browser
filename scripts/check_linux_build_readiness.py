@@ -127,11 +127,36 @@ def infer_archive_semver(path: pathlib.Path) -> str | None:
     return match.group(1)
 
 
+def ancestor_chain(start: pathlib.Path) -> list[pathlib.Path]:
+    chain: list[pathlib.Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: pathlib.Path, relative_path: str) -> pathlib.Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_agent_files_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "agent_files")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "agent_files").resolve()
 
 
 def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
@@ -750,12 +775,25 @@ class ReadinessHelperTests(unittest.TestCase):
         self.assertEqual(resolve_default_agent_files_root(repo_root), pathlib.Path("/tmp/workspace/agent_files"))
         self.assertEqual(resolve_default_toolchains_root(repo_root), pathlib.Path("/tmp/workspace/toolchains"))
 
+    def test_default_roots_discover_ancestor_workspace_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = pathlib.Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            agent_files_root = workspace_root / "agent_files"
+            toolchains_root = workspace_root / "toolchains"
+            agent_files_root.mkdir()
+            toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_agent_files_root(repo_root), agent_files_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+
     def test_resolve_fallback_zig_archive_prefers_default_agent_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)
-            repo_root = root / "browser"
+            repo_root = root / "restored" / "browser-memory-snapshot" / "browser"
             agent_files_root = root / "agent_files"
-            repo_root.mkdir()
+            repo_root.mkdir(parents=True)
             agent_files_root.mkdir()
             fallback_archive = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
             fallback_archive.write_text("zig", encoding="utf-8")
