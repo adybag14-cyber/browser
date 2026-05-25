@@ -135,11 +135,14 @@ saved_zig_command = format_command(
     ["bash", str(saved_zig_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
 )
+readiness_command = format_command(helper_report.get("suggested_readiness_command", []))
 
 result = {
     "issue": "Google issue #3 workspace-context route",
     "repo_root": str(repo_root),
     "route_note_path": str(repo_root / "docs" / "ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"),
+    "memory_root": helper_report.get("memory_root"),
+    "agent_files_root": helper_report.get("agent_files_root"),
     "fallback_zig_archive": helper_report.get("fallback_zig_archive"),
     "toolchains_root": helper_report.get("toolchains_root"),
     "saved_archives_root": helper_report.get("saved_archives_root"),
@@ -153,6 +156,7 @@ result = {
         "linux_build_readiness_route": linux_build_command,
         "zig_toolchain_recovery_route": zig_recovery_command,
         "saved_zig_archive_candidates_route": saved_zig_command,
+        "readiness_command": readiness_command,
     },
     "helper_report": helper_report,
     "notes": [
@@ -161,6 +165,8 @@ result = {
         "Use the printed issue #11 route when the next rerun is still environment-gated after the shared roots are surfaced.",
         "Use the printed saved-browser-snapshot route when no reusable checkout exists yet after workspace discovery.",
         "Use the printed Linux build-readiness or Zig recovery routes when the shared roots are known and the next rerun can move straight into those gates.",
+        "Use the printed saved Zig archive candidates route when the next rerun needs to pick or restage a branch-compatible 0.15.x archive before broader recovery is trusted.",
+        "Use the printed readiness command as the shortest direct handoff once the practical roots are already surfaced and the next step does not need a broader route wrapper.",
         "Thread --fallback-zig-archive through this route when the attached archive is outside the nearest discovered agent_files root so every follow-up route inspects the same surfaced path.",
     ],
 }
@@ -174,7 +180,9 @@ print()
 print(f"Repo root:              {repo_root}")
 print(f"Route note:             {result['route_note_path']}")
 print(f"Toolchains root:        {result['toolchains_root']}")
+print(f"Memory root:            {result['memory_root']}")
 print(f"Saved archives root:    {result['saved_archives_root']}")
+print(f"Agent files root:       {result['agent_files_root']}")
 print(f"Offline deps root:      {result['offline_deps_root']}")
 print(f"Restored checkout root: {result['restored_checkout_root']}")
 print(
@@ -189,6 +197,7 @@ print("  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md")
 print("  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")
 print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
 print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
+print("  docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md")
 print()
 print("Suggested route")
 print("===============")
@@ -212,6 +221,9 @@ print(f"    {zig_recovery_command}")
 print()
 print("  Saved Zig archive candidates route:")
 print(f"    {saved_zig_command}")
+print()
+print("  Shortest readiness handoff:")
+print(f"    {readiness_command}")
 print()
 print("Working rules")
 print("=============")
