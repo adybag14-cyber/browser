@@ -14,71 +14,95 @@ FIXTURE_FILES = {
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md": """
     # Issue #3 Saved Rust Toolchain Restore Route
 
+    - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `scripts/check_issue3_saved_rust_archive_candidates.py`
+    - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+    - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
+    - `scripts/check_linux_build_readiness.py`
+    - `../toolchains`
+    - `../toolchains/rust-1.79.0`
+    - `PATH`, `CARGO`, and `RUSTC`
+    - `python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .`
+    - Use `--json`
+    - reuse an already-staged Rust `1.79.0` candidate
+    - reuse its surfaced `PATH`, `CARGO`, and `RUSTC` exports
+    """,
+    "docs/ISSUE11_LINUX_REENTRY_ROUTE_INDEX.md": """
+    # Issue #11 Linux Re-entry Route Index
+
     - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-    - `PATH`, `CARGO`, and `RUSTC`
+    - `scripts/check_linux_build_readiness.py`
     - `../toolchains/rust-1.79.0`
-    - `python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .`
-    """,
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md": """
-    # Issue #3 Progress Tracker Route
-
-    - issue `#11`
-    - saved Rust archive candidate discovery and staged-toolchain reuse
-    - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `PATH`, `CARGO`, and `RUSTC`
+    - `show_issue3_saved_rust_toolchain_route.sh`
+    """,
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh": """
+    Google issue #3 saved Rust toolchain restore route
+    scripts/check_issue3_staged_rust_toolchain_candidates.py
+    scripts/check_issue3_saved_rust_archive_candidates.py
+    scripts/linux/restore_saved_rust_toolchain.sh
+    scripts/check_linux_build_readiness.py
+    Surface check:
+    Saved archive candidate discovery:
+    Staged toolchain candidate discovery:
+    Saved Rust restore surface check:
+    Quick readiness preflight after restore or staged reuse:
+    export PATH=
+    export CARGO=
+    export RUSTC=
+    ../toolchains/rust-1.79.0
+    staged_toolchain_candidates
     """,
     "scripts/check_issue3_staged_rust_toolchain_candidates.py": """
     EXPECTED_RUST_VERSION = "1.79.0"
+    EXPECTED_RUST_LINE = "1.79.x"
     EXPECTED_TOOLCHAIN_DIR = "rust-1.79.0"
     DEFAULT_CANDIDATE_GLOBS = (
         "rust-*/cargo/bin/cargo",
         "*/cargo/bin/cargo",
     )
+    def classify_version(version: str | None) -> str:
+        if version is None:
+            return "unknown-version"
+        return "matches-expected-line"
+    def version_status(version: str | None) -> str:
+        return "matches expected 1.79.x"
     def resolve_default_toolchains_root(repo_root: Path) -> Path:
-        return (repo_root.parent / "toolchains").resolve()
+        return repo_root.parent / "toolchains"
     def discover_candidates(toolchains_root: Path) -> list[Path]:
         return []
-    def describe_candidate(cargo_bin: Path) -> dict[str, object]:
-        return {}
-    def collect_results(repo_root: Path, toolchains_root: Path) -> dict[str, object]:
-        return {}
-    "path_export"
-    "cargo_export"
-    "rustc_export"
-    "matches expected 1.79.0"
-    "mismatched: expected 1.79.0"
-    "cargo matches expected 1.79.0 but rustc is unavailable"
-    "restore the saved Rust 1.79.0 toolchain under ../toolchains"
-    "Discover staged Rust toolchain candidates for issue #3 Linux/WSL build re-entry."
-    "Discovered candidates:"
-    "Preferred candidate:"
-    "No staged Rust 1.79.0 candidate is ready."
-    "Suggested next step:"
-    """,
-    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh": """
-    docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
-    docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
-    STAGED_TOOLCHAIN_CANDIDATES_COMMAND=
-    "staged_toolchain_candidates":
-    "path":
-    "cargo":
-    "rustc":
-    "preflight":
-    Staged toolchain candidate discovery:
-    Put the restored Rust toolchain first on PATH:
-    If the staged helper surfaces a preferred candidate, reuse its PATH/CARGO/RUSTC exports before unpacking the archive again.
-    check_issue3_staged_rust_toolchain_candidates.py
+    "older-than-expected"
+    "matches-expected-line"
+    "mismatched-line"
+    "unknown-version"
+    "cargo matches expected 1.79.x but rustc is unavailable"
+    "missing rustc beside cargo"
+    "export PATH="
+    "export CARGO="
+    "export RUSTC="
+    "status": "passed"
+    "preferred_candidate"
+    "suggested_next_step"
+    "restore a saved Rust 1.79.x toolchain under ../toolchains"
+    "prefer"
+    "stable restore location"
+    parser.add_argument("--toolchains-root"
+    parser.add_argument("--json"
+    parser.add_argument("--self-test"
+    print("Discovered candidates: none")
+    print(f"Expected Rust version: {EXPECTED_RUST_VERSION}")
     """,
     "scripts/check_linux_build_readiness.py": """
     parser.add_argument(
-        "--cargo",
+        "--toolchains-root",
     )
     parser.add_argument(
-        "--rustc",
+        "--saved-archives-root",
     )
-    "saved Rust toolchain archive"
+    parser.add_argument(
+        "--skip-zig-check",
+    )
     "suggested_next_step"
     "use the saved Rust toolchain"
     """,
@@ -86,9 +110,7 @@ FIXTURE_FILES = {
 
 
 def build_fixture_repo() -> pathlib.Path:
-    root = pathlib.Path(
-        tempfile.mkdtemp(prefix="lightpanda-staged-rust-toolchain-candidates-")
-    )
+    root = pathlib.Path(tempfile.mkdtemp(prefix="lightpanda-staged-rust-candidates-"))
     for relative_path, content in FIXTURE_FILES.items():
         target = root / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -110,87 +132,109 @@ class Issue3StagedRustToolchainCandidatesSurfaceTest(unittest.TestCase):
         cls.saved_rust_route = read_text(
             cls.repo_root / "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
         )
-        cls.progress_route = read_text(
-            cls.repo_root / "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
+        cls.issue11_index = read_text(
+            cls.repo_root / "docs/ISSUE11_LINUX_REENTRY_ROUTE_INDEX.md"
+        )
+        cls.saved_rust_route_helper = read_text(
+            cls.repo_root / "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
         )
         cls.staged_helper = read_text(
             cls.repo_root / "scripts/check_issue3_staged_rust_toolchain_candidates.py"
-        )
-        cls.route_printer = read_text(
-            cls.repo_root / "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
         )
         cls.build_readiness_helper = read_text(
             cls.repo_root / "scripts/check_linux_build_readiness.py"
         )
 
-    def test_saved_rust_route_keeps_staged_candidate_step_visible(self) -> None:
+    def test_saved_rust_route_keeps_staged_candidate_reuse_visible(self) -> None:
         for fragment in (
-            "scripts/check_issue3_saved_rust_archive_candidates.py",
             "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
             "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
-            "PATH`, `CARGO`, and `RUSTC`",
+            "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+            "scripts/check_linux_build_readiness.py",
+            "../toolchains",
             "../toolchains/rust-1.79.0",
+            "PATH`, `CARGO`, and `RUSTC`",
             "python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .",
+            "Use `--json`",
+            "reuse an already-staged Rust `1.79.0` candidate",
+            "reuse its surfaced `PATH`, `CARGO`, and `RUSTC` exports",
         ):
             self.assertIn(fragment, self.saved_rust_route)
 
-    def test_progress_route_keeps_staged_rust_reuse_visible_for_issue11(self) -> None:
+    def test_issue11_index_keeps_staged_rust_handoff_visible(self) -> None:
         for fragment in (
-            "issue `#11`",
-            "saved Rust archive candidate discovery and staged-toolchain reuse",
             "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+            "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+            "scripts/check_linux_build_readiness.py",
+            "../toolchains/rust-1.79.0",
             "PATH`, `CARGO`, and `RUSTC`",
+            "show_issue3_saved_rust_toolchain_route.sh",
         ):
-            self.assertIn(fragment, self.progress_route)
+            self.assertIn(fragment, self.issue11_index)
 
-    def test_staged_helper_keeps_candidate_discovery_and_export_contract_visible(self) -> None:
+    def test_saved_rust_route_helper_keeps_staged_candidate_commands_and_exports_visible(self) -> None:
+        for fragment in (
+            "Google issue #3 saved Rust toolchain restore route",
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            "scripts/linux/restore_saved_rust_toolchain.sh",
+            "scripts/check_linux_build_readiness.py",
+            "Surface check:",
+            "Saved archive candidate discovery:",
+            "Staged toolchain candidate discovery:",
+            "Saved Rust restore surface check:",
+            "Quick readiness preflight after restore or staged reuse:",
+            "export PATH=",
+            "export CARGO=",
+            "export RUSTC=",
+            "../toolchains/rust-1.79.0",
+            "staged_toolchain_candidates",
+        ):
+            self.assertIn(fragment, self.saved_rust_route_helper)
+
+        staged_index = self.saved_rust_route_helper.index("Staged toolchain candidate discovery:")
+        restore_index = self.saved_rust_route_helper.index("Saved Rust restore surface check:")
+        preflight_index = self.saved_rust_route_helper.index(
+            "Quick readiness preflight after restore or staged reuse:"
+        )
+        self.assertLess(staged_index, restore_index)
+        self.assertLess(restore_index, preflight_index)
+
+    def test_staged_helper_keeps_expected_version_candidate_classification_and_exports(self) -> None:
         for fragment in (
             'EXPECTED_RUST_VERSION = "1.79.0"',
+            'EXPECTED_RUST_LINE = "1.79.x"',
             'EXPECTED_TOOLCHAIN_DIR = "rust-1.79.0"',
             'DEFAULT_CANDIDATE_GLOBS = (',
             '"rust-*/cargo/bin/cargo"',
             '"*/cargo/bin/cargo"',
-            "def resolve_default_toolchains_root(repo_root: Path) -> Path:",
-            "def discover_candidates(toolchains_root: Path) -> list[Path]:",
-            "def describe_candidate(cargo_bin: Path) -> dict[str, object]:",
-            "def collect_results(repo_root: Path, toolchains_root: Path) -> dict[str, object]:",
-            '"path_export"',
-            '"cargo_export"',
-            '"rustc_export"',
-            '"matches expected 1.79.0"',
-            '"mismatched: expected 1.79.0"',
-            '"cargo matches expected 1.79.0 but rustc is unavailable"',
-            '"restore the saved Rust 1.79.0 toolchain under ../toolchains"',
-            '"Discover staged Rust toolchain candidates for issue #3 Linux/WSL build re-entry."',
-            '"Discovered candidates:"',
-            '"Preferred candidate:"',
-            '"No staged Rust 1.79.0 candidate is ready."',
-            '"Suggested next step:"',
+            'return "unknown-version"',
+            '"older-than-expected"',
+            '"matches-expected-line"',
+            '"mismatched-line"',
+            '"cargo matches expected 1.79.x but rustc is unavailable"',
+            '"missing rustc beside cargo"',
+            '"export PATH="',
+            '"export CARGO="',
+            '"export RUSTC="',
+            '"preferred_candidate"',
+            '"suggested_next_step"',
+            'restore a saved Rust 1.79.x toolchain under ../toolchains',
+            '"stable restore location"',
+            'parser.add_argument("--toolchains-root"',
+            'parser.add_argument("--json"',
+            'parser.add_argument("--self-test"',
+            'print("Discovered candidates: none")',
+            'print(f"Expected Rust version: {EXPECTED_RUST_VERSION}")',
         ):
             self.assertIn(fragment, self.staged_helper)
 
-    def test_route_printer_keeps_staged_helper_and_export_handoff_together(self) -> None:
+    def test_build_readiness_helper_stays_compatible_with_staged_rust_reuse(self) -> None:
         for fragment in (
-            "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
-            "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
-            "STAGED_TOOLCHAIN_CANDIDATES_COMMAND=",
-            '"staged_toolchain_candidates":',
-            '"path":',
-            '"cargo":',
-            '"rustc":',
-            '"preflight":',
-            "Staged toolchain candidate discovery:",
-            "Put the restored Rust toolchain first on PATH:",
-            "If the staged helper surfaces a preferred candidate, reuse its PATH/CARGO/RUSTC exports before unpacking the archive again.",
-            "check_issue3_staged_rust_toolchain_candidates.py",
-        ):
-            self.assertIn(fragment, self.route_printer)
-
-    def test_build_readiness_helper_keeps_rust_handoff_flags_visible(self) -> None:
-        for fragment in (
-            '"--cargo"',
-            '"--rustc"',
-            '"saved Rust toolchain archive"',
+            '"--toolchains-root"',
+            '"--saved-archives-root"',
+            '"--skip-zig-check"',
             '"suggested_next_step"',
             '"use the saved Rust toolchain"',
         ):
