@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 import re
@@ -54,20 +55,26 @@ def extract_restore_paths(script_text: str) -> set[str]:
 
 
 def extract_python_path_list(source_text: str, constant_name: str) -> set[str]:
-    match = re.search(
-        rf"{constant_name}\s*=\s*\(\n(?P<body>.*?)\n\)",
-        source_text,
-        re.DOTALL,
-    )
-    if match is None:
-        match = re.search(
-            rf"{constant_name}\s*=\s*\[\n(?P<body>.*?)\n\]",
-            source_text,
-            re.DOTALL,
-        )
-    if match is None:
-        raise ValueError(f"Could not find {constant_name} in Python helper")
-    return set(re.findall(r'\(\n?\s*"([^"]+)"\s*,', match.group("body")))
+    module = ast.parse(source_text)
+    for node in module.body:
+        value = None
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == constant_name:
+            value = node.value
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == constant_name:
+                    value = node.value
+                    break
+        if value is None:
+            continue
+
+        literal = ast.literal_eval(value)
+        paths: set[str] = set()
+        for entry in literal:
+            if isinstance(entry, (list, tuple)) and entry and isinstance(entry[0], str):
+                paths.add(entry[0])
+        return paths
+    raise ValueError(f"Could not find {constant_name} in Python helper")
 
 
 def build_report(repo_root: Path) -> dict[str, object]:
@@ -176,8 +183,8 @@ class HelperSurfaceContractTests(unittest.TestCase):
         root: Path,
         *,
         restore_paths: list[str],
-        saved_memory_paths: list[str],
-        archive_surface_paths: list[str],
+        saved_memory_text: str,
+        archive_surface_text: str,
     ) -> Path:
         repo_root = root / "browser"
         (repo_root / "scripts/linux").mkdir(parents=True)
@@ -191,21 +198,11 @@ class HelperSurfaceContractTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        saved_memory_text = (
-            "REQUIRED_RESTORED_HELPER_FILES = (\n"
-            + "".join(f'    ("{path}", "label"),\n' for path in saved_memory_paths)
-            + ")\n"
-        )
         (repo_root / "scripts/check_issue3_saved_memory_inputs.py").write_text(
             saved_memory_text,
             encoding="utf-8",
         )
 
-        archive_surface_text = (
-            "REQUIRED_PATHS = [\n"
-            + "".join(f'    ("{path}", "label"),\n' for path in archive_surface_paths)
-            + "]\n"
-        )
         (
             repo_root
             / "scripts/check_issue3_saved_browser_snapshot_archive_surface.py"
@@ -218,8 +215,10 @@ class HelperSurfaceContractTests(unittest.TestCase):
             repo_root = self.write_fixture_files(
                 Path(tmpdir),
                 restore_paths=["docs/A.md", "scripts/B.py"],
-                saved_memory_paths=["docs/A.md", "scripts/B.py"],
-                archive_surface_paths=["build.zig.zon", "docs/A.md", "scripts/B.py"],
+                saved_memory_text=
+                    'REQUIRED_RESTORED_HELPER_FILES = (\n    ("docs/A.md", "label"),\n    ("scripts/B.py", "label"),\n)\n',
+                archive_surface_text=
+                    'REQUIRED_PATHS = [\n    ("build.zig.zon", "label"),\n    ("docs/A.md", "label"),\n    ("scripts/B.py", "label"),\n]\n',
             )
             report = build_report(repo_root)
             self.assertEqual(report["status"], "passed")
@@ -231,13 +230,10 @@ class HelperSurfaceContractTests(unittest.TestCase):
             repo_root = self.write_fixture_files(
                 Path(tmpdir),
                 restore_paths=["docs/A.md", "scripts/B.py", "scripts/C.sh"],
-                saved_memory_paths=["docs/A.md", "scripts/B.py"],
-                archive_surface_paths=[
-                    "build.zig.zon",
-                    "docs/A.md",
-                    "scripts/B.py",
-                    "scripts/C.sh",
-                ],
+                saved_memory_text=
+                    'REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (\n    ("docs/A.md", "label"),\n    ("scripts/B.py", "label"),\n)\n',
+                archive_surface_text=
+                    'REQUIRED_PATHS = [\n    ("build.zig.zon", "label"),\n    ("docs/A.md", "label"),\n    ("scripts/B.py", "label"),\n    ("scripts/C.sh", "label"),\n]\n',
             )
             report = build_report(repo_root)
             self.assertEqual(report["status"], "failed")
@@ -252,6 +248,13 @@ class HelperSurfaceContractTests(unittest.TestCase):
     def test_extract_restore_paths_requires_array(self) -> None:
         with self.assertRaises(ValueError):
             extract_restore_paths("echo missing")
+
+    def test_extract_python_path_list_supports_annotated_assignment(self) -> None:
+        paths = extract_python_path_list(
+            'REQUIRED_PATHS: tuple[tuple[str, str], ...] = (\n    ("docs/A.md", "A"),\n    ("scripts/B.py", "B"),\n)\n',
+            "REQUIRED_PATHS",
+        )
+        self.assertEqual(paths, {"docs/A.md", "scripts/B.py"})
 
     def test_extract_python_path_list_requires_constant(self) -> None:
         with self.assertRaises(ValueError):
