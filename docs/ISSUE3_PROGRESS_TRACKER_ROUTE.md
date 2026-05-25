@@ -41,9 +41,12 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
@@ -70,10 +73,13 @@ Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
 
 If the immediate slice is about reusing or restoring the saved Rust `1.79.0`
-toolchain, keep `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md` visible, surface
-the staged-toolchain candidate helper before unpacking the archive again, and
-reuse its surfaced `PATH`, `CARGO`, and `RUSTC` exports before broader
-build-readiness is trusted.
+toolchain, keep `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` visible,
+fail fast on the saved-Rust build-readiness bridge surface before the broader
+Linux or WSL build-readiness route is trusted, surface the staged-toolchain
+candidate helper before unpacking the archive again, and reuse the surfaced
+`PATH`, `CARGO`, and `RUSTC` exports from
+`docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md` when the exact restore or export
+surface is still needed.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
@@ -97,11 +103,19 @@ bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 Use `--json` when another helper wants the route-surface result as structured
 output.
 
-## Surface The Saved Rust Route First When Toolchain Reuse Is The Slice
+## Surface The Saved Rust Bridge When Toolchain Reuse Is The Slice
 
 When the immediate issue `#11` work is about restoring or reusing the saved
-Rust `1.79.0` toolchain, fail fast on the saved-Rust route surface before the
-broader Linux build-readiness route is trusted:
+Rust `1.79.0` toolchain, fail fast on the saved-Rust build-readiness bridge
+surface before the broader Linux or WSL build-readiness route is trusted:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
+```
+
+If the exact saved-Rust restore or shell-export surface is still needed after
+the bridge narrows the route, reopen the raw saved-Rust route directly:
 
 ```bash
 bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
