@@ -157,6 +157,7 @@ SAVED_RUST_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/script
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-parent $(format_shell_arg "${TOOLCHAINS_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+STAGED_ZIG_CANDIDATES_COMMAND="python3 $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_staged_zig_toolchain_candidates.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 MATCHING_LINE_GATE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_zig_toolchain_match.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 ARCHIVE_RESTORE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --rust-toolchain-dir $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
@@ -195,6 +196,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    "saved_rust_toolchain_route": %s,\n' "$(json_escape "${SAVED_RUST_ROUTE_COMMAND}")"
     printf '    "saved_zig_archive_route_surface": %s,\n' "$(json_escape "${SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND}")"
     printf '    "saved_zig_archive_candidates_route": %s,\n' "$(json_escape "${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND}")"
+    printf '    "staged_zig_toolchain_candidates": %s,\n' "$(json_escape "${STAGED_ZIG_CANDIDATES_COMMAND}")"
     printf '    "zig_toolchain_matching_line_gate": %s,\n' "$(json_escape "${MATCHING_LINE_GATE_COMMAND}")"
     printf '    "zig_archive_restore_surface": %s,\n' "$(json_escape "${ARCHIVE_RESTORE_SURFACE_COMMAND}")"
     printf '    "linux_build_readiness_route": %s,\n' "$(json_escape "${BUILD_ROUTE_COMMAND}")"
@@ -207,13 +209,14 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.")"
     printf '    %s,\n' "$(json_escape "When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the dedicated saved-Rust route before broader Linux or WSL build-readiness reruns trust the environment.")"
     printf '    %s,\n' "$(json_escape "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.")"
+    printf '    %s,\n' "$(json_escape "Surface staged Zig candidates before unpacking a saved archive so the route can reuse an already-matching toolchain when one is present.")"
     printf '    %s,\n' "$(json_escape "Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.")"
     printf '    %s,\n' "$(json_escape "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-memory, saved-Zig, build-readiness, matching-line, and Zig recovery helpers all inspect the same surfaced path.")"
     printf '    %s,\n' "$(json_escape "Run the matching-line gate after any saved Zig restore so the staged toolchains root proves a branch-compatible 0.15.x executable exists before broader readiness is trusted again.")"
     printf '    %s,\n' "$(json_escape "Run the archive-restore surface check before staging a chosen saved Zig archive under ../toolchains.")"
     printf '    %s,\n' "$(json_escape "Keep the start comment compact with Goal, Started, and Next.")"
     printf '    %s,\n' "$(json_escape "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.")"
-    printf '    %s\n' "$(json_escape "When the next step is still environment-gated, follow the saved-memory, saved-Rust, saved-Zig, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.")"
+    printf '    %s\n' "$(json_escape "When the next step is still environment-gated, follow the saved-memory, saved-Rust, saved-Zig, staged-Zig, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.")"
     printf '  ]\n'
     printf '}\n'
     exit 0
@@ -265,6 +268,9 @@ Suggested route
   Saved Zig archive candidates route:
     ${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND}
 
+  Staged Zig candidates:
+    ${STAGED_ZIG_CANDIDATES_COMMAND}
+
   Matching-line gate after any restore:
     ${MATCHING_LINE_GATE_COMMAND}
 
@@ -296,11 +302,12 @@ Working rules
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
   - When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the dedicated saved-Rust route before broader Linux or WSL build-readiness reruns trust the environment.
   - When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.
+  - Surface staged Zig candidates before unpacking a saved archive so the route can reuse an already-matching toolchain when one is present.
   - Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.
   - Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-memory, saved-Zig, build-readiness, matching-line, and Zig recovery helpers all inspect the same surfaced path.
   - Run the matching-line gate after any saved Zig restore so the staged toolchains root has to prove a real branch-compatible Zig candidate exists.
   - Run the archive-restore surface check before staging a chosen saved Zig archive under ../toolchains.
   - Keep the start comment compact with Goal, Started, and Next.
   - Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.
-  - When the next step is still environment-gated, follow the saved-memory, saved-Rust, saved-Zig, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
+  - When the next step is still environment-gated, follow the saved-memory, saved-Rust, saved-Zig, staged-Zig, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
 EOF2
