@@ -44,6 +44,27 @@ FIXTURE_FILES = {
     The helper prints a ready-to-rerun `scripts/check_linux_build_readiness.py`
     command that already includes the resolved roots.
     """,
+    "scripts/linux/show_issue3_linux_build_readiness_route.sh": """
+    WORKSPACE_CONTEXT_SCRIPT="${REPO_ROOT}/scripts/check_issue3_workspace_context.py"
+    WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg \"${WORKSPACE_CONTEXT_SCRIPT}\") --repo-root $(format_shell_arg \"${REPO_ROOT}\")"
+
+    print(json.dumps({
+        "read_first": [
+            "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+            "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
+            "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md"
+        ],
+        "commands": {
+            "workspace_context": "python scripts/check_issue3_workspace_context.py --repo-root /tmp/browser"
+        },
+        "notes": [
+            "Run the workspace_context command first when the checkout sits deeper than the default sibling layout so later route overrides reuse surfaced roots instead of hand-built guesses."
+        ]
+    }))
+
+    Workspace-context helper when the checkout sits deeper than the default sibling layout:
+      ${WORKSPACE_CONTEXT_COMMAND}
+    """,
 }
 
 
@@ -73,6 +94,9 @@ class Issue3LinuxBuildReadinessWorkspaceContextRouteTest(unittest.TestCase):
         cls.workspace_context_doc = read_text(
             cls.repo_root / "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"
         )
+        cls.route_printer = read_text(
+            cls.repo_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh"
+        )
 
     def test_build_readiness_route_mentions_workspace_context_surfaces(self) -> None:
         for fragment in (
@@ -93,6 +117,17 @@ class Issue3LinuxBuildReadinessWorkspaceContextRouteTest(unittest.TestCase):
             "resolved roots",
         ):
             self.assertIn(fragment, self.workspace_context_doc)
+
+    def test_route_printer_surfaces_workspace_context_handoff(self) -> None:
+        for fragment in (
+            "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
+            "scripts/check_issue3_workspace_context.py",
+            "WORKSPACE_CONTEXT_COMMAND",
+            '"workspace_context":',
+            "Run the workspace_context command first when the checkout sits deeper than the default sibling layout",
+            "Workspace-context helper when the checkout sits deeper than the default sibling layout:",
+        ):
+            self.assertIn(fragment, self.route_printer)
 
 
 if __name__ == "__main__":
