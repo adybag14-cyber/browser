@@ -116,16 +116,13 @@ def archive_top_level_name(path: pathlib.Path) -> str:
 
 archive_path = pathlib.Path(archive_arg).expanduser().resolve() if archive_arg else None
 destination = None
-zig_path = None
+zig_path_candidates: list[str] = []
 if archive_path is not None:
     destination = toolchains_root / archive_top_level_name(archive_path)
-    preferred_zyg = destination / "zig"
-    preferred_bin = destination / "bin" / "zig"
-    zig_path = preferred_zyg if preferred_zyg.name == "zig" else preferred_bin
-    if preferred_zyg.parent == destination:
-        zig_path = preferred_zyg
-    else:
-        zig_path = preferred_bin
+    zig_path_candidates = [
+        str(destination / "zig"),
+        str(destination / "bin" / "zig"),
+    ]
 
 surface_check = quote(["bash", str(surface_script), "--repo-root", str(repo_root)])
 restore_check = None
@@ -173,7 +170,7 @@ if archive_path is not None:
             "--expect-offline-deps",
             "--require-prebuilt-v8",
             "--zig",
-            str(zig_path),
+            "<restored-zig-path>",
         ]
     )
 
@@ -200,7 +197,7 @@ result = {
     "offline_deps_root": str(offline_deps_root),
     "archive_path": str(archive_path) if archive_path else "",
     "destination": str(destination) if destination else "",
-    "zig_path": str(zig_path) if zig_path else "",
+    "zig_path_candidates": zig_path_candidates,
     "commands": {
         "surface_check": surface_check,
         "recovery_route": recovery,
@@ -229,7 +226,9 @@ print(
 )
 if destination is not None:
     print(f"Destination:         {destination}")
-    print(f"Expected zig path:   {zig_path}")
+    print("Candidate zig paths:")
+    for zig_path in zig_path_candidates:
+        print(f"  {zig_path}")
 print()
 print("Read first")
 print("==========")
@@ -256,6 +255,7 @@ else:
     print("===================")
     print(f"  {recovery}")
     print(f"  {readiness}")
+    print("  Replace <restored-zig-path> with the actual zig path printed by restore_zig_toolchain_archive.sh after extraction.")
 print()
 print("Working rules")
 print("=============")
