@@ -18,8 +18,9 @@ import zipfile
 
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
-ARCHIVE_PATTERNS = ("zig*.tar", "zig*.tar.gz", "zig*.tgz", "zig*.tar.xz", "zig*.zip")
+ARCHIVE_PATTERNS = ("*.tar", "*.tar.gz", "*.tgz", "*.tar.xz", "*.zip")
 DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+ZIG_BINARY_SUFFIXES = ("/zig", "/bin/zig", "/zig.exe", "/bin/zig.exe")
 
 
 def parse_semver(text: str) -> tuple[int, int, int]:
@@ -72,27 +73,24 @@ def load_minimum_zig(repo_root: pathlib.Path) -> str:
     return match.group(1)
 
 
-def discover_zig_archives(root: pathlib.Path) -> list[pathlib.Path]:
-    if not root.exists() or not root.is_dir():
-        return []
-
-    discovered: list[pathlib.Path] = []
-    seen: set[pathlib.Path] = set()
-    for pattern in ARCHIVE_PATTERNS:
-        for path in sorted(root.glob(pattern)):
-            resolved = path.resolve()
-            if resolved in seen or not resolved.is_file():
-                continue
-            seen.add(resolved)
-            discovered.append(resolved)
-    return discovered
-
-
 def strip_archive_suffix(name: str) -> str:
     for suffix in (".tar.gz", ".tar.xz", ".tgz", ".zip", ".tar"):
         if name.endswith(suffix):
             return name[: -len(suffix)]
     return pathlib.Path(name).stem
+
+
+def archive_member_names(path: pathlib.Path) -> list[str]:
+    try:
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path) as archive:
+                return archive.namelist()
+        if tarfile.is_tarfile(path):
+            with tarfile.open(path) as archive:
+                return archive.getnames()
+    except (OSError, tarfile.TarError, zipfile.BadZipFile):
+        return []
+    return []
 
 
 def first_top_level(entries: list[str]) -> str | None:
@@ -118,16 +116,7 @@ def first_top_level(entries: list[str]) -> str | None:
 
 
 def infer_archive_top_level(path: pathlib.Path) -> str | None:
-    try:
-        if zipfile.is_zipfile(path):
-            with zipfile.ZipFile(path) as archive:
-                return first_top_level(archive.namelist())
-        if tarfile.is_tarfile(path):
-            with tarfile.open(path) as archive:
-                return first_top_level(archive.getnames())
-    except (OSError, tarfile.TarError, zipfile.BadZipFile):
-        return None
-    return None
+    return first_top_level(archive_member_names(path))
 
 
 def infer_archive_version(path: pathlib.Path) -> tuple[str | None, str]:
@@ -140,6 +129,43 @@ def infer_archive_version(path: pathlib.Path) -> tuple[str | None, str]:
         if match is not None:
             return match.group(0), top_level or ""
     return None, top_level or ""
+
+
+def archive_contains_zig_binary(path: pathlib.Path) -> bool:
+    for member_name in archive_member_names(path):
+        normalized = member_name.rstrip("/")
+        if any(normalized.endswith(suffix) for suffix in ZIG_BINARY_SUFFIXES):
+            return True
+    return False
+
+
+def looks_like_zig_toolchain_archive(path: pathlib.Path, version: str | None, top_level: str) -> bool:
+    candidate_names = (top_level, strip_archive_suffix(path.name), path.name)
+    if version is not None:
+        for candidate in candidate_names:
+            if candidate and strip_archive_suffix(candidate).startswith("zig"):
+                return True
+    return archive_contains_zig_binary(path)
+
+
+def discover_zig_archives(root: pathlib.Path) -> list[pathlib.Path]:
+    if not root.exists() or not root.is_dir():
+        return []
+
+    discovered: list[pathlib.Path] = []
+    seen: set[pathlib.Path] = set()
+    for pattern in ARCHIVE_PATTERNS:
+        for path in sorted(root.rglob(pattern)):
+            resolved = path.resolve()
+            if resolved in seen or not resolved.is_file():
+                continue
+            seen.add(resolved)
+
+            version, top_level = infer_archive_version(resolved)
+            if not looks_like_zig_toolchain_archive(resolved, version, top_level):
+                continue
+            discovered.append(resolved)
+    return discovered
 
 
 def describe_archive(expected: str, path: pathlib.Path) -> dict[str, str]:
@@ -327,6 +353,34 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             self.assertEqual(report["top_level"], top_level)
             self.assertEqual(report["version"], "")
             self.assertEqual(report["status"], "unknown-version")
+
+    def test_discover_zig_archives_recurses_and_accepts_generic_toolchain_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            nested = root / "nested" / "toolchains"
+            nested.mkdir(parents=True)
+            archive_path = nested / "saved-zig-toolchain.tar.xz"
+            top_level = "zig-linux-x86_64-0.15.2"
+            extracted_file = root / top_level / "zig"
+            extracted_file.parent.mkdir(parents=True)
+            extracted_file.write_text("zig", encoding="utf-8")
+            with tarfile.open(archive_path, "w:xz") as archive:
+                archive.add(extracted_file.parent, arcname=top_level)
+
+            discovered = discover_zig_archives(root)
+
+            self.assertEqual(discovered, [archive_path.resolve()])
+
+    def test_discover_zig_archives_skips_non_toolchain_browser_deps_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            archive_path = root / "04-zig-browser-depo.tar.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("zig-browser-depo/README.md", "not a toolchain")
+
+            discovered = discover_zig_archives(root)
+
+            self.assertEqual(discovered, [])
 
     def test_choose_preferred_archive_prefers_exact_version(self) -> None:
         reports = [
