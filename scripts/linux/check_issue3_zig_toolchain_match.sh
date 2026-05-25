@@ -96,7 +96,6 @@ from __future__ import annotations
 import json
 import pathlib
 import re
-import shlex
 import subprocess
 import sys
 
@@ -121,7 +120,6 @@ minimum_zig = minimum_match.group(1)
 semver_re = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 fallback_version_re = re.compile(r"(\d+\.\d+\.\d+)")
 toolchain_patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
-archive_patterns = ("zig*.tar", "zig*.tar.gz", "zig*.tgz", "zig*.tar.xz", "zig*.zip")
 
 
 def parse_semver(text: str) -> tuple[int, int, int]:
@@ -141,24 +139,61 @@ def classify(version_text: str) -> str:
     return "mismatched-line"
 
 
-def format_command(parts: list[str]) -> str:
-    return " ".join(shlex.quote(part) for part in parts)
+def load_saved_archive_report() -> tuple[
+    list[dict[str, str]],
+    dict[str, str] | None,
+    str | None,
+    str | None,
+    str | None,
+]:
+    helper_path = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"
+    if not helper_path.is_file():
+        return [], None, None, None, f"saved archive candidate helper is missing: {helper_path}"
 
-
-def build_restore_command(archive_path: pathlib.Path, *, check_only: bool) -> str:
     command = [
-        "bash",
-        str(repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"),
-        "--browser-root",
+        sys.executable,
+        str(helper_path),
+        "--repo-root",
         str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
         "--toolchains-root",
         str(toolchains_root),
-        "--archive",
-        str(archive_path),
+        "--json",
     ]
-    if check_only:
-        command.append("--check-only")
-    return format_command(command)
+    if fallback_zig_archive is not None:
+        command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        return [], None, None, None, f"saved archive candidate helper could not run: {exc}"
+
+    helper_stdout = completed.stdout.strip()
+    if not helper_stdout:
+        detail = completed.stderr.strip()
+        if detail:
+            detail = f"; stderr: {detail}"
+        return [], None, None, None, f"saved archive candidate helper produced no JSON output{detail}"
+
+    try:
+        helper_report = json.loads(helper_stdout)
+    except json.JSONDecodeError as exc:
+        return [], None, None, None, f"saved archive candidate helper returned invalid JSON: {exc}"
+
+    commands = helper_report.get("commands") or {}
+    return (
+        helper_report.get("zig_archives") or [],
+        helper_report.get("preferred_archive"),
+        commands.get("restore_check"),
+        commands.get("restore"),
+        None,
+    )
 
 
 candidates: list[dict[str, str]] = []
@@ -189,45 +224,13 @@ if toolchains_root.is_dir():
             if status == "matches-expected-line":
                 matching_candidates.append(record)
 
-saved_archives: list[dict[str, str]] = []
-seen_archives: set[pathlib.Path] = set()
-if saved_archives_root.is_dir():
-    for pattern in archive_patterns:
-        for path in sorted(saved_archives_root.glob(pattern)):
-            resolved = path.resolve()
-            if resolved in seen_archives or not resolved.is_file():
-                continue
-            seen_archives.add(resolved)
-            version_match = semver_re.search(resolved.name)
-            version = version_match.group(0) if version_match is not None else ""
-            status = classify(version) if version else "unknown-version"
-            saved_archives.append(
-                {
-                    "path": str(resolved),
-                    "version": version,
-                    "status": status,
-                }
-            )
-
-preferred_saved_archive = next(
-    (
-        archive
-        for archive in saved_archives
-        if archive["status"] == "matches-expected-line" and archive["version"] == minimum_zig
-    ),
-    None,
-)
-if preferred_saved_archive is None:
-    matching_saved_archives = [
-        archive
-        for archive in saved_archives
-        if archive["status"] == "matches-expected-line" and archive["version"]
-    ]
-    if matching_saved_archives:
-        preferred_saved_archive = max(
-            matching_saved_archives,
-            key=lambda archive: parse_semver(archive["version"]),
-        )
+(
+    saved_archives,
+    preferred_saved_archive,
+    preferred_restore_check,
+    preferred_restore,
+    saved_archive_helper_warning,
+) = load_saved_archive_report()
 
 fallback_record: dict[str, str] | None = None
 if fallback_zig_archive is not None and fallback_zig_archive.is_file():
@@ -247,18 +250,6 @@ if fallback_zig_archive is not None and fallback_zig_archive.is_file():
         }
 
 failures: list[str] = []
-preferred_restore_check = None
-preferred_restore = None
-if preferred_saved_archive is not None:
-    preferred_restore_check = build_restore_command(
-        pathlib.Path(preferred_saved_archive["path"]),
-        check_only=True,
-    )
-    preferred_restore = build_restore_command(
-        pathlib.Path(preferred_saved_archive["path"]),
-        check_only=False,
-    )
-
 if not matching_candidates:
     minimum_parts = parse_semver(minimum_zig)
     failures.append(
@@ -269,6 +260,8 @@ if not matching_candidates:
         failures.append(
             f"saved Zig archive {pathlib.Path(preferred_saved_archive['path']).name} matches that line but is not staged yet"
         )
+    elif saved_archive_helper_warning is not None:
+        failures.append(saved_archive_helper_warning)
     if fallback_record is None:
         failures.append("no surfaced fallback Zig archive is available beside the repo workspace")
     elif fallback_record["status"] == "mismatched-line":
@@ -302,6 +295,7 @@ report = {
     "preferred_saved_archive_restore_check": preferred_restore_check,
     "preferred_saved_archive_restore": preferred_restore,
     "fallback_zig_archive": fallback_record,
+    "saved_archive_helper_warning": saved_archive_helper_warning,
     "failures": failures,
     "suggested_next_step": suggested_next_step,
 }
@@ -324,8 +318,12 @@ else:
 if saved_archives:
     print("Saved Zig archives:")
     for archive in saved_archives:
-        version = archive["version"] or "unknown"
-        print(f"  - {archive['path']} [{version}; {archive['status']}]")
+        version = archive.get("version") or "unknown"
+        top_level = archive.get("top_level") or ""
+        if top_level:
+            print(f"  - {archive['path']} [top-level={top_level}; {version}; {archive['status']}]")
+        else:
+            print(f"  - {archive['path']} [{version}; {archive['status']}]")
 else:
     print("Saved Zig archives: none")
 
@@ -339,6 +337,9 @@ if fallback_record is not None:
         "Fallback Zig archive: "
         f"{fallback_record['path']} [{fallback_record['version']}; {fallback_record['status']}]"
     )
+
+if saved_archive_helper_warning is not None:
+    print(f"Saved archive helper warning: {saved_archive_helper_warning}")
 
 if failures:
     print("\nMatching Zig toolchain check failed:", file=sys.stderr)
