@@ -158,7 +158,62 @@ saved_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_zi
 archive_restore_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_archive_restore_route_surface.sh"
 readiness_script = repo_root / "scripts" / "check_linux_build_readiness.py"
 fallback_restore_script = repo_root / "scripts" / "linux" / "restore_issue3_fallback_zig_toolchain.sh"
-archive_restore_script = repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"
+
+
+def load_saved_archive_report() -> tuple[
+    list[dict[str, str]],
+    dict[str, str] | None,
+    str | None,
+    str | None,
+    str | None,
+]:
+    if not saved_archive_candidates_script.is_file():
+        return [], None, None, None, f"saved archive candidate helper is missing: {saved_archive_candidates_script}"
+
+    command = [
+        sys.executable,
+        str(saved_archive_candidates_script),
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--json",
+    ]
+    if fallback_zig_archive:
+        command.extend(("--fallback-zig-archive", fallback_zig_archive))
+
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        return [], None, None, None, f"saved archive candidate helper could not run: {exc}"
+
+    helper_stdout = completed.stdout.strip()
+    if not helper_stdout:
+        detail = completed.stderr.strip()
+        if detail:
+            detail = f"; stderr: {detail}"
+        return [], None, None, None, f"saved archive candidate helper produced no JSON output{detail}"
+
+    try:
+        helper_report = json.loads(helper_stdout)
+    except json.JSONDecodeError as exc:
+        return [], None, None, None, f"saved archive candidate helper returned invalid JSON: {exc}"
+
+    commands = helper_report.get("commands") or {}
+    return (
+        helper_report.get("zig_archives") or [],
+        helper_report.get("preferred_archive"),
+        commands.get("restore_check"),
+        commands.get("restore"),
+        None,
+    )
 
 patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
 candidates: list[dict[str, str]] = []
@@ -191,62 +246,17 @@ if toolchains_root.is_dir():
                 }
             )
 
-
-def archive_top_level(path: pathlib.Path) -> str:
-    name = path.name
-    for suffix in (".tar.gz", ".tar.xz", ".tgz", ".zip", ".tar"):
-        if name.endswith(suffix):
-            return name[: -len(suffix)]
-    return path.stem
-
-
-archive_patterns = ("zig*.tar", "zig*.tar.gz", "zig*.tgz", "zig*.tar.xz", "zig*.zip")
-saved_archives: list[dict[str, str]] = []
-seen_archives: set[pathlib.Path] = set()
-if saved_archives_root.is_dir():
-    for pattern in archive_patterns:
-        for path in sorted(saved_archives_root.glob(pattern)):
-            resolved = path.resolve()
-            if resolved in seen_archives or not resolved.is_file():
-                continue
-            seen_archives.add(resolved)
-            top_level = archive_top_level(resolved)
-            version = ""
-            status = "unknown-version"
-            try:
-                version_match = semver_re.search(top_level) or semver_re.search(resolved.name)
-                if version_match is not None:
-                    version = version_match.group(0)
-                    status = classify(version)
-            except ValueError:
-                version = ""
-                status = "unknown-version"
-            saved_archives.append(
-                {
-                    "path": str(resolved),
-                    "top_level": top_level,
-                    "version": version,
-                    "status": status,
-                }
-            )
-
 matching_candidate = next(
     (candidate for candidate in candidates if candidate["status"] == "matches-expected-line"),
     None,
 )
-preferred_saved_archive = next(
-    (
-        archive
-        for archive in saved_archives
-        if archive["status"] == "matches-expected-line" and archive["version"] == minimum_zig
-    ),
-    None,
-)
-if preferred_saved_archive is None:
-    preferred_saved_archive = next(
-        (archive for archive in saved_archives if archive["status"] == "matches-expected-line"),
-        None,
-    )
+(
+    saved_archives,
+    preferred_saved_archive,
+    matching_archive_restore_check_command,
+    matching_archive_restore_command,
+    saved_archive_helper_warning,
+) = load_saved_archive_report()
 
 surface_check_command = format_command(
     [
@@ -331,35 +341,6 @@ if matching_candidate is not None:
         matching_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
     matching_readiness_command = format_command(matching_parts)
 
-matching_archive_restore_check_command = None
-matching_archive_restore_command = None
-if preferred_saved_archive is not None:
-    matching_archive_restore_check_command = format_command(
-        [
-            "bash",
-            str(archive_restore_script),
-            "--browser-root",
-            str(repo_root),
-            "--toolchains-root",
-            str(toolchains_root),
-            "--archive",
-            preferred_saved_archive["path"],
-            "--check-only",
-        ]
-    )
-    matching_archive_restore_command = format_command(
-        [
-            "bash",
-            str(archive_restore_script),
-            "--browser-root",
-            str(repo_root),
-            "--toolchains-root",
-            str(toolchains_root),
-            "--archive",
-            preferred_saved_archive["path"],
-        ]
-    )
-
 fallback_restore_check_command = None
 fallback_restore_command = None
 if fallback_zig_archive:
@@ -410,6 +391,7 @@ result = {
     },
     "candidates": candidates,
     "saved_archives": saved_archives,
+    "saved_archive_helper_warning": saved_archive_helper_warning or "",
 }
 if matching_readiness_command is not None:
     result["commands"]["matching_readiness"] = matching_readiness_command
@@ -481,6 +463,11 @@ if saved_archives:
         print("=========================")
         print(f"  {matching_archive_restore_check_command}")
         print(f"  {matching_archive_restore_command}")
+elif saved_archive_helper_warning is not None:
+    print()
+    print("Saved archive helper warning")
+    print("===========================")
+    print(f"  {saved_archive_helper_warning}")
 
 if fallback_restore_check_command is not None and fallback_restore_command is not None:
     print()
@@ -513,6 +500,11 @@ if not candidates:
         "  - Run the archive restore surface check before restoring any saved or "
         "manual Zig archive so route drift fails fast before toolchain staging starts."
     )
+    if saved_archive_helper_warning is not None:
+        print(
+            "  - Re-run the saved archive candidate helper once its warning is resolved "
+            "so the preferred 0.15.x restore path is visible on the route again."
+        )
     print(
         "  - The saved-archives-root override accepts either repo_archives/browser "
         "or repo_archives/browser/dependencies and is normalized before discovery runs."
@@ -577,6 +569,11 @@ if matching_readiness_command is not None:
         "  - Run the archive restore surface check before restaging a saved Zig "
         "archive so route drift fails fast before toolchain staging starts."
     )
+    if saved_archive_helper_warning is not None:
+        print(
+            "  - Re-run the saved archive candidate helper once its warning is resolved "
+            "so the preferred 0.15.x restore path is visible on the route again."
+        )
     print(
         "  - The saved-archives-root override accepts either repo_archives/browser "
         "or repo_archives/browser/dependencies and is normalized before discovery runs."
@@ -628,6 +625,11 @@ else:
         "  - Run the archive restore surface check before restoring a saved or "
         "manual Zig archive so route drift fails fast before toolchain staging starts."
     )
+    if saved_archive_helper_warning is not None:
+        print(
+            "  - Re-run the saved archive candidate helper once its warning is resolved "
+            "so the preferred 0.15.x restore path is visible on the route again."
+        )
     print(
         "  - The saved-archives-root override accepts either repo_archives/browser "
         "or repo_archives/browser/dependencies and is normalized before discovery runs."
