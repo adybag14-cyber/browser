@@ -270,6 +270,28 @@ def build_restore_command(
     return command
 
 
+def build_fallback_restore_command(
+    repo_root: pathlib.Path,
+    toolchains_root: pathlib.Path,
+    fallback_archive: pathlib.Path,
+    *,
+    check_only: bool,
+) -> list[str]:
+    command = [
+        "bash",
+        str(repo_root / "scripts" / "linux" / "restore_issue3_fallback_zig_toolchain.sh"),
+        "--browser-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--archive",
+        str(fallback_archive),
+    ]
+    if check_only:
+        command.append("--check-only")
+    return command
+
+
 def build_report(
     *,
     repo_root: pathlib.Path,
@@ -301,6 +323,13 @@ def build_report(
         )
         commands["restore"] = format_command(
             build_restore_command(repo_root, toolchains_root, archive_path, check_only=False)
+        )
+    if fallback_archive is not None:
+        commands["fallback_restore_check"] = format_command(
+            build_fallback_restore_command(repo_root, toolchains_root, fallback_archive, check_only=True)
+        )
+        commands["fallback_restore"] = format_command(
+            build_fallback_restore_command(repo_root, toolchains_root, fallback_archive, check_only=False)
         )
     report["commands"] = commands
 
@@ -523,6 +552,15 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
         )
         self.assertEqual(command[-1], "--check-only")
 
+    def test_build_fallback_restore_command_includes_check_only_when_requested(self) -> None:
+        command = build_fallback_restore_command(
+            pathlib.Path("/tmp/browser"),
+            pathlib.Path("/tmp/toolchains"),
+            pathlib.Path("/tmp/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"),
+            check_only=True,
+        )
+        self.assertEqual(command[-1], "--check-only")
+
     def test_defaults_discover_ancestor_workspace_roots(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace_root = pathlib.Path(tmpdir)
@@ -567,6 +605,21 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             "/tmp/memory/repo_archives/browser, /tmp/memory/repo_archives/browser/dependencies",
             report["failures"][0],
         )
+
+    def test_build_report_surfaces_fallback_restore_commands(self) -> None:
+        fallback_archive = pathlib.Path("/tmp/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz")
+        report = build_report(
+            repo_root=pathlib.Path("/tmp/browser"),
+            saved_archives_root=pathlib.Path("/tmp/memory/repo_archives/browser"),
+            saved_archives_search_roots=[pathlib.Path("/tmp/memory/repo_archives/browser")],
+            toolchains_root=pathlib.Path("/tmp/toolchains"),
+            minimum_zig="0.15.2",
+            archive_reports=[],
+            preferred_archive=None,
+            fallback_archive=fallback_archive,
+        )
+        self.assertIn("fallback_restore_check", report["commands"])
+        self.assertIn("fallback_restore", report["commands"])
 
 
 def main() -> int:
@@ -644,6 +697,12 @@ def main() -> int:
         print(f"  {report['commands']['restore_check']}")
         print(f"  {report['commands']['restore']}")
         return 0
+
+    if fallback_archive is not None:
+        print()
+        print("Fallback restore commands:")
+        print(f"  {report['commands']['fallback_restore_check']}")
+        print(f"  {report['commands']['fallback_restore']}")
 
     print()
     print("Saved Zig archive discovery failed:", file=sys.stderr)
