@@ -56,8 +56,20 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
     (
+        "scripts/check_issue3_saved_rust_archive_candidates.py",
+        "saved Rust archive candidate helper",
+    ),
+    (
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        "staged Rust toolchain candidate helper",
+    ),
+    (
         "scripts/check_issue3_saved_zig_archive_candidates.py",
         "saved Zig archive candidate helper",
+    ),
+    (
+        "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+        "staged Zig toolchain candidate helper",
     ),
     (
         "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
@@ -364,7 +376,7 @@ def emit_text(result: dict[str, object]) -> None:
             "Suggested next step: refresh the restored helper surface from the live helper checkout with restore_saved_browser_snapshot.sh --sync-only, then rerun this helper with --helper-root.",
             file=sys.stderr,
         )
-    elif result["expect_helper_surface"]:
+    elif result["expect-helper-surface"]:
         print(
             "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or keep using the live helper root for follow-up commands.",
             file=sys.stderr,
@@ -713,6 +725,93 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/check_issue3_saved_zig_archive_candidates.py", missing)
+
+    def test_saved_rust_archive_candidate_helper_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_saved_rust_archive_candidates.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_saved_rust_archive_candidates.py", missing)
+
+    def test_staged_rust_toolchain_candidate_helper_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_staged_rust_toolchain_candidates.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_staged_rust_toolchain_candidates.py", missing)
+
+    def test_staged_zig_toolchain_candidate_helper_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_staged_zig_toolchain_candidates.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_staged_zig_toolchain_candidates.py", missing)
 
     def test_saved_zig_archive_candidates_route_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
