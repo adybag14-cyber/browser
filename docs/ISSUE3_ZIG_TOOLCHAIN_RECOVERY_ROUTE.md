@@ -18,6 +18,10 @@ Companion helpers:
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
 - `scripts/check_linux_build_readiness.py`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `scripts/linux/check_issue3_workspace_context_route_surface.sh`
+- `scripts/linux/show_issue3_workspace_context_route.sh`
+- `scripts/check_issue3_workspace_context.py`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
@@ -34,6 +38,9 @@ Use this route when any of these are true:
   good enough to reopen the Linux or WSL build-readiness lane
 - a run needs a branch-local list of saved Zig archives before choosing a real
   `0.15.x` restore candidate
+- the checkout sits deeper than the default sibling layout and the next recovery
+  or archive-restore helper would otherwise guess the wrong `toolchains`,
+  `saved-archives`, `offline-deps`, or fallback-archive roots
 
 ## Run The Surface Check First
 
@@ -63,6 +70,23 @@ This helper passes only when at least one staged Zig executable under
 visible input is the attached `0.17` fallback archive, the helper fails fast
 and points the run back at the broader recovery route instead of treating that
 fallback as honest validation evidence.
+
+## Surface Workspace Roots First When Layout Is Unusual
+
+If the checkout was restored deeper than the default sibling layout, or the next
+recovery step would otherwise have to guess shared workspace roots, surface the
+resolved paths first:
+
+```bash
+bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
+bash ./scripts/linux/show_issue3_workspace_context_route.sh
+python ./scripts/check_issue3_workspace_context.py --repo-root .
+```
+
+Use the printed workspace-context output to decide whether the next Zig recovery
+or archive-restore command should keep its defaults or be rerun with explicit
+`--toolchains-root`, `--saved-archives-root`, `--offline-deps-root`, or
+`--fallback-zig-archive` overrides.
 
 ## Surface Saved Archive Candidates Before Restore
 
@@ -150,6 +174,10 @@ The helper prints:
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
   first so missing docs or helper drift fails before the route blames the
   fallback Zig bundle.
+- Run the workspace-context route first when the checkout sits deeper than the
+  default sibling layout or the next recovery helper would otherwise guess the
+  wrong `toolchains`, `saved-archives`, `offline-deps`, or fallback-archive
+  roots.
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_match.sh` right after the
   route surface check so the staged toolchains directory has to prove a real
   `0.15.x` candidate exists before the broader Linux or WSL readiness helper is
