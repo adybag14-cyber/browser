@@ -13,6 +13,7 @@ Companion helpers:
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/check_linux_build_readiness.py`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -59,8 +60,27 @@ bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh \
   --offline-deps-root /path/to/offline-deps
 ```
 
-Use `--json` when another helper wants the exact surface-check, restore,
-recovery, or readiness commands as structured output.
+Use `--json` when another helper wants the exact surface-check, saved-archive
+candidate discovery, restore, recovery, or readiness commands as structured
+output.
+
+## Surface Saved Archive Candidates When The Exact Archive Path Is Not Known Yet
+
+If the run knows the saved archives root but not the exact Zig archive path to
+restore, surface the candidate list before rebuilding that archive argument by
+hand:
+
+```bash
+python scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
+```
+
+Use `--saved-archives-root` when the saved archive bundle lives somewhere other
+than the default `../memory/repo_archives/browser/dependencies` location beside
+the repo workspace.
+
+That helper reports which surfaced archives match the branch's expected
+`0.15.x` line and prints the corresponding `restore_zig_toolchain_archive.sh`
+commands that the archive-restore route can replay directly.
 
 ## Run The Restore Helper
 
@@ -100,9 +120,13 @@ The helper:
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
   before the route printer or restore helper so route drift fails fast before
   toolchain staging starts.
+- Use `python scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .`
+  first when the saved-archive bundle is present but the exact matching Zig
+  archive path is not already known.
 - Use `bash ./scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
-  when the next rerun needs the compact route printer for the archive-restore,
-  recovery, and readiness commands on one branch-local surface.
+  when the next rerun needs the compact route printer for the saved-archive
+  candidate discovery, archive-restore, recovery, and readiness commands on one
+  branch-local surface.
 - Prefer a Zig `0.15.2` or other `0.15.x` archive for honest validation on this
   branch.
 - Treat the attached Zig `0.17` dev bundle as a surfaced fallback input only,
