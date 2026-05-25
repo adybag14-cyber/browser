@@ -111,6 +111,7 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     CANDIDATE_COMMAND="${CANDIDATE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     MATCHING_LINE_GATE_COMMAND="${MATCHING_LINE_GATE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RECOVERY_ROUTE_COMMAND="${RECOVERY_ROUTE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    PROGRESS_TRACKER_ROUTE_COMMAND="${PROGRESS_TRACKER_ROUTE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 if [[ "${JSON}" -eq 1 ]]; then
