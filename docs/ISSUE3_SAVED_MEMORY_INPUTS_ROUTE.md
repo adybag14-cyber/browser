@@ -7,14 +7,15 @@ readiness, or the direct issue `#3` runtime lane.
 This route keeps the saved repo snapshot, notes, blocker file, dependency
 archives, optional fallback Zig bundle, the low-volume progress-tracker handoff,
 the dedicated saved-archive integrity handoff, the saved Zig archive candidate
-handoff, and the immediate next helper routes on one compact branch-local
-surface.
+handoff, the workspace-context handoff, and the immediate next helper routes on
+one compact branch-local surface.
 
 Companion helpers:
 
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -24,6 +25,9 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/check_issue3_saved_zig_archive_candidates.py`
+- `scripts/linux/check_issue3_workspace_context_route_surface.sh`
+- `scripts/linux/show_issue3_workspace_context_route.sh`
+- `scripts/check_issue3_workspace_context.py`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
@@ -42,10 +46,14 @@ Use this route when any of these are true:
 - the current checkout may not sit beside the default `memory/` or
   `agent_files/` folders and the run wants one helper that resolves those paths
   explicitly
+- the current checkout sits deeper than the default sibling layout and the next
+  saved-input, restore, or build-readiness helper would otherwise guess the
+  wrong workspace roots
 - the direct issue `#3` runtime patch is still blocked and the run needs the
-  progress-tracker handoff, the dedicated saved-archive integrity route, and the
-  saved Zig archive candidate route back on one compact helper surface before it
-  widens into restore or build-readiness follow-up
+  progress-tracker handoff, the dedicated saved-archive integrity route, the
+  saved Zig archive candidate route, and the workspace-context route back on one
+  compact helper surface before it widens into restore or build-readiness
+  follow-up
 
 ## Run The Surface Check First
 
@@ -57,6 +65,23 @@ bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh
 
 Use `--json` when another helper wants the surface-check result as structured
 output.
+
+## Surface Workspace Roots First When Layout Is Unusual
+
+If the checkout was restored deeper than the default sibling layout, or the next
+route would otherwise have to guess `memory`, `agent_files`, `toolchains`, or
+`offline-deps` roots, surface those paths first:
+
+```bash
+bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
+bash ./scripts/linux/show_issue3_workspace_context_route.sh
+python ./scripts/check_issue3_workspace_context.py --repo-root .
+```
+
+Use the printed workspace-context output to decide whether this saved-Memory
+route should keep its defaults or whether it should be rerun with explicit
+`--memory-root`, `--agent-files-root`, `--restored-checkout-root`, or
+`--fallback-zig-archive` overrides before broader Linux or WSL follow-up.
 
 ## Print The Route
 
@@ -194,6 +219,9 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 
 - Run the surface check first so helper drift fails fast before the run blames
   missing Memory inputs.
+- Run the workspace-context route first when the checkout sits deeper than the
+  default sibling layout or the next helper would otherwise guess the wrong
+  `memory`, `agent_files`, `toolchains`, or `offline-deps` roots.
 - Run the saved-input preflight before broader Linux or WSL helper output is
   treated as trustworthy.
 - Use `--skip-archive-integrity-check` only for a quick presence-only branch
