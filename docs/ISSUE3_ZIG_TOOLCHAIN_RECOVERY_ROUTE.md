@@ -12,6 +12,7 @@ Companion helpers:
 
 - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
@@ -31,6 +32,8 @@ Use this route when any of these are true:
   `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` fallback archive
 - a run needs to decide whether a staged Zig toolchain under `../toolchains` is
   good enough to reopen the Linux or WSL build-readiness lane
+- a run needs a branch-local list of saved Zig archives before choosing a real
+  `0.15.x` restore candidate
 
 ## Run The Surface Check First
 
@@ -60,6 +63,20 @@ This helper passes only when at least one staged Zig executable under
 visible input is the attached `0.17` fallback archive, the helper fails fast
 and points the run back at the broader recovery route instead of treating that
 fallback as honest validation evidence.
+
+## Surface Saved Archive Candidates Before Restore
+
+When no matching candidate is staged yet but saved dependency archives are
+available, print the saved Zig archive discovery result before choosing a
+restore target:
+
+```bash
+python ./scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
+```
+
+Use `--json` when another helper wants the saved-archive candidate list, the
+preferred `0.15.x` archive choice, or the exact restore commands as structured
+output.
 
 ## Print The Route
 
@@ -109,21 +126,23 @@ The helper prints:
    `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
 2. a dedicated matching-line gate for
    `scripts/linux/check_issue3_zig_toolchain_match.sh`
-3. a fail-fast archive-restore surface check command for
+3. a saved-archive candidate discovery command for
+   `scripts/check_issue3_saved_zig_archive_candidates.py`
+4. a fail-fast archive-restore surface check command for
    `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-4. the branch minimum Zig line from `build.zig.zon`
-5. the staged `../toolchains` search root
-6. the attached fallback Zig archive location when it is present beside the repo
+5. the branch minimum Zig line from `build.zig.zon`
+6. the staged `../toolchains` search root
+7. the attached fallback Zig archive location when it is present beside the repo
    workspace
-7. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
-8. a fallback archive staging section that reuses
+8. a lightweight discovery command for `scripts/check_linux_build_readiness.py`
+9. a fallback archive staging section that reuses
    `scripts/linux/restore_issue3_fallback_zig_toolchain.sh` when the attached
    archive exists but is not staged yet
-9. every staged Zig candidate it can probe, including the version line and
-   whether that candidate matches the branch's expected major/minor line
-10. the preferred saved-archive restore surface-check and restore commands when a
+10. every staged Zig candidate it can probe, including the version line and
+    whether that candidate matches the branch's expected major/minor line
+11. the preferred saved-archive restore surface-check and restore commands when a
     real `0.15.x` Zig archive is already visible under the saved dependencies
-11. the exact full readiness command to rerun once a matching Zig candidate is
+12. the exact full readiness command to rerun once a matching Zig candidate is
     available
 
 ## Working Rules
@@ -135,6 +154,9 @@ The helper prints:
   route surface check so the staged toolchains directory has to prove a real
   `0.15.x` candidate exists before the broader Linux or WSL readiness helper is
   trusted again.
+- Run `python ./scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .`
+  before hand-picking a saved Zig archive so the preferred `0.15.x` restore path
+  stays on a branch-local helper surface.
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
   before restaging a real Zig archive so route drift fails fast before toolchain
   staging starts.
@@ -146,8 +168,10 @@ The helper prints:
   tar extraction commands by hand.
 - If a real Zig `0.15.x` archive becomes available, use
   `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`, run the archive-restore
-  surface checker, and then use `restore_zig_toolchain_archive.sh` to stage it
-  under `../toolchains` before reopening the broader readiness helper.
+  surface checker, use `check_issue3_saved_zig_archive_candidates.py` to select
+  the preferred saved archive, and then use `restore_zig_toolchain_archive.sh`
+  to stage it under `../toolchains` before reopening the broader readiness
+  helper.
 - Do not reopen the direct `Page.zig` plus `win32_backend.zig` runtime patch
   until the matching-line readiness command stops reporting the environment as
   the blocker.
