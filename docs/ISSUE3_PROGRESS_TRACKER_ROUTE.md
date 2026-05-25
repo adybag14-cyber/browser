@@ -26,6 +26,7 @@ that prepares the next honest runtime attempt without reopening the direct
 
 - saved snapshot restore and restored-checkout readiness
 - saved archive integrity checks
+- saved Zig archive candidate discovery and restore selection
 - offline dependency staging
 - saved Rust toolchain reuse
 - branch-compatible Zig recovery under `../toolchains`
@@ -39,11 +40,13 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_linux_build_readiness.py`
 
@@ -52,6 +55,10 @@ that prepares the next honest runtime attempt without reopening the direct
 If a scheduled run is still blocked on publication safety or a branch-compatible
 Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
+
+If the immediate slice is about picking or restoring a saved Zig `0.15.x`
+archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible and
+surface that helper route before falling back to the broader Zig recovery note.
 
 Only move back to issue `#3`-specific runtime commits after the environment
 gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
