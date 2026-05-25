@@ -56,8 +56,22 @@ WORKSPACE_CONTEXT_COMMAND=(
     "--repo-root"
     "${REPO_ROOT}"
 )
+WORKSPACE_CONTEXT_DISPLAY_COMMAND=(
+    "python"
+    "scripts/check_issue3_workspace_context.py"
+    "--repo-root"
+    "${REPO_ROOT}"
+)
+SAVED_ZIG_ROUTE_DISPLAY_COMMAND=(
+    "bash"
+    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh"
+    "--repo-root"
+    "${REPO_ROOT}"
+)
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     WORKSPACE_CONTEXT_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
+    WORKSPACE_CONTEXT_DISPLAY_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
+    SAVED_ZIG_ROUTE_DISPLAY_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
 fi
 
 CONTEXT_JSON="$(python3 - <<'PY' "${WORKSPACE_CONTEXT_COMMAND[@]}"
@@ -70,12 +84,29 @@ PY
 )"
 
 if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<'PY' "${CONTEXT_JSON}"
+    python3 - <<'PY' "${CONTEXT_JSON}" "${FALLBACK_ZIG_ARCHIVE}"
 import json
 import sys
 
 context = json.loads(sys.argv[1])
+fallback = sys.argv[2]
 repo_root = context["repo_root"]
+workspace_context_command = [
+    "python",
+    "scripts/check_issue3_workspace_context.py",
+    "--repo-root",
+    repo_root,
+]
+saved_zig_route_command = [
+    "bash",
+    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+    "--repo-root",
+    repo_root,
+]
+if fallback:
+    workspace_context_command.extend(("--fallback-zig-archive", fallback))
+    saved_zig_route_command.extend(("--fallback-zig-archive", fallback))
+
 route = {
     "issue": "issue3-workspace-context-route",
     "repo_root": repo_root,
@@ -86,12 +117,7 @@ route = {
         "--repo-root",
         repo_root,
     ],
-    "workspace_context_command": [
-        "python",
-        "scripts/check_issue3_workspace_context.py",
-        "--repo-root",
-        repo_root,
-    ],
+    "workspace_context_command": workspace_context_command,
     "resolved_roots": {
         "toolchains_root": context["toolchains_root"],
         "memory_root": context["memory_root"],
@@ -103,16 +129,11 @@ route = {
     },
     "follow_up_commands": {
         "issue11_progress_tracker_route": context["suggested_progress_tracker_route_command"],
-        "saved_browser_snapshot_route": context["suggested_saved_snapshot_route_command"],
+        "saved_snapshot_route": context["suggested_saved_snapshot_route_command"],
         "linux_build_readiness_route": context["suggested_build_readiness_route_command"],
         "zig_toolchain_recovery_route": context["suggested_zig_recovery_route_command"],
         "zig_toolchain_match_gate": context["suggested_zig_match_command"],
-        "saved_zig_archive_candidates_route": [
-            "bash",
-            "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
-            "--repo-root",
-            repo_root,
-        ],
+        "saved_zig_archive_candidates_route": saved_zig_route_command,
     },
 }
 print(json.dumps(route, indent=2))
@@ -120,15 +141,32 @@ PY
     exit 0
 fi
 
-python3 - <<'PY' "${CONTEXT_JSON}"
+python3 - <<'PY' "${CONTEXT_JSON}" "${FALLBACK_ZIG_ARCHIVE}"
 import json
 import shlex
 import sys
 
 context = json.loads(sys.argv[1])
+fallback = sys.argv[2]
 
 def join_command(parts):
     return " ".join(shlex.quote(part) for part in parts)
+
+workspace_context_command = [
+    "python",
+    "scripts/check_issue3_workspace_context.py",
+    "--repo-root",
+    context["repo_root"],
+]
+saved_zig_route_command = [
+    "bash",
+    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+    "--repo-root",
+    context["repo_root"],
+]
+if fallback:
+    workspace_context_command.extend(("--fallback-zig-archive", fallback))
+    saved_zig_route_command.extend(("--fallback-zig-archive", fallback))
 
 print("Issue #3 workspace-context route")
 print()
@@ -141,7 +179,7 @@ print("  Route surface check:")
 print(f"    bash scripts/linux/check_issue3_workspace_context_route_surface.sh --repo-root {shlex.quote(context['repo_root'])}")
 print()
 print("  Workspace-context helper:")
-print(f"    python scripts/check_issue3_workspace_context.py --repo-root {shlex.quote(context['repo_root'])}")
+print(f"    {join_command(workspace_context_command)}")
 print()
 print("Resolved roots")
 print("==============")
@@ -171,12 +209,13 @@ print("  Zig matching-line gate:")
 print(f"    {join_command(context['suggested_zig_match_command'])}")
 print()
 print("  Saved Zig archive-candidates route:")
-print(f"    bash scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh --repo-root {shlex.quote(context['repo_root'])}")
+print(f"    {join_command(saved_zig_route_command)}")
 print()
 print("Working rules")
 print("=============")
 print("  - Run the route surface check first so note or helper drift fails before the route is trusted.")
 print("  - Run the workspace-context helper next so nested or restored checkouts surface the practical shared roots.")
+print("  - When a restored checkout sits deeper than the default sibling layout, keep the same explicit fallback Zig archive path threaded through this route and its follow-up helper commands.")
 print("  - Use the printed issue #11 route when the run still needs a lower-volume progress tracker before reopening the direct runtime patch.")
 print("  - Use the saved browser-snapshot or Zig recovery follow-up routes when the surfaced roots show that restore or matching-line staging is still the blocker.")
 print("  - Use the saved Zig archive-candidates route before hand-picking a Zig archive from Memory dependencies.")
