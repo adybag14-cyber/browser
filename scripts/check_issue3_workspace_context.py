@@ -7,7 +7,8 @@ This helper is intentionally small and create-only so scheduled runs can answer:
 - where the saved Memory browser archives live
 - where the attached fallback Zig archive is visible from this checkout
 - where the nearest shared offline dependency root and Memory root live
-- which saved-snapshot and build-readiness route commands already match those roots
+- which saved-snapshot, build-readiness, and issue #11 progress-tracker route
+  commands already match those roots
 
 It is useful when a restored checkout sits deeper than the default sibling
 layout assumed by the existing route notes.
@@ -153,6 +154,12 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "--offline-deps-root",
         str(offline_deps_root),
     ]
+    progress_tracker_route_command = [
+        "bash",
+        "scripts/linux/show_issue3_progress_tracker_route.sh",
+        "--repo-root",
+        str(repo_root),
+    ]
     build_readiness_route_command = [
         "bash",
         "scripts/linux/show_issue3_linux_build_readiness_route.sh",
@@ -215,6 +222,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "fallback_zig_archive": str(fallback_zig_archive) if fallback_zig_archive else None,
         "fallback_zig_archive_found": fallback_found,
         "suggested_readiness_command": readiness_command,
+        "suggested_progress_tracker_route_command": progress_tracker_route_command,
         "suggested_build_readiness_route_command": build_readiness_route_command,
         "suggested_saved_snapshot_route_command": saved_snapshot_route_command,
         "failures": failures,
@@ -254,6 +262,8 @@ def emit_text(context: dict[str, object]) -> None:
     )
     print("Suggested readiness command:")
     print("  " + " ".join(context["suggested_readiness_command"]))
+    print("Suggested issue #11 progress-tracker route command:")
+    print("  " + " ".join(context["suggested_progress_tracker_route_command"]))
     print("Suggested build-readiness route command:")
     print("  " + " ".join(context["suggested_build_readiness_route_command"]))
     print("Suggested synced saved-snapshot route command:")
@@ -300,6 +310,10 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertTrue(context["fallback_zig_archive_found"])
             self.assertIn("--offline-deps-root", context["suggested_readiness_command"])
             self.assertIn(
+                "scripts/linux/show_issue3_progress_tracker_route.sh",
+                context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
                 "scripts/linux/show_issue3_linux_build_readiness_route.sh",
                 context["suggested_build_readiness_route_command"],
             )
@@ -324,6 +338,10 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertFalse(context["offline_deps_root_found"])
             self.assertFalse(context["restored_checkout_root_found"])
             self.assertFalse(context["fallback_zig_archive_found"])
+            self.assertIn(
+                "scripts/linux/show_issue3_progress_tracker_route.sh",
+                context["suggested_progress_tracker_route_command"],
+            )
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
