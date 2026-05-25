@@ -31,12 +31,36 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
+path_has_live_helper_surface() {
+    local candidate_root="$1"
+
+    [[ -d "${candidate_root}" ]] || return 1
+    [[ -f "${candidate_root}/build.zig.zon" ]] || return 1
+
+    local -a helper_surface_paths=(
+        "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md"
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
+        "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
+        "scripts/check_issue3_restored_checkout.py"
+        "scripts/check_issue3_saved_memory_inputs.py"
+        "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+        "scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
+    )
+    local relative_path
+    for relative_path in "${helper_surface_paths[@]}"; do
+        [[ -f "${candidate_root}/${relative_path}" ]] || return 1
+    done
+
+    return 0
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_RESTORED_CHECKOUT_NAME="browser-memory-snapshot"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 HELPER_ROOT=""
+HELPER_ROOT_SOURCE="explicit"
 RESTORED_CHECKOUT_ROOT=""
 MEMORY_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
@@ -86,8 +110,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+CURRENT_WORKSPACE_ROOT="$(pwd -P)"
 if [[ -z "${HELPER_ROOT}" ]]; then
-    HELPER_ROOT="${REPO_ROOT}"
+    if [[ "$(basename "${REPO_ROOT}")" == "${DEFAULT_RESTORED_CHECKOUT_NAME}" ]] \
+        && [[ "${CURRENT_WORKSPACE_ROOT}" != "${REPO_ROOT}" ]] \
+        && path_has_live_helper_surface "${CURRENT_WORKSPACE_ROOT}"; then
+        HELPER_ROOT="${CURRENT_WORKSPACE_ROOT}"
+        HELPER_ROOT_SOURCE="cwd-live-helper-surface"
+    else
+        HELPER_ROOT="${REPO_ROOT}"
+        HELPER_ROOT_SOURCE="repo-root-default"
+    fi
+else
+    HELPER_ROOT_SOURCE="explicit"
 fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
@@ -140,6 +175,7 @@ print(json.dumps({
     "issue": "Google issue #3 restored-checkout re-entry route",
     "repo_root": ${REPO_ROOT@Q},
     "helper_root": ${HELPER_ROOT@Q},
+    "helper_root_source": ${HELPER_ROOT_SOURCE@Q},
     "restored_checkout_root": ${RESTORED_CHECKOUT_ROOT@Q},
     "memory_root": ${MEMORY_ROOT@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
@@ -165,6 +201,7 @@ print(json.dumps({
         "Use sync_only_saved_snapshot_route when the restored checkout already exists and only the helper surface needs to be refreshed in place.",
         "Run restored_checkout_check immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run synced_restored_checkout_check when the restored checkout was rebuilt with --sync-helper-surface and should be compared against the live helper root for drift.",
+        "When repo_root already points at browser-memory-snapshot, the route auto-prefers the current working tree as helper_root if it still looks like the live helper checkout.",
         "Run saved_memory_preflight against the restored checkout after the restored-checkout check.",
         "Run saved_archive_integrity next when the route needs to prove the restored checkout still points back to the expected saved repo and dependency archives.",
         "Use linux_build_route when the next blocker is still toolchain or offline dependency staging.",
@@ -180,6 +217,7 @@ Google issue #3 restored-checkout re-entry route
 
 Repo root:               ${REPO_ROOT}
 Live helper root:        ${HELPER_ROOT}
+Helper root source:      ${HELPER_ROOT_SOURCE}
 Restored checkout root:  ${RESTORED_CHECKOUT_ROOT}
 Memory root:             ${MEMORY_ROOT}
 Fallback Zig archive:    ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
@@ -235,6 +273,7 @@ Working rules
   - Use the preferred saved-browser-snapshot restore route when the reusable checkout is still missing or needs to be refreshed from Memory.
   - When --expect-helper-surface is set, prefer the synced saved-browser-snapshot restore route so the restored checkout actually carries the helper surface that the next comparison expects.
   - Use the helper-surface refresh-only route when the restored checkout already exists and only the synced issue #3 helper surface needs to be refreshed in place.
+  - When repo_root already points at browser-memory-snapshot, the route auto-prefers the current working tree as helper_root if it still looks like the live helper checkout.
   - Run the restored-checkout readiness check right after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.
   - Use the synced helper-surface restored-checkout check when the restored checkout was rebuilt with --sync-helper-surface.
   - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader helper output.
