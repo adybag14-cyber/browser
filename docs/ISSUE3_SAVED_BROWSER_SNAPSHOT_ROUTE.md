@@ -11,8 +11,10 @@ path by hand.
 Companion helpers:
 
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
+- `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md`
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -37,14 +39,19 @@ From the browser repo root:
 
 ```bash
 bash ./scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh
+python ./scripts/check_issue3_saved_browser_snapshot_archive_surface.py
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --check-only
 ```
 
-The first command verifies that the restore note, route printer, and follow-up
-helpers are still present on the branch-local surface before the route tries to
-extract anything.
+The first command verifies that the restore note, route printer, archive-surface
+helper, and follow-up helpers are still present on the branch-local surface
+before the route tries to extract anything.
 
-The second command prints the saved archive location, the inferred top-level
+The second command checks whether the saved snapshot archive already contains the
+current helper surface or whether `--sync-helper-surface` is the safer restore
+mode before the route chooses its follow-up root.
+
+The third command prints the saved archive location, the inferred top-level
 folder from the zip, the default restore destination, and the first follow-up
 commands.
 
@@ -87,7 +94,9 @@ separate live checkout.
 ## Recommended Self-Contained Restore
 
 Prefer the synced restore path when the restored checkout should become its own
-follow-up root for the next Linux or WSL replay:
+follow-up root for the next Linux or WSL replay, or whenever
+`check_issue3_saved_browser_snapshot_archive_surface.py` reports that the saved
+archive is missing one or more current helper paths:
 
 ```bash
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface --check-only
@@ -172,6 +181,10 @@ newest branch-local recovery helpers. Do not switch into the restored checkout
 and assume these route scripts exist there unless the restore used
 `--sync-helper-surface` or a later `--sync-only` refresh.
 
+The archive-surface helper keeps that stale-archive decision on its own compact
+preflight before the restore mode is chosen. Use it whenever the run needs a
+quick answer about whether a plain restore is still safe.
+
 The route helper prints those same commands with the resolved archive,
 destination, helper-root, optional helper-surface sync mode, and optional
 fallback Zig archive surface already filled in.
@@ -187,6 +200,9 @@ runtime re-entry route anchored to the restored checkout before the direct issue
   patch itself.
 - Prefer a disposable restored checkout for helper validation when the live
   branch still needs a safer publication path for large existing files.
+- Run `check_issue3_saved_browser_snapshot_archive_surface.py` before choosing
+  between a plain restore and `--sync-helper-surface` when the archive age is in
+  doubt.
 - Run `check_issue3_restored_checkout.py` immediately after restore so missing
   repo surfaces or helper drift fail before the archive-focused preflights.
 - Prefer `--sync-helper-surface` when the restored checkout should be more
