@@ -41,6 +41,8 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
@@ -73,6 +75,22 @@ bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 
 Use `--json` when another helper wants the route-surface result as structured
 output.
+
+## Surface The Saved Zig Route First When Archive Selection Is The Slice
+
+When the immediate issue `#11` work is about choosing or restoring a saved Zig
+`0.15.x` archive, fail fast on the saved-Zig route surface before trusting the
+archive-selection route output:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
+```
+
+Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
+when the attached archive is not sitting beside the repo workspace and the
+saved-Zig route should inspect the same surfaced fallback path as the saved-
+Memory, build-readiness, or Zig recovery follow-up helpers.
 
 ## Print The Compact Handoff
 
