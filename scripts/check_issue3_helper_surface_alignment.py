@@ -35,7 +35,10 @@ CRITICAL_ALIGNMENT_PATHS: tuple[str, ...] = (
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
     "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
     "scripts/linux/show_issue3_progress_tracker_route.sh",
+    "scripts/check_issue3_saved_rust_archive_candidates.py",
+    "scripts/check_issue3_staged_rust_toolchain_candidates.py",
     "scripts/check_issue3_saved_zig_archive_candidates.py",
+    "scripts/check_issue3_staged_zig_toolchain_candidates.py",
     "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
     "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
 )
@@ -354,7 +357,10 @@ class HelperSurfaceAlignmentTests(unittest.TestCase):
                     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
                     "scripts/linux/check_issue3_progress_tracker_route_surface.sh"
                     "scripts/linux/show_issue3_progress_tracker_route.sh"
+                    "scripts/check_issue3_saved_rust_archive_candidates.py"
+                    "scripts/check_issue3_staged_rust_toolchain_candidates.py"
                     "scripts/check_issue3_saved_zig_archive_candidates.py"
+                    "scripts/check_issue3_staged_zig_toolchain_candidates.py"
                     "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh"
                     "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
                 )
@@ -381,6 +387,18 @@ class HelperSurfaceAlignmentTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertIn(
                 "scripts/check_issue3_saved_zig_archive_candidates.py",
+                result["critical_alignment"]["saved_memory_inputs"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_rust_archive_candidates.py",
+                result["critical_alignment"]["saved_memory_inputs"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+                result["critical_alignment"]["saved_memory_inputs"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_staged_zig_toolchain_candidates.py",
                 result["critical_alignment"]["saved_memory_inputs"],
             )
 
