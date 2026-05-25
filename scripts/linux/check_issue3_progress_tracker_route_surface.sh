@@ -61,7 +61,7 @@ declare -a REFERENCE_PATHS=(
 declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_progress_tracker_route_surface.sh|The progress-tracker note keeps the dedicated route surface checker visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_progress_tracker_route.sh|The progress-tracker note keeps the compact route printer visible."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue \\`#11\\`|The progress-tracker note still points reruns at issue #11."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|issue `#11`|The progress-tracker note still points reruns at issue #11."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Goal:|The progress-tracker note keeps the start-update template visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Achieved:|The progress-tracker note keeps the completion-update template visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The progress-tracker note keeps the Linux or WSL build-readiness route visible."
