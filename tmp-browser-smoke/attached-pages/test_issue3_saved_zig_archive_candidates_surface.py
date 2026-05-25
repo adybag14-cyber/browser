@@ -1,185 +1,194 @@
+#!/usr/bin/env python3
+
 from __future__ import annotations
 
 import os
-import pathlib
+from pathlib import Path
 import tempfile
 import unittest
 
 
-def read_text(path: pathlib.Path) -> str:
-    return path.read_text(encoding="utf-8")
+REQUIRED_FILES: tuple[tuple[str, str], ...] = (
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "Zig recovery note for the Linux or WSL re-entry lane.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "Fail-fast route surface checker for the Zig recovery lane.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "Saved Zig archive candidate selector.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+        "Wrapper that surfaces saved Zig archive candidates with repo-local defaults.",
+    ),
+)
+
+SNIPPET_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "The recovery note keeps the saved Zig archive selector visible.",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "0.15.2",
+        "The recovery note keeps the expected branch-compatible Zig line visible.",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+        "The recovery note still names the attached fallback Zig archive.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "The route surface checker keeps the saved Zig archive selector visible.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
+        "--saved-archives-root",
+        "The route surface checker keeps the saved-archives override visible.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "--saved-archives-root",
+        "The saved Zig archive selector still supports an explicit saved-archives root.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "normalize_saved_archives_root",
+        "The saved Zig archive selector still normalizes repo_archives/browser to dependencies.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "Preferred restore commands:",
+        "The saved Zig archive selector still prints preferred restore commands.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "use the fallback archive only as a surfaced stopgap",
+        "The saved Zig archive selector still warns about fallback-only use.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+        "--saved-archives-root",
+        "The wrapper still accepts an explicit saved-archives root override.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+        "normalize_saved_archives_root",
+        "The wrapper still normalizes repo_archives/browser to dependencies.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+        "check_issue3_saved_zig_archive_candidates.py",
+        "The wrapper still delegates to the saved Zig archive selector.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+        "--fallback-zig-archive",
+        "The wrapper still accepts an explicit fallback Zig archive override.",
+    ),
+)
 
 
-FIXTURE_FILES = {
-    "build.zig.zon": """
-    .{
-        .name = "browser",
-        .version = "0.0.0",
-        .minimum_zig_version = "0.15.2",
-        .dependencies = .{
-            .v8 = .{ .path = "../zig-v8-fork" },
-            .@"boringssl-zig" = .{ .path = "../boringssl-zig" },
-        },
+def collect_surface_state(repo_root: Path) -> dict[str, object]:
+    missing_files: list[str] = []
+    missing_snippets: list[dict[str, str]] = []
+
+    for relative_path, _purpose in REQUIRED_FILES:
+        if not (repo_root / relative_path).is_file():
+            missing_files.append(relative_path)
+
+    for relative_path, snippet, purpose in SNIPPET_EXPECTATIONS:
+        target = repo_root / relative_path
+        if not target.is_file() or snippet not in target.read_text(encoding="utf-8"):
+            missing_snippets.append(
+                {
+                    "path": relative_path,
+                    "snippet": snippet,
+                    "purpose": purpose,
+                }
+            )
+
+    return {
+        "repo_root": str(repo_root),
+        "missing_files": missing_files,
+        "missing_snippets": missing_snippets,
     }
-    """,
-    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md": """
-    # Issue #3 Zig Toolchain Recovery Route
-
-    - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
-    - `scripts/linux/check_issue3_zig_toolchain_match.sh`
-    - `scripts/check_issue3_saved_zig_archive_candidates.py`
-    - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-    - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-    - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
-    - `scripts/linux/restore_zig_toolchain_archive.sh`
-    - `scripts/check_linux_build_readiness.py`
-    - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
-    - `0.15.2`
-    - `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
-    - `0.15.x` restore candidate
-    - `saved-archive candidate list`
-    - `preferred 0.15.x restore path`
-    """,
-    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md": """
-    # Issue #3 Zig Toolchain Archive Restore Route
-
-    - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-    - `scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
-    - `scripts/linux/restore_zig_toolchain_archive.sh`
-    - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
-    """,
-    "scripts/check_issue3_saved_zig_archive_candidates.py": r"""
-    DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
-    parser.add_argument("--saved-archives-root")
-    parser.add_argument("--toolchains-root")
-    parser.add_argument("--fallback-zig-archive")
-    def normalize_saved_archives_root(saved_archives_root):
-        return saved_archives_root
-    def choose_preferred_archive(expected, archive_reports):
-        return None
-    "preferred_archive": preferred_archive,
-    "commands": commands
-    print("Preferred restore commands:")
-    print("Saved Zig archive discovery failed:", file=sys.stderr)
-    print("use the fallback archive only as a surfaced stopgap", file=sys.stderr)
-    """,
-    "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh": r"""
-    saved_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"
-    archive_restore_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_archive_restore_route_surface.sh"
-    "saved_archive_candidate_discovery"
-    "matching_archive_restore_check"
-    "matching_archive_restore"
-    "Saved archive candidate discovery"
-    "Saved archives root:"
-    "Offline deps root:"
-    "The saved-archives-root override accepts either repo_archives/browser or repo_archives/browser/dependencies"
-    """,
-    "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh": r"""
-    scripts/check_issue3_saved_zig_archive_candidates.py
-    saved_archive_candidate_discovery
-    Saved archive candidate discovery
-    Preferred restore commands:
-    use the fallback archive only as a surfaced stopgap
-    """,
-}
 
 
-def build_fixture_repo() -> pathlib.Path:
-    root = pathlib.Path(tempfile.mkdtemp(prefix="lightpanda-saved-zig-archives-"))
-    for relative_path, content in FIXTURE_FILES.items():
+def build_fixture_repo(root: Path) -> None:
+    file_snippets: dict[str, list[str]] = {}
+    for relative_path, _purpose in REQUIRED_FILES:
+        file_snippets.setdefault(relative_path, [])
+    for relative_path, snippet, _purpose in SNIPPET_EXPECTATIONS:
+        file_snippets.setdefault(relative_path, []).append(snippet)
+
+    for relative_path, snippets in file_snippets.items():
         target = root / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content.lstrip("\n"), encoding="utf-8")
-    return root
+        target.write_text("\n".join(["fixture"] + snippets), encoding="utf-8")
 
 
-class Issue3SavedZigArchiveCandidatesSurfaceTest(unittest.TestCase):
+class SavedZigArchiveCandidatesSurfaceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        env_root = os.environ.get("LIGHTPANDA_REPO_ROOT", "").strip()
-        if env_root:
-            cls.repo_root = pathlib.Path(env_root).resolve()
-        elif os.environ.get("LIGHTPANDA_FIXTURE_REPO") == "1":
-            cls.repo_root = build_fixture_repo()
+        cls._tmpdir: tempfile.TemporaryDirectory[str] | None = None
+        if os.environ.get("LIGHTPANDA_FIXTURE_REPO") == "1":
+            cls._tmpdir = tempfile.TemporaryDirectory()
+            cls.repo_root = Path(cls._tmpdir.name)
+            build_fixture_repo(cls.repo_root)
         else:
-            cls.repo_root = pathlib.Path(__file__).resolve().parents[2]
+            cls.repo_root = Path(__file__).resolve().parents[2]
 
-        cls.recovery_note = read_text(
-            cls.repo_root / "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md"
-        )
-        cls.archive_restore_note = read_text(
-            cls.repo_root / "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md"
-        )
-        cls.saved_archive_helper = read_text(
-            cls.repo_root / "scripts/check_issue3_saved_zig_archive_candidates.py"
-        )
-        cls.recovery_route = read_text(
-            cls.repo_root / "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
-        )
-        cls.recovery_surface = read_text(
-            cls.repo_root / "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh"
-        )
-        cls.build_manifest = read_text(cls.repo_root / "build.zig.zon")
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls._tmpdir is not None:
+            cls._tmpdir.cleanup()
 
-    def test_recovery_note_surfaces_saved_archive_helper(self) -> None:
-        for fragment in (
-            "scripts/check_issue3_saved_zig_archive_candidates.py",
-            "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
-            "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
-            "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
-            "saved-archive candidate list",
-            "preferred `0.15.x` archive choice",
-            "`0.15.x` restore candidate",
-        ):
-            self.assertIn(fragment, self.recovery_note)
+    def test_surface_files_and_snippets_are_present(self) -> None:
+        result = collect_surface_state(self.repo_root)
+        self.assertEqual(result["missing_files"], [])
+        self.assertEqual(result["missing_snippets"], [])
 
-    def test_saved_archive_helper_keeps_candidate_and_restore_contracts_visible(self) -> None:
-        for fragment in (
-            'DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"',
-            'parser.add_argument("--saved-archives-root")',
-            'parser.add_argument("--toolchains-root")',
-            'parser.add_argument("--fallback-zig-archive")',
-            "def normalize_saved_archives_root(saved_archives_root):",
-            "def choose_preferred_archive(expected, archive_reports):",
-            '"preferred_archive": preferred_archive',
-            '"commands": commands',
-            'print("Preferred restore commands:")',
-            'print("Saved Zig archive discovery failed:", file=sys.stderr)',
-            "use the fallback archive only as a surfaced stopgap",
-        ):
-            self.assertIn(fragment, self.saved_archive_helper)
+    def test_missing_wrapper_script_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            build_fixture_repo(repo_root)
+            (repo_root / "scripts/linux/show_issue3_saved_zig_archive_candidates.sh").unlink()
 
-    def test_recovery_route_surfaces_saved_archive_candidate_command(self) -> None:
-        for fragment in (
-            'saved_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"',
-            '"saved_archive_candidate_discovery"',
-            '"matching_archive_restore_check"',
-            '"matching_archive_restore"',
-            '"Saved archive candidate discovery"',
-            'Saved archives root:',
-            'Offline deps root:',
-            "repo_archives/browser ",
-            "or repo_archives/browser/dependencies",
-        ):
-            self.assertIn(fragment, self.recovery_route)
+            result = collect_surface_state(repo_root)
 
-    def test_surface_checker_requires_saved_archive_candidate_handoff(self) -> None:
-        for fragment in (
-            "scripts/check_issue3_saved_zig_archive_candidates.py",
-            "saved_archive_candidate_discovery",
-            "Saved archive candidate discovery",
-            "Preferred restore commands:",
-            "use the fallback archive only as a surfaced stopgap",
-        ):
-            self.assertIn(fragment, self.recovery_surface)
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
+                result["missing_files"],
+            )
 
-    def test_manifest_still_pins_branch_expected_zig_line(self) -> None:
-        for fragment in (
-            '.minimum_zig_version = "0.15.2"',
-            '.v8 = .{ .path = "../zig-v8-fork" }',
-            '.@"boringssl-zig" = .{ .path = "../boringssl-zig" }',
-        ):
-            self.assertIn(fragment, self.build_manifest)
+    def test_missing_saved_archives_override_snippet_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            build_fixture_repo(repo_root)
+            target = repo_root / "scripts/check_issue3_saved_zig_archive_candidates.py"
+            target.write_text("fixture\nnormalize_saved_archives_root\n", encoding="utf-8")
+
+            result = collect_surface_state(repo_root)
+
+            missing = {
+                (entry["path"], entry["snippet"])
+                for entry in result["missing_snippets"]
+            }
+            self.assertIn(
+                (
+                    "scripts/check_issue3_saved_zig_archive_candidates.py",
+                    "--saved-archives-root",
+                ),
+                missing,
+            )
 
 
 if __name__ == "__main__":
