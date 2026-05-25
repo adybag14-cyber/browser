@@ -1,32 +1,36 @@
 # Issue #3 Saved Zig Archive Candidates Route
 
-Use this note when the Linux or WSL re-entry lane needs to decide whether the
-saved archives already contain a branch-compatible Zig `0.15.x` restore target
-before the fallback Zig `0.17` bundle is staged or blamed for the next
-readiness rerun.
+Use this note when the Linux or WSL headed runtime re-entry lane needs to prove
+which saved Zig toolchain archive is the best branch-compatible restore
+candidate before broader build-readiness work is retried.
 
-This route keeps the saved-archive candidate discovery helper on its own compact
-surface so future runs do not have to rebuild the same archive-selection steps
-by hand.
+This route exists to keep saved-archive discovery on a branch-local helper
+surface instead of forcing future runs to hand-scan `repo_archives/browser` for
+possible Zig bundles.
 
-## Companion Surfaces
+Companion helpers:
 
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
-- `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/check_issue3_saved_zig_archive_candidates.py`
-- `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+- `scripts/linux/restore_zig_toolchain_archive.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
-- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 
-## Use This Route When
+## When To Use It
 
-- no staged Zig executable under `../toolchains` matches the branch minimum
-  line from `build.zig.zon`
-- the run needs to know whether the saved archives already include a Zig
-  `0.15.x` restore target
-- the next issue `#11` update should report saved-archive discovery work rather
-  than direct runtime-file work
+Use this route when any of these are true:
+
+- no staged Zig candidate under `../toolchains` matches the branch's expected
+  `0.15.x` line
+- a run needs to know whether the saved dependency archive area already contains
+  a real `0.15.x` toolchain archive before falling back to the attached `0.17`
+  archive
+- a run wants the exact restore commands for the preferred saved Zig archive
+  without rebuilding them by hand
+- a route wants to fail fast if the saved-archive helper, restore helper, or
+  branch-local note has drifted out of place
 
 ## Run The Surface Check First
 
@@ -36,31 +40,46 @@ From the browser repo root:
 bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
 ```
 
-Use `--json` when another helper needs the route-surface result as structured
-output.
+Use `--json` when another helper wants the surfaced discovery metadata as
+structured output.
 
-## Print The Route
+The surface checker confirms that the branch-local note, saved-archive helper,
+restore helper, and `build.zig.zon` are all in place before a run trusts the
+candidate discovery output.
 
-From the browser repo root:
+## Surface The Saved Zig Archive Candidates
+
+After the surface check passes, run:
 
 ```bash
-bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
+python ./scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
 ```
 
-Use `--json` when another helper needs the saved-archive root, the branch
-minimum Zig line, the preferred restore commands, or the fallback archive path
-as structured output.
+Use `--json` when another helper wants the discovered archive list, preferred
+saved archive, or restore commands as structured output.
+
+## Restore The Preferred Saved Archive
+
+When the helper reports a preferred saved archive, run its surfaced restore
+commands in this order:
+
+```bash
+bash ./scripts/linux/restore_zig_toolchain_archive.sh --check-only ...
+bash ./scripts/linux/restore_zig_toolchain_archive.sh ...
+```
+
+Keep `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` open while restoring
+that archive so the shared `../toolchains` staging path stays aligned with the
+current workspace.
 
 ## Working Rules
 
-- Run the route surface check first so missing docs or helper drift fails before
-  the run trusts saved Zig archive discovery output.
-- Run `python ./scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .`
-  before hand-picking a restore archive from the saved dependencies folder.
-- Prefer an exact `0.15.2` archive when one exists, otherwise prefer the newest
-  saved archive on the same `0.15.x` line.
-- Keep the route under issue `#11` while the work is still about saved inputs,
-  toolchain recovery, or Linux or WSL readiness gates.
-- Move back to `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md` and the direct
-  runtime re-entry notes only after a matching Zig archive is staged under
-  `../toolchains`.
+- Run the saved-archive candidate surface check first so helper drift fails
+  before the route blames missing toolchains.
+- Prefer a saved Zig `0.15.2` or other `0.15.x` archive over the attached
+  fallback `0.17` bundle whenever one is available.
+- Treat the attached Zig `0.17` bundle as a surfaced stopgap only, not as
+  branch-compatible validation evidence.
+- After staging the preferred saved archive under `../toolchains`, rerun the
+  matching-line gate and then the broader Linux build-readiness helper before
+  reopening the direct `Page.zig` plus `win32_backend.zig` runtime patch.
