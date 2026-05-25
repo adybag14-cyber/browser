@@ -56,31 +56,34 @@ class ZigArchiveRestoreRoutePrinterTests(unittest.TestCase):
             text=True,
         )
 
-    def test_text_output_surfaces_route_commands(self) -> None:
+    def test_text_output_surfaces_live_route_sections(self) -> None:
         completed = self.run_script()
         output = completed.stdout
-        self.assertIn("Google issue #3 Zig archive-restore route", output)
-        self.assertIn("Surface check:", output)
-        self.assertIn("Archive restore surface check:", output)
-        self.assertIn("Restore the Zig archive:", output)
+        self.assertIn("Google issue #3 Zig toolchain archive restore route", output)
+        self.assertIn("Surface check", output)
+        self.assertIn("Archive restore commands", output)
         self.assertIn("show_issue3_zig_toolchain_recovery_route.sh", output)
-        self.assertIn("/path/to/zig-0.15.2.tar.xz", output)
+        self.assertIn("provide --archive /path/to/zig-0.15.2.tar.xz", output)
 
-    def test_json_output_reports_placeholder_when_no_archive_is_selected(self) -> None:
+    def test_json_output_reports_compact_route_when_no_archive_is_selected(self) -> None:
         completed = self.run_script("--json")
         payload = json.loads(completed.stdout)
-        self.assertEqual(payload["issue"], "Google issue #3 Zig archive-restore route")
-        self.assertFalse(payload["archive_selected"])
-        self.assertEqual(payload["display_archive_path"], "/path/to/zig-0.15.2.tar.xz")
+        self.assertEqual(payload["issue"], "Google issue #3 Zig toolchain archive restore route")
+        self.assertEqual(payload["archive_path"], "")
+        self.assertIn("surface_check", payload["commands"])
+        self.assertIn("recovery_route", payload["commands"])
+        self.assertNotIn("restore_check_only", payload["commands"])
 
-    def test_json_output_reports_selected_archive(self) -> None:
+    def test_json_output_reports_restore_and_readiness_when_archive_is_selected(self) -> None:
         archive = self.root / "zig-0.15.2.tar.xz"
         archive.write_text("placeholder archive path\n", encoding="utf-8")
         completed = self.run_script("--archive", str(archive), "--json")
         payload = json.loads(completed.stdout)
-        self.assertTrue(payload["archive_selected"])
         self.assertEqual(payload["archive_path"], str(archive))
-        self.assertEqual(payload["display_archive_path"], str(archive))
+        self.assertTrue(payload["destination"].endswith("zig-0.15.2"))
+        self.assertIn("restore_check_only", payload["commands"])
+        self.assertIn("restore", payload["commands"])
+        self.assertIn("full_readiness", payload["commands"])
 
 
 if __name__ == "__main__":
