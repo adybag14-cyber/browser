@@ -161,6 +161,14 @@ REQUIRED_PATHS = [
         "Zig toolchain recovery surface checker that should stay available before fallback Zig is trusted.",
     ),
     (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        "Zig toolchain matching-line checker that should stay available before a staged candidate is trusted as branch-compatible.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+        "Zig archive restore surface checker that should stay available before a saved 0.15.x archive is staged under ../toolchains.",
+    ),
+    (
         "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
         "Zig toolchain recovery route printer that should stay available before fallback Zig is trusted.",
     ),
