@@ -133,6 +133,8 @@ RESTORED_CHECKOUT_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_
 RESTORED_CHECKOUT_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
 SAVED_MEMORY_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
 SAVED_MEMORY_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh"
+PROGRESS_TRACKER_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh"
+PROGRESS_TRACKER_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh"
 SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
 SAVED_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh"
 ZIG_TOOLCHAIN_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
@@ -155,6 +157,8 @@ RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${RESTORED_CHE
 RESTORED_CHECKOUT_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SAVED_MEMORY_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_MEMORY_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_MEMORY_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}")"
+PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRACKER_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRACKER_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 TOOLCHAIN_ROUTE_COMMAND="bash $(format_shell_arg "${ZIG_TOOLCHAIN_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
@@ -187,6 +191,7 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SNAPSHOT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RESTORED_CHECKOUT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    PROGRESS_TRACKER_ROUTE_COMMAND+=" --repo-root $(format_shell_arg "${REPO_ROOT}")"
     SAVED_ARCHIVE_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     TOOLCHAIN_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     TOOLCHAIN_MATCH_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -218,6 +223,7 @@ print(json.dumps({
         "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
         "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
         "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
         "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
         "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
@@ -234,6 +240,8 @@ print(json.dumps({
         "restored_checkout_route": ${RESTORED_CHECKOUT_ROUTE_COMMAND@Q},
         "saved_memory_route_surface": ${SAVED_MEMORY_ROUTE_SURFACE_COMMAND@Q},
         "saved_memory_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
+        "progress_tracker_route_surface": ${PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND@Q},
+        "progress_tracker_route": ${PROGRESS_TRACKER_ROUTE_COMMAND@Q},
         "saved_memory_inputs": ${SAVED_MEMORY_INPUTS_COMMAND@Q},
         "saved_archive_route_surface": ${SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND@Q},
         "saved_archive_route": ${SAVED_ARCHIVE_ROUTE_COMMAND@Q},
@@ -257,9 +265,10 @@ print(json.dumps({
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Run the workspace_context command first when the checkout sits deeper than the default sibling layout so later route overrides reuse surfaced roots instead of hand-built guesses.",
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
-        "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive can lag the live helper surface.",
+        "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive helper surface may be stale.",
         "Run the restored_checkout_route_surface command and then the restored_checkout_route command when a reusable checkout already exists or immediately after the snapshot restore completes.",
         "Run the saved_memory_route_surface command and then the saved_memory_route command when the route depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.",
+        "Run the progress_tracker_route_surface command and then the progress_tracker_route command when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.",
         "Run the saved_memory_inputs command only after the dedicated saved-Memory route has been surfaced when restore, build-readiness, or runtime follow-up commands should stay on one compact helper path.",
         "Run the saved_archive_route_surface command and then the saved_archive_route command when the route needs the dedicated checksum route back on one compact helper surface before offline staging starts.",
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
@@ -301,6 +310,7 @@ Read first
   docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md
   docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
   docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
@@ -340,6 +350,12 @@ Suggested route
 
   Saved Memory route:
     ${SAVED_MEMORY_ROUTE_COMMAND}
+
+  Progress-tracker route surface check:
+    ${PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND}
+
+  Progress-tracker route:
+    ${PROGRESS_TRACKER_ROUTE_COMMAND}
 
   Saved Memory input preflight:
     ${SAVED_MEMORY_INPUTS_COMMAND}
@@ -403,6 +419,7 @@ Working rules
   - Prefer the synced saved-browser-snapshot route when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Run the restored-checkout route surface check and then the restored-checkout route when a reusable checkout already exists or immediately after the restore route finishes.
   - Run the saved Memory route surface check and then the saved Memory route when the replay depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.
+  - Run the progress-tracker route surface check and then the progress-tracker route when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.
   - Run the saved Memory input preflight after the dedicated saved Memory route has been surfaced when the route should keep restore, build-readiness, or runtime follow-up commands on one compact helper surface.
   - Run the saved archive integrity route surface check and then the saved archive integrity route when the route needs the dedicated checksum helper chain surfaced before offline staging starts.
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
