@@ -50,6 +50,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+- `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -75,6 +76,7 @@ build-readiness is trusted.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
+surface the staged Zig candidate helper before unpacking the archive again,
 run the matching-line gate after any staged restore, and surface the archive-
 restore checker before broader readiness is trusted again.
 
@@ -121,6 +123,13 @@ bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
 ```
 
+Keep the staged-toolchain candidate helper visible before unpacking the archive
+again:
+
+```bash
+python ./scripts/check_issue3_staged_zig_toolchain_candidates.py --repo-root .
+```
+
 Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
 when the attached archive is not sitting beside the repo workspace and the
 saved-Rust, saved-Zig, saved-Memory, build-readiness, or Zig recovery follow-up
@@ -147,9 +156,9 @@ when the attached archive is not sitting beside the repo workspace and the
 saved-Rust, saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up
 routes all need to inspect the same surfaced archive path.
 
-Use `--json` when another helper wants the issue number, issue URL, start
-template, completion template, and follow-up route commands as structured
-output.
+Use `--json` when another helper wants the issue number, issue URL, staged Zig
+candidate command, start template, completion template, and follow-up route
+commands as structured output.
 
 ## Compact Comment Shapes
 
