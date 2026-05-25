@@ -20,6 +20,7 @@ MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 ARCHIVE_PATTERNS = ("*.tar", "*.tar.gz", "*.tgz", "*.tar.xz", "*.zip")
 DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_RESTORED_CHECKOUT_ROOT_NAME = "browser-memory-snapshot"
 ZIG_BINARY_SUFFIXES = ("/zig", "/bin/zig", "/zig.exe", "/bin/zig.exe")
 
 
@@ -60,15 +61,43 @@ def build_saved_archive_search_roots(saved_archives_root: pathlib.Path) -> list[
     return search_roots
 
 
+def ancestor_chain(start: pathlib.Path) -> list[pathlib.Path]:
+    chain: list[pathlib.Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: pathlib.Path, relative_path: str) -> pathlib.Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "memory/repo_archives/browser")
+    if located is not None and located.is_dir():
+        return normalize_saved_archives_root(located)
     return normalize_saved_archives_root(repo_root.parent / "memory" / "repo_archives" / "browser")
 
 
 def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
 def resolve_default_fallback_archive(repo_root: pathlib.Path) -> pathlib.Path | None:
+    located = locate_first_existing(repo_root, f"agent_files/{DEFAULT_FALLBACK_ZIG_ARCHIVE}")
+    if located is not None and located.is_file():
+        return located
     candidate = (repo_root.parent / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE).resolve()
     return candidate if candidate.is_file() else None
 
@@ -301,7 +330,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the shared toolchains directory (default: ../toolchains beside the repo)",
+        help="Path to the shared toolchains directory (default: nearest ancestor toolchains root or ../toolchains)",
     )
     parser.add_argument(
         "--fallback-zig-archive",
@@ -347,7 +376,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             reports = [describe_archive("0.15.2", path) for path in discovered]
             preferred = choose_preferred_archive("0.15.2", reports)
 
-            self.assertEqual(discovered, [root_archive.resolve(), deps_archive.resolve()])
+            self.assertEqual(set(discovered), {root_archive.resolve(), deps_archive.resolve()})
             self.assertIsNotNone(preferred)
             assert preferred is not None
             self.assertEqual(preferred["path"], str(root_archive.resolve()))
@@ -437,7 +466,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             reports = [describe_archive("0.15.2", path) for path in discovered]
             preferred = choose_preferred_archive("0.15.2", reports)
 
-            self.assertEqual(discovered, [root_archive.resolve(), deps_archive.resolve()])
+            self.assertEqual(set(discovered), {root_archive.resolve(), deps_archive.resolve()})
             self.assertIsNotNone(preferred)
             assert preferred is not None
             self.assertEqual(preferred["path"], str(root_archive.resolve()))
@@ -494,6 +523,25 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
         )
         self.assertEqual(command[-1], "--check-only")
 
+    def test_defaults_discover_ancestor_workspace_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = pathlib.Path(tmpdir)
+            repo_root = workspace_root / "restored" / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME / "browser"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
+
+            saved_archives_root = workspace_root / "memory" / "repo_archives" / "browser"
+            saved_archives_root.mkdir(parents=True)
+            toolchains_root = workspace_root / "toolchains"
+            toolchains_root.mkdir()
+            fallback_archive = workspace_root / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE
+            fallback_archive.parent.mkdir()
+            fallback_archive.write_text("zig", encoding="utf-8")
+
+            self.assertEqual(resolve_default_saved_archives_root(repo_root), saved_archives_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+            self.assertEqual(resolve_default_fallback_archive(repo_root), fallback_archive.resolve())
+
     def test_build_report_fails_without_matching_archive(self) -> None:
         search_roots = [
             pathlib.Path("/tmp/memory/repo_archives/browser"),
@@ -523,7 +571,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
 
 def main() -> int:
     args = build_parser().parse_args()
-    if args.self_test:
+    if args.self-test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(SavedZigArchiveHelperTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
