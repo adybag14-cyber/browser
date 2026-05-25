@@ -53,14 +53,51 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry guide"),
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "Enter-submit runtime revalidation guide"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved-browser-snapshot restore guide"),
+    (
+        "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+        "restored-checkout re-entry guide",
+    ),
+    (
+        "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
+        "saved-archive integrity guide",
+    ),
+    (
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
+        "saved-browser-snapshot archive-surface guide",
+    ),
+    (
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+        "issue #11 progress-tracker route guide",
+    ),
     ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route guide"),
-    ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry guide"),
-    ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity guide"),
-    ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness guide"),
-    ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery guide"),
-    ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore guide"),
-    ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
-    ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain guide"),
+    (
+        "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+        "saved-memory inputs route guide",
+    ),
+    (
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "Linux build-readiness guide",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+        "Zig toolchain recovery guide",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
+        "Zig toolchain archive restore guide",
+    ),
+    (
+        "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+        "saved Zig archive candidate guide",
+    ),
+    (
+        "docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md",
+        "offline build inputs guide",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+        "saved Rust toolchain guide",
+    ),
     (
         "docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md",
         "Google-shaped attached-page validation flow guide",
@@ -69,6 +106,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/check_issue3_saved_archive_integrity.py",
         "saved-archive integrity helper",
+    ),
+    (
+        "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
+        "saved-browser-snapshot archive-surface helper",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "saved Zig archive candidate helper",
     ),
     (
         "scripts/check_issue3_restored_checkout.py",
@@ -109,6 +154,30 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "attached-pages catalog launcher",
     ),
     (
+        "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+        "issue #11 progress-tracker route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_progress_tracker_route.sh",
+        "issue #11 progress-tracker route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+        "saved Zig archive candidate route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+        "saved Zig archive candidate route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_workspace_context_route_surface.sh",
+        "workspace-context route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_workspace_context_route.sh",
+        "workspace-context route helper",
+    ),
+    (
         "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
         "saved-browser-snapshot route surface checker",
     ),
@@ -135,6 +204,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_saved_archive_integrity_route.sh",
         "saved-archive integrity route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+        "saved-memory inputs route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+        "saved-memory inputs route helper",
     ),
     (
         "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
@@ -190,7 +267,7 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ),
     (
         "scripts/linux/check_issue3_offline_build_inputs_route_surface.sh",
-        "offline build inputs surface checker",
+        "offline build inputs route surface checker",
     ),
     (
         "scripts/linux/show_issue3_offline_build_inputs_route.sh",
@@ -199,6 +276,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/prepare_offline_build_inputs.sh",
         "offline build inputs preparation helper",
+    ),
+    (
+        "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
+        "Windows runtime handoff surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+        "Windows runtime handoff route helper",
     ),
 )
 
@@ -611,78 +696,106 @@ def emit_text(result: dict[str, object]) -> None:
     helper_sync_status = {
         "synced": "PASS",
         "out-of-sync": "FAIL",
-        "restored-checkout-missing": "WARN",
         "helper-root-missing": "FAIL",
+        "restored-checkout-missing": "WARN",
     }[helper_surface_sync["status"]]
     print(
-        f"Helper surface sync: [{helper_sync_status}] "
-        f"{helper_surface_sync['helper_root']} -> {helper_surface_sync['restored_checkout_root']}"
+        f"Live/restored helper-surface sync: [{helper_sync_status}] "
+        f"{helper_surface_sync['status']}"
     )
-    if helper_surface_sync["status"] == "out-of-sync":
-        if helper_surface_sync["drifted_files"]:
-            print("         drifted files: " + ", ".join(helper_surface_sync["drifted_files"]))
-        if helper_surface_sync["missing_in_helper_root"]:
-            print(
-                "         missing from helper root: "
-                + ", ".join(helper_surface_sync["missing_in_helper_root"])
-            )
-        if helper_surface_sync["missing_in_restored_checkout"]:
-            print(
-                "         missing from restored checkout: "
-                + ", ".join(helper_surface_sync["missing_in_restored_checkout"])
-            )
-    elif helper_surface_sync["status"] == "restored-checkout-missing":
-        print("         status: no reusable restored checkout yet, so helper sync will be checked after restore")
-    elif helper_surface_sync["status"] == "helper-root-missing":
-        print("         status: helper root is missing; point --helper-root at a live helper checkout")
+    if helper_surface_sync["drifted_files"]:
+        joined = ", ".join(helper_surface_sync["drifted_files"])
+        print(f"         drifted files: {joined}")
+    if helper_surface_sync["missing_in_helper_root"]:
+        joined = ", ".join(helper_surface_sync["missing_in_helper_root"])
+        print(f"         missing in helper root: {joined}")
+    if helper_surface_sync["missing_in_restored_checkout"]:
+        joined = ", ".join(helper_surface_sync["missing_in_restored_checkout"])
+        print(f"         missing in restored checkout: {joined}")
 
-    print("Required saved Memory files:")
+    print("Required Memory inputs:")
     for entry in result["required_files"]:
-        status = "PASS" if entry["exists"] else "FAIL"
-        details = []
-        if "archive_readable" in entry:
-            details.append(
-                "archive OK"
-                if entry["archive_readable"]
-                else f"archive unreadable: {entry['archive_error']}"
-            )
-            if entry.get("archive_summary"):
-                details.append(entry["archive_summary"])
-        detail_suffix = f" ({'; '.join(details)})" if details else ""
-        print(f"  [{status}] {entry['label']}: {entry['path']}{detail_suffix}")
+        if not entry["exists"]:
+            status = "FAIL"
+        elif "archive_readable" in entry and not entry["archive_readable"]:
+            status = "FAIL"
+        else:
+            status = "PASS"
+        print(f"  [{status}] {entry['path']}: {entry['label']}")
+        if entry.get("archive_summary"):
+            print(f"         archive: {entry['archive_summary']}")
+        if entry.get("archive_error"):
+            print(f"         error: {entry['archive_error']}")
 
-    print("Optional saved Memory files:")
+    print("Optional Memory inputs:")
     for entry in result["optional_files"]:
         status = "PASS" if entry["exists"] else "WARN"
-        print(f"  [{status}] {entry['label']}: {entry['path']}")
+        print(f"  [{status}] {entry['path']}: {entry['label']}")
 
     fallback = result["fallback_zig_archive"]
-    fallback_status = "PASS" if fallback["exists"] else "WARN"
-    details = []
-    if "archive_readable" in fallback:
-        details.append(
-            "archive OK"
-            if fallback["archive_readable"]
-            else f"archive unreadable: {fallback['archive_error']}"
-        )
-        if fallback.get("archive_summary"):
-            details.append(fallback["archive_summary"])
-    detail_suffix = f" ({'; '.join(details)})" if details else ""
-    print(
-        f"Fallback Zig archive: [{fallback_status}] {fallback['path']}{detail_suffix}"
-    )
+    if not fallback["exists"]:
+        status = "WARN"
+    elif "archive_readable" in fallback and not fallback["archive_readable"]:
+        status = "FAIL"
+    else:
+        status = "PASS"
+    print(f"Fallback Zig archive: [{status}] {fallback['path']}")
+    if fallback.get("archive_summary"):
+        print(f"         archive: {fallback['archive_summary']}")
+    if fallback.get("archive_error"):
+        print(f"         error: {fallback['archive_error']}")
 
     if result["ok"]:
         print("Saved Memory input check passed.")
+        return
+
+    print("Saved Memory input check failed.", file=sys.stderr)
+    if not repo_root_result["exists"] or not repo_root_result["has_required_file"]:
         print(
-            "Next step: use the saved-browser-snapshot or Linux build-readiness routes to reopen the blocked issue #3 runtime lane."
-        )
-    else:
-        print("Saved Memory input check failed.", file=sys.stderr)
-        print(
-            "Fix the missing or unreadable required inputs, then rerun this preflight before trusting Linux or WSL build-readiness or runtime re-entry commands.",
+            "Suggested next step: point --repo-root at a valid browser checkout before reopening the issue #3 saved-input route.",
             file=sys.stderr,
         )
+        return
+
+    if restored_checkout["status"] == "missing":
+        print(
+            "Suggested next step: run scripts/linux/restore_saved_browser_snapshot.sh before using the restored-checkout helper chain.",
+            file=sys.stderr,
+        )
+        return
+
+    if restored_checkout["status"] == "incomplete-helper-surface":
+        print(
+            "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or refresh the existing destination with --sync-only so the restored checkout carries the current helper surface.",
+            file=sys.stderr,
+        )
+        return
+
+    if helper_surface_sync["status"] == "out-of-sync":
+        print(
+            "Suggested next step: refresh the restored checkout helper surface with restore_saved_browser_snapshot.sh --sync-only so the saved-input route and later follow-up commands agree on the same helper files.",
+            file=sys.stderr,
+        )
+        return
+
+    if missing_required or unreadable_required:
+        print(
+            "Suggested next step: repair the missing or unreadable Memory artifacts before reopening restore, build-readiness, or runtime re-entry work.",
+            file=sys.stderr,
+        )
+        return
+
+    if not fallback["exists"]:
+        print(
+            "Suggested next step: stage the fallback Zig archive in agent_files or pass --fallback-zig-archive explicitly before treating fallback Zig as surfaced input.",
+            file=sys.stderr,
+        )
+        return
+
+    print(
+        "Suggested next step: inspect the saved-input route surface helpers because one of the expected follow-up surfaces is still out of contract.",
+        file=sys.stderr,
+    )
 
 
 class SavedMemoryInputsTests(unittest.TestCase):
@@ -927,7 +1040,23 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
                 "scripts/check_issue3_saved_archive_integrity.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_zig_archive_candidates.py",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
@@ -939,11 +1068,27 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
+                "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
                 "scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
-                "scripts/check_linux_build_readiness.py",
+                "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/check_linux_build_readiness.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_progress_tracker_route.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_workspace_context_route.sh",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
@@ -951,7 +1096,23 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
+                "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
                 "scripts/linux/prepare_offline_build_inputs.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
                 result["missing_helper_surface_files"],
             )
 
