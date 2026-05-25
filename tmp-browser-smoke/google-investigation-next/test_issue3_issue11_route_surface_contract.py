@@ -39,8 +39,18 @@ CONTENT_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+        "check_issue3_saved_rust_build_readiness_route_surface.sh",
+        "The progress-tracker note should keep the saved-Rust bridge surface visible.",
+    ),
+    (
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+        "show_issue3_saved_rust_build_readiness_route.sh",
+        "The progress-tracker note should keep the saved-Rust bridge route visible.",
+    ),
+    (
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
         "check_issue3_saved_rust_toolchain_route_surface.sh",
-        "The progress-tracker note should keep the saved-Rust route surface visible.",
+        "The progress-tracker note should keep the raw saved-Rust route surface visible.",
     ),
     (
         "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
@@ -79,8 +89,18 @@ CONTENT_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
+        "saved_rust_build_readiness_route_surface",
+        "The issue #11 route printer JSON should expose the saved-Rust bridge surface key.",
+    ),
+    (
+        "scripts/linux/show_issue3_progress_tracker_route.sh",
+        "saved_rust_build_readiness_route",
+        "The issue #11 route printer JSON should expose the saved-Rust bridge route key.",
+    ),
+    (
+        "scripts/linux/show_issue3_progress_tracker_route.sh",
         "saved_rust_toolchain_route_surface",
-        "The issue #11 route printer JSON should expose the saved-Rust surface key.",
+        "The issue #11 route printer JSON should still expose the raw saved-Rust surface key.",
     ),
     (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
