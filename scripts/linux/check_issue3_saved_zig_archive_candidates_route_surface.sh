@@ -7,22 +7,56 @@ usage() {
 Usage:
   bash scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh \
     [--repo-root /path/to/browser-repo] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
+    [--toolchains-root /path/to/toolchains] \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
-Verify that the saved-Zig-archive discovery route for the blocked issue #3
-Linux or WSL re-entry lane still has its required note and helper surfaces.
+Fail fast when the saved Zig archive candidate route is missing its branch-local
+note or helper scripts, and confirm that the candidate helper returns the core
+JSON fields needed by the Linux or WSL issue #3 toolchain recovery lane.
 EOF
+}
+
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+SAVED_ARCHIVES_ROOT=""
+TOOLCHAINS_ROOT=""
+FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
+            shift 2
+            ;;
+        --toolchains-root)
+            TOOLCHAINS_ROOT="$2"
+            shift 2
+            ;;
+        --fallback-zig-archive)
+            FALLBACK_ZIG_ARCHIVE="$2"
             shift 2
             ;;
         --json)
@@ -42,138 +76,149 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
+if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+    TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+fi
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
+    fi
+fi
 
-declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|file|Route note for saved Zig archive discovery work on issue #11."
-    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|file|Companion Zig recovery note that consumes the saved archive discovery result."
-    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md|file|Archive restore note used after a matching saved Zig archive is selected."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Build-readiness note that should keep the saved archive discovery route visible."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|file|Issue #11 progress-tracker note that should keep the saved archive discovery lane visible."
-    "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh|file|Fail-fast surface checker for this saved archive discovery route."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|file|Compact route printer for saved Zig archive discovery work."
-    "scripts/check_issue3_saved_zig_archive_candidates.py|file|Saved Zig archive candidate helper that surfaces preferred restore commands."
-)
+python3 - "${REPO_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${TOOLCHAINS_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
+from __future__ import annotations
 
-declare -a CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|check_issue3_saved_zig_archive_candidates_route_surface.sh|The route note keeps the surface checker visible."
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh|The route note keeps the route printer visible."
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|check_issue3_saved_zig_archive_candidates.py|The route note keeps the Python candidate helper visible."
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|issue `#11`|The route note keeps the lower-volume tracker visible."
-    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md|docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|The route note points back to Zig recovery."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|The issue #11 tracker note still references Zig recovery."
-    "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md|check_issue3_saved_zig_archive_candidates.py|The Zig recovery note still references saved archive discovery."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|check_issue3_saved_zig_archive_candidates.py|The Linux build-readiness route still references saved archive discovery."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|saved Zig archive candidates route|The route printer still introduces the route clearly."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_saved_zig_archive_candidates.py|The route printer still exposes the Python helper."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_zig_toolchain_match.sh|The route printer still exposes the matching-line gate."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|Matching-line gate after any restore:|The route printer still prints the matching-line gate step."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_zig_toolchain_archive_restore_route_surface.sh|The route printer still exposes archive-restore surface checks."
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|show_issue3_zig_toolchain_recovery_route.sh|The route printer still points back to the broader Zig recovery route."
-)
-
-json_escape() {
-    python3 - "$1" <<'PY'
 import json
+import pathlib
+import subprocess
 import sys
 
-print(json.dumps(sys.argv[1]))
-PY
+repo_root = pathlib.Path(sys.argv[1]).resolve()
+saved_archives_root = pathlib.Path(sys.argv[2]).resolve()
+toolchains_root = pathlib.Path(sys.argv[3]).resolve()
+fallback_zig_archive = pathlib.Path(sys.argv[4]).resolve() if sys.argv[4] else None
+emit_json = sys.argv[5] == "1"
+
+doc_path = repo_root / "docs" / "ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md"
+helper_path = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"
+restore_helper_path = repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"
+build_zon_path = repo_root / "build.zig.zon"
+
+failures: list[str] = []
+for label, path in (
+    ("saved Zig archive candidate route note", doc_path),
+    ("saved Zig archive candidate helper", helper_path),
+    ("Zig toolchain archive restore helper", restore_helper_path),
+    ("build metadata", build_zon_path),
+):
+    if not path.is_file():
+        failures.append(f"missing {label}: expected {path}")
+
+helper_report: dict[str, object] | None = None
+if not failures:
+    command = [
+        sys.executable,
+        str(helper_path),
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--json",
+    ]
+    if fallback_zig_archive is not None:
+        command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if not completed.stdout.strip():
+        detail = completed.stderr.strip()
+        if detail:
+            detail = f"; stderr: {detail}"
+        failures.append(
+            "saved Zig archive candidate helper produced no JSON output" + detail
+        )
+    else:
+        try:
+            helper_report = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            failures.append(f"saved Zig archive candidate helper returned invalid JSON: {exc}")
+
+    if helper_report is not None:
+        required_keys = (
+            "status",
+            "repo_root",
+            "saved_archives_root",
+            "toolchains_root",
+            "minimum_zig",
+            "zig_archives",
+            "commands",
+            "failures",
+        )
+        for key in required_keys:
+            if key not in helper_report:
+                failures.append(f"saved Zig archive candidate helper JSON is missing `{key}`")
+        commands = helper_report.get("commands")
+        if not isinstance(commands, dict):
+            failures.append("saved Zig archive candidate helper JSON has a non-object `commands` field")
+        else:
+            for key in ("restore_check", "restore"):
+                preferred_archive = helper_report.get("preferred_archive")
+                if preferred_archive and key not in commands:
+                    failures.append(
+                        f"saved Zig archive candidate helper JSON is missing `{key}` for the preferred archive route"
+                    )
+
+result = {
+    "status": "passed" if not failures else "failed",
+    "repo_root": str(repo_root),
+    "saved_archives_root": str(saved_archives_root),
+    "toolchains_root": str(toolchains_root),
+    "fallback_zig_archive": str(fallback_zig_archive) if fallback_zig_archive else "",
+    "doc_path": str(doc_path),
+    "helper_path": str(helper_path),
+    "restore_helper_path": str(restore_helper_path),
+    "helper_status": helper_report.get("status") if isinstance(helper_report, dict) else "",
+    "minimum_zig": helper_report.get("minimum_zig") if isinstance(helper_report, dict) else "",
+    "failures": failures,
 }
 
-reference_rows=()
-content_rows=()
-missing_count=0
+if emit_json:
+    print(json.dumps(result, indent=2))
+    raise SystemExit(1 if failures else 0)
 
-for entry in "${REFERENCE_PATHS[@]}"; do
-    IFS="|" read -r relative_path kind purpose <<<"${entry}"
-    full_path="${REPO_ROOT}/${relative_path}"
-    exists=0
-    if [[ "${kind}" == "directory" ]]; then
-        [[ -d "${full_path}" ]] && exists=1
-    else
-        [[ -f "${full_path}" ]] && exists=1
-    fi
-    if [[ "${exists}" -eq 0 ]]; then
-        missing_count=$((missing_count + 1))
-    fi
-    reference_rows+=("${relative_path}|${kind}|${purpose}|${exists}")
-done
+print("Issue #3 saved Zig archive candidates route surface")
+print()
+print(f"Repo root:           {repo_root}")
+print(f"Saved archives root: {saved_archives_root}")
+print(f"Toolchains root:     {toolchains_root}")
+print(
+    "Fallback archive:    "
+    f"{fallback_zig_archive if fallback_zig_archive is not None else 'not found beside the repo workspace'}"
+)
+print(f"Route note:          {doc_path}")
+print(f"Candidate helper:    {helper_path}")
+print(f"Restore helper:      {restore_helper_path}")
+if result["minimum_zig"]:
+    print(f"Minimum Zig line:    {result['minimum_zig']}")
+if result["helper_status"]:
+    print(f"Helper status:       {result['helper_status']}")
 
-for entry in "${CONTENT_EXPECTATIONS[@]}"; do
-    IFS="|" read -r relative_path snippet purpose <<<"${entry}"
-    full_path="${REPO_ROOT}/${relative_path}"
-    exists=0
-    if [[ -f "${full_path}" ]] && grep -Fq -- "${snippet}" "${full_path}"; then
-        exists=1
-    fi
-    if [[ "${exists}" -eq 0 ]]; then
-        missing_count=$((missing_count + 1))
-    fi
-    content_rows+=("${relative_path}|${snippet}|${purpose}|${exists}")
-done
+if failures:
+    print("\nSaved Zig archive candidate surface check failed:", file=sys.stderr)
+    for failure in failures:
+        print(f"  - {failure}", file=sys.stderr)
+    raise SystemExit(1)
 
-if [[ "${JSON}" -eq 1 ]]; then
-    printf '{\n'
-    printf '  "profile": %s,\n' "$(json_escape "issue3-saved-zig-archive-candidates-route-surface")"
-    printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
-    printf '  "reference_count": %d,\n' "${#reference_rows[@]}"
-    printf '  "content_check_count": %d,\n' "${#content_rows[@]}"
-    printf '  "missing_count": %d,\n' "${missing_count}"
-    printf '  "references": [\n'
-    for index in "${!reference_rows[@]}"; do
-        IFS="|" read -r relative_path kind purpose exists <<<"${reference_rows[$index]}"
-        [[ "${index}" -gt 0 ]] && printf ',\n'
-        printf '    {"path": %s, "kind": %s, "purpose": %s, "exists": %s}' \
-            "$(json_escape "${relative_path}")" \
-            "$(json_escape "${kind}")" \
-            "$(json_escape "${purpose}")" \
-            "$([[ "${exists}" -eq 1 ]] && echo true || echo false)"
-    done
-    printf '\n  ],\n'
-    printf '  "content_checks": [\n'
-    for index in "${!content_rows[@]}"; do
-        IFS="|" read -r relative_path snippet purpose exists <<<"${content_rows[$index]}"
-        [[ "${index}" -gt 0 ]] && printf ',\n'
-        printf '    {"path": %s, "snippet": %s, "purpose": %s, "exists": %s}' \
-            "$(json_escape "${relative_path}")" \
-            "$(json_escape "${snippet}")" \
-            "$(json_escape "${purpose}")" \
-            "$([[ "${exists}" -eq 1 ]] && echo true || echo false)"
-    done
-    printf '\n  ]\n'
-    printf '}\n'
-    [[ "${missing_count}" -eq 0 ]]
-    exit
-fi
-
-echo "Issue #3 saved Zig archive candidates route surface check"
-echo
-echo "Repo root: ${REPO_ROOT}"
-echo
-
-for row in "${reference_rows[@]}"; do
-    IFS="|" read -r relative_path kind purpose exists <<<"${row}"
-    status="FAIL"
-    [[ "${exists}" -eq 1 ]] && status="PASS"
-    echo "[${status}] ${relative_path}"
-    echo "  ${purpose}"
-done
-
-echo
-echo "Helper source expectations:"
-for row in "${content_rows[@]}"; do
-    IFS="|" read -r relative_path snippet purpose exists <<<"${row}"
-    status="FAIL"
-    [[ "${exists}" -eq 1 ]] && status="PASS"
-    echo "[${status}] ${relative_path}"
-    echo "  ${purpose}"
-done
-
-if [[ "${missing_count}" -gt 0 ]]; then
-    echo
-    echo "Missing checks: ${missing_count}"
-    exit 1
-fi
-
-echo
-echo "All saved Zig archive candidate route surfaces are present."
+print("\nSaved Zig archive candidate surface check passed.")
+PY
