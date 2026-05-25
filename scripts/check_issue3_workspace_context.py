@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+
+"""Surface the practical workspace roots for issue #3 Linux/WSL recovery.
+
+This helper is intentionally small and create-only so scheduled runs can answer:
+- where the nearest shared toolchains directory lives
+- where the saved Memory browser archives live
+- where the attached fallback Zig archive is visible from this checkout
+
+It is useful when a restored checkout sits deeper than the default sibling
+layout assumed by the existing route notes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+
+DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Surface workspace roots for issue #3 Linux/WSL recovery helpers."
+    )
+    parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Path to the browser checkout root (default: current directory)",
+    )
+    parser.add_argument(
+        "--fallback-zig-archive",
+        default=None,
+        help="Optional explicit path to the attached fallback Zig archive",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit structured JSON instead of line-oriented text",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run focused unit tests and exit",
+    )
+    return parser
+
+
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
+def infer_toolchains_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / "toolchains").resolve(), False
+
+
+def infer_saved_archives_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, "memory/repo_archives/browser")
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / "memory" / "repo_archives" / "browser").resolve(), False
+
+
+def infer_agent_files_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, "agent_files")
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / "agent_files").resolve(), False
+
+
+def infer_fallback_zig_archive(
+    repo_root: Path, explicit_archive: Path | None
+) -> tuple[Path | None, bool]:
+    if explicit_archive is not None:
+        archive = explicit_archive.resolve()
+        return (archive if archive.is_file() else archive, archive.is_file())
+
+    located = locate_first_existing(repo_root, f"agent_files/{DEFAULT_FALLBACK_ZIG_ARCHIVE}")
+    if located is not None and located.is_file():
+        return located, True
+
+    agent_files_root, _found = infer_agent_files_root(repo_root)
+    return (agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE).resolve(), False
+
+
+def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str, object]:
+    build_zon = repo_root / "build.zig.zon"
+    toolchains_root, toolchains_found = infer_toolchains_root(repo_root)
+    saved_archives_root, saved_archives_found = infer_saved_archives_root(repo_root)
+    agent_files_root, agent_files_found = infer_agent_files_root(repo_root)
+    fallback_zig_archive, fallback_found = infer_fallback_zig_archive(repo_root, explicit_archive)
+
+    readiness_command = [
+        "python",
+        "scripts/check_linux_build_readiness.py",
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+    ]
+    if fallback_zig_archive is not None:
+        readiness_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+
+    status = "passed" if build_zon.is_file() else "failed"
+    failures: list[str] = []
+    if not build_zon.is_file():
+        failures.append(f"build.zig.zon not found under {repo_root}")
+
+    return {
+        "status": status,
+        "repo_root": str(repo_root),
+        "build_zig_zon_exists": build_zon.is_file(),
+        "toolchains_root": str(toolchains_root),
+        "toolchains_root_found": toolchains_found,
+        "saved_archives_root": str(saved_archives_root),
+        "saved_archives_root_found": saved_archives_found,
+        "agent_files_root": str(agent_files_root),
+        "agent_files_root_found": agent_files_found,
+        "fallback_zig_archive": str(fallback_zig_archive) if fallback_zig_archive else None,
+        "fallback_zig_archive_found": fallback_found,
+        "suggested_readiness_command": readiness_command,
+        "failures": failures,
+    }
+
+
+def emit_text(context: dict[str, object]) -> None:
+    print(f"Repo root: {context['repo_root']}")
+    print(f"build.zig.zon present: {'yes' if context['build_zig_zon_exists'] else 'no'}")
+    print(
+        f"Toolchains root: {context['toolchains_root']} "
+        f"[{'found' if context['toolchains_root_found'] else 'defaulted'}]"
+    )
+    print(
+        f"Saved archives root: {context['saved_archives_root']} "
+        f"[{'found' if context['saved_archives_root_found'] else 'defaulted'}]"
+    )
+    print(
+        f"Agent files root: {context['agent_files_root']} "
+        f"[{'found' if context['agent_files_root_found'] else 'defaulted'}]"
+    )
+    print(
+        f"Fallback Zig archive: {context['fallback_zig_archive']} "
+        f"[{'found' if context['fallback_zig_archive_found'] else 'not found'}]"
+    )
+    print("Suggested readiness command:")
+    print("  " + " ".join(context["suggested_readiness_command"]))
+    if context["failures"]:
+        print("\nWorkspace-context check failed:", file=sys.stderr)
+        for failure in context["failures"]:
+            print(f"  - {failure}", file=sys.stderr)
+
+
+class WorkspaceContextTests(unittest.TestCase):
+    def test_locates_roots_above_nested_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            repo_root = base / "restored" / "browser-fork-headed-mode-foundation"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+
+            toolchains_root = base / "toolchains"
+            toolchains_root.mkdir()
+            saved_archives_root = base / "memory" / "repo_archives" / "browser"
+            saved_archives_root.mkdir(parents=True)
+            agent_files_root = base / "agent_files"
+            agent_files_root.mkdir()
+            fallback = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
+            fallback.write_text("zig", encoding="utf-8")
+
+            context = collect_context(repo_root, None)
+
+            self.assertEqual(context["status"], "passed")
+            self.assertEqual(context["toolchains_root"], str(toolchains_root.resolve()))
+            self.assertEqual(context["saved_archives_root"], str(saved_archives_root.resolve()))
+            self.assertEqual(context["agent_files_root"], str(agent_files_root.resolve()))
+            self.assertEqual(context["fallback_zig_archive"], str(fallback.resolve()))
+            self.assertTrue(context["fallback_zig_archive_found"])
+
+    def test_defaults_when_ancestor_roots_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+
+            context = collect_context(repo_root, None)
+
+            self.assertEqual(context["status"], "passed")
+            self.assertFalse(context["toolchains_root_found"])
+            self.assertFalse(context["saved_archives_root_found"])
+            self.assertFalse(context["agent_files_root_found"])
+            self.assertFalse(context["fallback_zig_archive_found"])
+
+    def test_explicit_fallback_archive_overrides_search(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            repo_root = base / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            explicit_archive = base / "custom-zig.tar.xz"
+            explicit_archive.write_text("zig", encoding="utf-8")
+
+            context = collect_context(repo_root, explicit_archive)
+
+            self.assertEqual(context["fallback_zig_archive"], str(explicit_archive.resolve()))
+            self.assertTrue(context["fallback_zig_archive_found"])
+
+    def test_missing_build_zon_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+
+            context = collect_context(repo_root, None)
+
+            self.assertEqual(context["status"], "failed")
+            self.assertEqual(len(context["failures"]), 1)
+            self.assertIn("build.zig.zon not found", context["failures"][0])
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    if args.self_test:
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(WorkspaceContextTests)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+
+    repo_root = Path(args.repo_root).resolve()
+    explicit_archive = Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
+    context = collect_context(repo_root, explicit_archive)
+    if args.json:
+        print(json.dumps(context, indent=2))
+    else:
+        emit_text(context)
+    return 0 if context["status"] == "passed" else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
