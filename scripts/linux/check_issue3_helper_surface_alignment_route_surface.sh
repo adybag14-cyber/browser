@@ -9,19 +9,10 @@ Usage:
     [--repo-root /path/to/browser-repo] \
     [--json]
 
-Verify that the issue #3 helper-surface alignment route still has its required
-docs, helpers, and command snippets in place before a run trusts the saved
-browser snapshot sync path.
+Verify that the branch-local helper-surface alignment route for the blocked
+issue #3 Linux or WSL re-entry lane still has its required notes, helpers, and
+command snippets in place before a run relies on it.
 EOF
-}
-
-json_escape() {
-    python3 - "$1" <<'PY'
-import json
-import sys
-
-print(json.dumps(sys.argv[1]))
-PY
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -55,25 +46,48 @@ done
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|file|Read-first note for the helper-surface alignment route."
-    "scripts/check_issue3_helper_surface_alignment.py|file|Alignment helper that compares restore, saved-memory, and restored-checkout inventories."
-    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|file|Route printer that keeps the alignment and synced-restore commands on one compact surface."
-    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Restore note that the alignment route should send operators back through."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Runtime gate note that should remain the next step after helper-surface alignment is green."
-    "scripts/check_issue3_restored_checkout.py|file|Restored-checkout readiness helper that should follow the alignment route."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|file|Read-first helper-surface alignment route note for blocked issue #3 Linux or WSL re-entry work."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|file|Issue #11 progress-tracker handoff note that should stay visible while helper drift is being resolved."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|file|Saved-Memory route note that should stay visible when the alignment failure points at the preflight helper."
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Saved-browser-snapshot route note that should stay visible when the restore helper surface is the drift source."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|file|Restored-checkout re-entry note that should stay visible when a synced checkout needs re-validation."
+    "scripts/linux/check_issue3_helper_surface_alignment_route_surface.sh|file|Fail-fast surface checker for the helper-surface alignment route."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|file|Compact route printer for the helper-surface alignment route."
+    "scripts/check_issue3_helper_surface_alignment.py|file|Alignment helper that compares the restore, saved-memory, and restored-checkout inventories."
+    "scripts/check_issue3_saved_memory_inputs.py|file|Saved-Memory preflight helper that is one of the alignment inputs."
+    "scripts/check_issue3_restored_checkout.py|file|Restored-checkout readiness helper that is one of the alignment inputs."
+    "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper whose sync surface defines the current helper inventory."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|file|Follow-up route printer when the saved-memory helper inventory is stale."
+    "scripts/linux/show_issue3_saved_browser_snapshot_route.sh|file|Follow-up route printer when the restore-helper inventory is stale."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/check_issue3_helper_surface_alignment.py|The route note explicitly names the alignment helper."
-    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/linux/show_issue3_helper_surface_alignment_route.sh|The route note points back to the compact route printer."
-    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/linux/show_issue3_saved_browser_snapshot_route.sh|The route note keeps the saved-browser-snapshot route visible."
-    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/check_issue3_restored_checkout.py|The route note keeps the restored-checkout readiness helper visible."
-    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|scripts/check_issue3_helper_surface_alignment.py|The route printer keeps the alignment helper command visible."
-    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|scripts/linux/show_issue3_saved_browser_snapshot_route.sh|The route printer keeps the saved-browser-snapshot route visible."
-    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|scripts/check_issue3_restored_checkout.py|The route printer keeps the restored-checkout readiness helper visible."
-    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|--sync-helper-surface|The route printer keeps the synced restore path visible."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|The runtime gate note still sends reruns through the saved-browser-snapshot route."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|check_issue3_helper_surface_alignment_route_surface.sh|The helper-surface alignment note keeps the dedicated route surface checker visible."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|show_issue3_helper_surface_alignment_route.sh|The helper-surface alignment note keeps the compact route printer visible."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|check_issue3_helper_surface_alignment.py|The helper-surface alignment note keeps the alignment checker visible."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|The helper-surface alignment note keeps the saved-memory preflight visible as an alignment target."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/check_issue3_restored_checkout.py|The helper-surface alignment note keeps the restored-checkout helper visible as an alignment target."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|scripts/linux/restore_saved_browser_snapshot.sh|The helper-surface alignment note keeps the restore helper visible as the source inventory."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|issue `#11`|The helper-surface alignment note keeps the low-volume progress tracker visible."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|show_issue3_saved_memory_inputs_route.sh|The helper-surface alignment note keeps the saved-memory follow-up route visible."
+    "docs/ISSUE3_HELPER_SURFACE_ALIGNMENT_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The helper-surface alignment note keeps the restore follow-up route visible."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|check_issue3_helper_surface_alignment_route_surface.sh|The route printer points back to the dedicated route surface checker."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|check_issue3_helper_surface_alignment.py|The route printer still prints the alignment helper command."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|show_issue3_saved_memory_inputs_route.sh|The route printer still exposes the saved-memory follow-up route."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|show_issue3_saved_browser_snapshot_route.sh|The route printer still exposes the restore follow-up route."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|issue #11 progress-tracker handoff|The route printer keeps the issue #11 handoff visible in its working rules."
+    "scripts/linux/show_issue3_helper_surface_alignment_route.sh|alignment_check|The route printer JSON output exposes the alignment-check command explicitly."
+    "scripts/check_issue3_helper_surface_alignment.py|CRITICAL_ALIGNMENT_PATHS|The alignment checker still guards the critical helper-surface paths explicitly."
 )
+
+json_escape() {
+    python3 - "$1" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1]))
+PY
+}
 
 reference_rows=()
 content_rows=()
