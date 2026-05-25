@@ -79,12 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--memory-root",
         default=None,
-        help="Path to the workspace memory root (default: ../memory beside the repo workspace)",
+        help="Path to the workspace memory root (default: discover the nearest ancestor memory root)",
     )
     parser.add_argument(
         "--agent-files-root",
         default=None,
-        help="Path to the builder-attached files root (default: ../agent_files beside the repo workspace)",
+        help="Path to the builder-attached files root (default: discover the nearest ancestor agent_files root)",
     )
     parser.add_argument(
         "--fallback-zig-archive",
@@ -109,11 +109,36 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_memory_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "memory")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "memory").resolve()
 
 
 def resolve_default_agent_files_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "agent_files")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "agent_files").resolve()
 
 
@@ -365,6 +390,29 @@ class SavedArchiveIntegrityTests(unittest.TestCase):
         expected_sha_by_path[fallback_archive] = DEFAULT_FALLBACK_ZIG_SHA256
 
         return expected_sha_by_path
+
+    def test_resolve_default_memory_root_prefers_nearest_ancestor_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            memory_root = workspace_root / "memory"
+            repo_root.mkdir(parents=True)
+            memory_root.mkdir()
+
+            self.assertEqual(resolve_default_memory_root(repo_root), memory_root.resolve())
+
+    def test_resolve_default_agent_files_root_prefers_nearest_ancestor_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            agent_files_root = workspace_root / "agent_files"
+            repo_root.mkdir(parents=True)
+            agent_files_root.mkdir()
+
+            self.assertEqual(
+                resolve_default_agent_files_root(repo_root),
+                agent_files_root.resolve(),
+            )
 
     def test_collect_results_passes_with_matching_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
