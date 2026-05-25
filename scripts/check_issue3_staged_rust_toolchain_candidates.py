@@ -16,6 +16,7 @@ import unittest
 
 
 EXPECTED_RUST_VERSION = "1.79.0"
+EXPECTED_RUST_LINE = "1.79.x"
 EXPECTED_TOOLCHAIN_DIR = "rust-1.79.0"
 DEFAULT_CANDIDATE_GLOBS = (
     "rust-*/cargo/bin/cargo",
@@ -31,12 +32,34 @@ def parse_version(text: str) -> str | None:
     return match.group(1)
 
 
-def version_status(version: str | None) -> str:
+def parse_semver(version: str) -> tuple[int, int, int]:
+    match = VERSION_RE.search(version)
+    if match is None:
+        raise ValueError(f"Could not parse semantic version from {version!r}")
+    return tuple(int(part) for part in match.groups())
+
+
+def classify_version(version: str | None) -> str:
     if version is None:
+        return "unknown-version"
+    actual_parts = parse_semver(version)
+    expected_parts = parse_semver(EXPECTED_RUST_VERSION)
+    if actual_parts < expected_parts:
+        return "older-than-expected"
+    if actual_parts[:2] == expected_parts[:2]:
+        return "matches-expected-line"
+    return "mismatched-line"
+
+
+def version_status(version: str | None) -> str:
+    classification = classify_version(version)
+    if classification == "unknown-version":
         return "unknown version"
-    if version == EXPECTED_RUST_VERSION:
-        return "matches expected 1.79.0"
-    return f"mismatched: expected {EXPECTED_RUST_VERSION}"
+    if classification == "older-than-expected":
+        return "older-than-expected"
+    if classification == "matches-expected-line":
+        return f"matches expected {EXPECTED_RUST_LINE}"
+    return f"mismatched: expected {EXPECTED_RUST_LINE}"
 
 
 def ancestor_chain(start: Path) -> list[Path]:
@@ -112,13 +135,18 @@ def describe_candidate(cargo_bin: Path) -> dict[str, object]:
 
     cargo_version = parse_version(cargo_output or "")
     rustc_version = parse_version(rustc_output or "")
+    cargo_classification = classify_version(cargo_version)
+    rustc_classification = classify_version(rustc_version)
+
     status = version_status(cargo_version)
-    if rustc_version is not None and rustc_version != EXPECTED_RUST_VERSION:
-        status = f"mismatched rustc: expected {EXPECTED_RUST_VERSION}"
-    elif cargo_version == EXPECTED_RUST_VERSION and rustc_version is None:
-        status = "cargo matches expected 1.79.0 but rustc is unavailable"
-    elif cargo_version == EXPECTED_RUST_VERSION and rustc_version == EXPECTED_RUST_VERSION:
-        status = "matches expected 1.79.0"
+    if cargo_classification == "matches-expected-line" and rustc_version is None:
+        status = f"cargo matches expected {EXPECTED_RUST_LINE} but rustc is unavailable"
+    elif cargo_classification == "matches-expected-line" and rustc_classification == "matches-expected-line":
+        status = f"matches expected {EXPECTED_RUST_LINE}"
+    elif cargo_classification == "matches-expected-line" and rustc_classification == "older-than-expected":
+        status = f"older rustc: expected {EXPECTED_RUST_LINE}"
+    elif cargo_classification == "matches-expected-line" and rustc_classification == "mismatched-line":
+        status = f"mismatched rustc: expected {EXPECTED_RUST_LINE}"
 
     toolchain_root = cargo_bin.parent.parent.parent
     return {
@@ -129,6 +157,8 @@ def describe_candidate(cargo_bin: Path) -> dict[str, object]:
         "rustc_output": rustc_output,
         "cargo_version": cargo_version,
         "rustc_version": rustc_version,
+        "cargo_classification": cargo_classification,
+        "rustc_classification": rustc_classification,
         "status": status,
         "failures": cargo_failures + rustc_failures,
         "path_export": f'export PATH="{toolchain_root / "cargo" / "bin"}:{toolchain_root / "rustc" / "bin"}:$PATH"',
@@ -137,19 +167,39 @@ def describe_candidate(cargo_bin: Path) -> dict[str, object]:
     }
 
 
+def choose_preferred_candidate(
+    candidates: list[dict[str, object]],
+    expected_dir: Path,
+) -> dict[str, object] | None:
+    matching_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate["cargo_classification"] == "matches-expected-line"
+        and candidate["rustc_classification"] == "matches-expected-line"
+        and candidate["cargo_version"] is not None
+    ]
+    if not matching_candidates:
+        return None
+
+    for candidate in matching_candidates:
+        if Path(str(candidate["toolchain_root"])).resolve() == expected_dir.resolve():
+            return candidate
+
+    return max(
+        matching_candidates,
+        key=lambda candidate: parse_semver(str(candidate["cargo_version"])),
+    )
+
+
 def collect_results(repo_root: Path, toolchains_root: Path) -> dict[str, object]:
     candidates = [describe_candidate(path) for path in discover_candidates(toolchains_root)]
-    preferred = None
-    for candidate in candidates:
-        if candidate["status"] == "matches expected 1.79.0":
-            preferred = candidate
-            break
-
     expected_dir = toolchains_root / EXPECTED_TOOLCHAIN_DIR
+    preferred = choose_preferred_candidate(candidates, expected_dir)
+
     suggested_next_step = None
     if preferred is None:
         suggested_next_step = (
-            "restore the saved Rust 1.79.0 toolchain under ../toolchains and rerun this helper before trusting Linux build-readiness output"
+            f"restore a saved Rust {EXPECTED_RUST_LINE} toolchain under ../toolchains and rerun this helper before trusting Linux build-readiness output"
         )
     elif Path(str(preferred["toolchain_root"])).resolve() != expected_dir.resolve():
         suggested_next_step = (
@@ -161,6 +211,7 @@ def collect_results(repo_root: Path, toolchains_root: Path) -> dict[str, object]
         "repo_root": repo_root,
         "toolchains_root": toolchains_root,
         "expected_rust_version": EXPECTED_RUST_VERSION,
+        "expected_rust_line": EXPECTED_RUST_LINE,
         "expected_toolchain_dir": expected_dir,
         "candidate_count": len(candidates),
         "preferred_candidate": preferred,
@@ -236,6 +287,22 @@ class StagedRustToolchainCandidateTests(unittest.TestCase):
             self.assertEqual(preferred["cargo_version"], "1.79.0")
             self.assertEqual(preferred["rustc_version"], "1.79.0")
 
+    def test_collect_results_accepts_matching_patch_line_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            toolchains_root = repo_root.parent / "toolchains"
+            self.make_toolchain(toolchains_root, "rust-1.79.4", "1.79.4", "1.79.4")
+
+            result = collect_results(repo_root, toolchains_root)
+
+            self.assertEqual(result["status"], "passed")
+            preferred = result["preferred_candidate"]
+            self.assertIsNotNone(preferred)
+            self.assertEqual(preferred["cargo_version"], "1.79.4")
+            self.assertEqual(preferred["rustc_version"], "1.79.4")
+            self.assertIn("matches expected 1.79.x", preferred["status"])
+
     def test_collect_results_fails_without_matching_candidate(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
@@ -247,7 +314,7 @@ class StagedRustToolchainCandidateTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "failed")
             self.assertIsNone(result["preferred_candidate"])
-            self.assertIn("restore the saved Rust 1.79.0 toolchain", result["suggested_next_step"])
+            self.assertIn("restore a saved Rust 1.79.x toolchain", result["suggested_next_step"])
 
     def test_describe_candidate_reports_missing_rustc(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -270,12 +337,12 @@ class StagedRustToolchainCandidateTests(unittest.TestCase):
             self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
 
 
-def main() -> int:
+if __name__ == "__main__":
     args = build_parser().parse_args()
     if args.self_test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(StagedRustToolchainCandidateTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
-        return 0 if result.wasSuccessful() else 1
+        sys.exit(0 if result.wasSuccessful() else 1)
 
     repo_root = Path(args.repo_root).resolve()
     toolchains_root = Path(args.toolchains_root).resolve() if args.toolchains_root else resolve_default_toolchains_root(repo_root)
@@ -283,11 +350,12 @@ def main() -> int:
 
     if args.json:
         print(json.dumps(serialize(results), indent=2))
-        return 0 if results["status"] == "passed" else 1
+        sys.exit(0 if results["status"] == "passed" else 1)
 
     print(f"Repo root: {repo_root}")
     print(f"Toolchains root: {toolchains_root}")
     print(f"Expected Rust version: {EXPECTED_RUST_VERSION}")
+    print(f"Expected Rust line: {EXPECTED_RUST_LINE}")
     if not results["candidates"]:
         print("Discovered candidates: none")
     else:
@@ -310,13 +378,9 @@ def main() -> int:
         print(f"  {preferred['path_export']}")
         print(f"  {preferred['cargo_export']}")
         print(f"  {preferred['rustc_export']}")
-        return 0
+        sys.exit(0)
 
-    print("\nNo staged Rust 1.79.0 candidate is ready.", file=sys.stderr)
+    print("\nNo staged Rust 1.79.x candidate is ready.", file=sys.stderr)
     if results["suggested_next_step"] is not None:
         print(f"Suggested next step: {results['suggested_next_step']}", file=sys.stderr)
-    return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(1)
