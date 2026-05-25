@@ -190,15 +190,21 @@ def build_report(
         )
 
     failures: list[str] = []
-    if preferred_action != "use-staged":
+    if preferred_action == "blocked":
         failures.append(reason)
     if staged_candidate_warning is not None:
         failures.append(staged_candidate_warning)
     if saved_archive_warning is not None:
         failures.append(saved_archive_warning)
 
+    status = (
+        "passed"
+        if preferred_action in {"use-staged", "restore-saved-archive"} and not failures
+        else "failed"
+    )
+
     return {
-        "status": "passed" if preferred_action == "use-staged" else "failed",
+        "status": status,
         "repo_root": str(repo_root),
         "saved_archives_root": str(saved_archives_root),
         "toolchains_root": str(toolchains_root),
@@ -293,7 +299,7 @@ class RustToolchainPlanTests(unittest.TestCase):
             saved_archive_warning=None,
         )
 
-        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["status"], "passed")
         self.assertEqual(report["preferred_action"], "restore-saved-archive")
         self.assertIn("restore_saved_rust_toolchain.sh", report["next_command"])
 
