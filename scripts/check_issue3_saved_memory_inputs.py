@@ -53,6 +53,7 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry guide"),
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "Enter-submit runtime revalidation guide"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved-browser-snapshot restore guide"),
+    ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route guide"),
     ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry guide"),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity guide"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness guide"),
@@ -73,6 +74,7 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "scripts/check_issue3_restored_checkout.py",
         "restored-checkout readiness helper",
     ),
+    ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness helper"),
     (
         "scripts/windows/HeadedValidationHelpers.ps1",
@@ -921,11 +923,19 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
+                "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
                 "scripts/check_issue3_saved_archive_integrity.py",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
                 "scripts/check_issue3_restored_checkout.py",
+                result["missing_helper_surface_files"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_workspace_context.py",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
