@@ -27,6 +27,7 @@ FIXTURE_FILES = {
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `../browser-memory-snapshot`
 - `--expect-helper-surface`
+- `--sync-only`
 """,
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md": """
 # Issue #3 Saved Browser Snapshot Restore Route
@@ -67,11 +68,17 @@ HELPER_SURFACE_PATHS = (
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
     ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry note"),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note"),
+    ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md", "saved snapshot archive-surface note"),
+    ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
+    ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
+    ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check"),
+    ("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer"),
     ("scripts/linux/restore_saved_browser_snapshot.sh", "saved snapshot restore helper"),
     ("scripts/linux/show_issue3_saved_browser_snapshot_route.sh", "saved snapshot route printer"),
     ("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer"),
@@ -81,6 +88,9 @@ parser.add_argument("--helper-root")
 parser.add_argument("--expect-helper-surface")
 parser.add_argument("--json")
 parser.add_argument("--self-test")
+return "stale-helper-surface"
+return "helper-surface-drift"
+return "partial-helper-surface-and-drift"
 Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface
 """,
     "scripts/check_issue3_saved_memory_inputs.py": """
@@ -102,6 +112,17 @@ def build_parser():
 --check-only
 --helper-root
 --sync-helper-surface
+--sync-only
+"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
+"docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"
+"scripts/check_issue3_workspace_context.py"
+"scripts/check_issue3_saved_zig_archive_candidates.py"
+"scripts/linux/check_issue3_progress_tracker_route_surface.sh"
+"scripts/linux/show_issue3_progress_tracker_route.sh"
+"scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
+"scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh"
+"scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh"
+"scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
 Follow-up helper root:
 Suggested follow-up checks:
 show_issue3_linux_build_readiness_route.sh
@@ -113,6 +134,17 @@ show_issue3_enter_submit_runtime_revalidation_route.sh
 Saved-Memory preflight against the restored checkout:
 show_issue3_linux_build_readiness_route.sh
 show_issue3_enter_submit_runtime_revalidation_route.sh
+""",
+    "scripts/linux/show_issue3_restored_checkout_reentry_route.sh": """
+`--restored-root` remains accepted as a compatibility alias for
+path_has_live_helper_surface
+HELPER_ROOT_SOURCE="cwd-live-helper-surface"
+HELPER_ROOT_SOURCE="repo-root-default"
+SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND
+PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND
+PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND
+Helper-surface refresh-only route:
+When repo_root already points at browser-memory-snapshot
 """,
     "scripts/linux/show_issue3_linux_build_readiness_route.sh": """
 python scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot
@@ -174,6 +206,9 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
         cls.snapshot_route_printer = read_text(
             cls.repo_root / "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
         )
+        cls.restored_checkout_route_printer = read_text(
+            cls.repo_root / "scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
+        )
         cls.build_route_printer = read_text(
             cls.repo_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh"
         )
@@ -197,6 +232,7 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
             "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
             "../browser-memory-snapshot",
             "--expect-helper-surface",
+            "--sync-only",
         ):
             self.assertIn(fragment, self.route_note)
 
@@ -238,11 +274,17 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
             '("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note")',
             '("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry note")',
             '("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note")',
+            '("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md", "saved snapshot archive-surface note")',
+            '("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note")',
+            '("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note")',
             '("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note")',
             '("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper")',
             '("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper")',
             '("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper")',
+            '("scripts/check_issue3_workspace_context.py", "workspace-context helper")',
             '("scripts/check_linux_build_readiness.py", "Linux build-readiness checker")',
+            '("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check")',
+            '("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer")',
             '("scripts/linux/restore_saved_browser_snapshot.sh", "saved snapshot restore helper")',
             '("scripts/linux/show_issue3_saved_browser_snapshot_route.sh", "saved snapshot route printer")',
             '("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer")',
@@ -251,6 +293,9 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
             "--expect-helper-surface",
             "--json",
             "--self-test",
+            '"stale-helper-surface"',
+            '"helper-surface-drift"',
+            '"partial-helper-surface-and-drift"',
             "rerun restore_saved_browser_snapshot.sh with --sync-helper-surface",
         ):
             self.assertIn(fragment, self.restored_checkout_helper)
@@ -275,6 +320,17 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
             "--check-only",
             "--helper-root",
             "--sync-helper-surface",
+            "--sync-only",
+            '"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"',
+            '"docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"',
+            '"scripts/check_issue3_workspace_context.py"',
+            '"scripts/check_issue3_saved_zig_archive_candidates.py"',
+            '"scripts/linux/check_issue3_progress_tracker_route_surface.sh"',
+            '"scripts/linux/show_issue3_progress_tracker_route.sh"',
+            '"scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"',
+            '"scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh"',
+            '"scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh"',
+            '"scripts/linux/show_issue3_windows_runtime_handoff_route.sh"',
             "Follow-up helper root:",
             "Suggested follow-up checks:",
             "show_issue3_linux_build_readiness_route.sh",
@@ -290,6 +346,20 @@ class Issue3RestoredCheckoutReentryRouteSurfaceTest(unittest.TestCase):
             "show_issue3_enter_submit_runtime_revalidation_route.sh",
         ):
             self.assertIn(fragment, self.snapshot_route_printer)
+
+    def test_restored_checkout_route_printer_keeps_helper_root_autodetect_and_sync_only_surface(self) -> None:
+        for fragment in (
+            "--restored-root",
+            "path_has_live_helper_surface",
+            'HELPER_ROOT_SOURCE="cwd-live-helper-surface"',
+            'HELPER_ROOT_SOURCE="repo-root-default"',
+            "SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND",
+            "PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND",
+            "PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND",
+            "Helper-surface refresh-only route:",
+            "When repo_root already points at browser-memory-snapshot",
+        ):
+            self.assertIn(fragment, self.restored_checkout_route_printer)
 
     def test_followup_route_printers_keep_restored_checkout_gate_visible(self) -> None:
         self.assertIn(
