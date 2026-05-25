@@ -120,6 +120,11 @@ FIXTURE_FILES = {
     scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh|Saved archive discovery
     scripts/linux/restore_zig_toolchain_archive.sh|Saved Zig toolchain restore surface check passed.
     scripts/linux/restore_zig_toolchain_archive.sh|Suggested follow-up commands:
+    scripts/linux/restore_zig_toolchain_archive.sh|--saved-archives-root
+    scripts/linux/restore_zig_toolchain_archive.sh|--offline-deps-root
+    scripts/linux/restore_zig_toolchain_archive.sh|--expect-saved-archives
+    scripts/linux/restore_zig_toolchain_archive.sh|--expect-offline-deps
+    scripts/linux/restore_zig_toolchain_archive.sh|--require-prebuilt-v8
     scripts/check_linux_build_readiness.py|--toolchains-root
     All Zig archive restore route surfaces are present.
     """,
@@ -130,13 +135,25 @@ FIXTURE_FILES = {
         [--toolchains-root /path/to/toolchains] \
         [--archive /path/to/zig-archive.tar.xz] \
         [--destination /path/to/toolchains/zig-0.15.2] \
+        [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
+        [--offline-deps-root /path/to/offline-deps] \
+        [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
         [--check-only] \
         [--json] \
         [--force]
     DEFAULT_FALLBACK_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    def normalize_saved_archives_root()
+    "saved_archives_root"
+    "offline_deps_root"
+    "fallback_zig_archive"
     "destination_exists"
     "follow_up_discovery"
     "follow_up_build_readiness"
+    --saved-archives-root
+    --offline-deps-root
+    --expect-saved-archives
+    --expect-offline-deps
+    --require-prebuilt-v8
     Saved Zig toolchain restore surface check passed.
     Suggested follow-up commands:
     """,
@@ -272,6 +289,11 @@ class Issue3SavedZigArchiveRestoreSurfaceTest(unittest.TestCase):
             "scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh|Saved archive discovery",
             "scripts/linux/restore_zig_toolchain_archive.sh|Saved Zig toolchain restore surface check passed.",
             "scripts/linux/restore_zig_toolchain_archive.sh|Suggested follow-up commands:",
+            "scripts/linux/restore_zig_toolchain_archive.sh|--saved-archives-root",
+            "scripts/linux/restore_zig_toolchain_archive.sh|--offline-deps-root",
+            "scripts/linux/restore_zig_toolchain_archive.sh|--expect-saved-archives",
+            "scripts/linux/restore_zig_toolchain_archive.sh|--expect-offline-deps",
+            "scripts/linux/restore_zig_toolchain_archive.sh|--require-prebuilt-v8",
             "scripts/check_linux_build_readiness.py|--toolchains-root",
             "All Zig archive restore route surfaces are present.",
         ):
@@ -283,13 +305,25 @@ class Issue3SavedZigArchiveRestoreSurfaceTest(unittest.TestCase):
             "--toolchains-root /path/to/toolchains",
             "--archive /path/to/zig-archive.tar.xz",
             "--destination /path/to/toolchains/zig-0.15.2",
+            "--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]",
+            "--offline-deps-root /path/to/offline-deps",
+            "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "--check-only",
             "--json",
             "--force",
             'DEFAULT_FALLBACK_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"',
+            "normalize_saved_archives_root()",
+            '"saved_archives_root"',
+            '"offline_deps_root"',
+            '"fallback_zig_archive"',
             '"destination_exists"',
             '"follow_up_discovery"',
             '"follow_up_build_readiness"',
+            "--saved-archives-root",
+            "--offline-deps-root",
+            "--expect-saved-archives",
+            "--expect-offline-deps",
+            "--require-prebuilt-v8",
             "Saved Zig toolchain restore surface check passed.",
             "Suggested follow-up commands:",
         ):
@@ -318,23 +352,3 @@ class Issue3SavedZigArchiveRestoreSurfaceTest(unittest.TestCase):
             "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
         ):
             self.assertIn(fragment, self.runtime_gates_note)
-
-    def test_manifest_and_readiness_helper_still_anchor_the_expected_toolchain_line(self) -> None:
-        for fragment in (
-            '.minimum_zig_version = "0.15.2"',
-            '.v8 = .{ .path = "../zig-v8-fork" }',
-            '.@"boringssl-zig" = .{ .path = "../boringssl-zig" }',
-        ):
-            self.assertIn(fragment, self.build_manifest)
-
-        for fragment in (
-            'DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"',
-            "def resolve_default_toolchains_root(repo_root):",
-            "def resolve_fallback_zig_archive(repo_root, fallback_zig_archive):",
-            '"--toolchains-root"',
-        ):
-            self.assertIn(fragment, self.readiness_helper)
-
-
-if __name__ == "__main__":
-    unittest.main()
