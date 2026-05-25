@@ -10,8 +10,16 @@ import unittest
 
 REQUIRED_FILES: tuple[tuple[str, str], ...] = (
     (
+        "build.zig.zon",
+        "Branch build manifest with the expected Zig line.",
+    ),
+    (
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
         "Zig recovery note for the Linux or WSL re-entry lane.",
+    ),
+    (
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "Linux build-readiness note that points back at Zig recovery.",
     ),
     (
         "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
@@ -25,9 +33,26 @@ REQUIRED_FILES: tuple[tuple[str, str], ...] = (
         "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
         "Wrapper that surfaces saved Zig archive candidates with repo-local defaults.",
     ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        "Matching-line Zig gate that consumes the saved archive discovery helper.",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        "Recovery route helper that keeps saved archive discovery visible.",
+    ),
+    (
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        "Linux build-readiness route helper that keeps saved archive discovery visible.",
+    ),
 )
 
 SNIPPET_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
+    (
+        "build.zig.zon",
+        '.minimum_zig_version = "0.15.2"',
+        "The branch manifest keeps the expected 0.15.2 Zig line visible.",
+    ),
     (
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
         "scripts/check_issue3_saved_zig_archive_candidates.py",
@@ -42,6 +67,16 @@ SNIPPET_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
         "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
         "The recovery note still names the attached fallback Zig archive.",
+    ),
+    (
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "The Linux build-readiness note keeps the saved Zig archive selector visible.",
+    ),
+    (
+        "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+        "saved Zig archive discovery",
+        "The Linux build-readiness note keeps the candidate-discovery route explicit.",
     ),
     (
         "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh",
@@ -93,6 +128,46 @@ SNIPPET_EXPECTATIONS: tuple[tuple[str, str, str], ...] = (
         "--fallback-zig-archive",
         "The wrapper still accepts an explicit fallback Zig archive override.",
     ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        'helper_path = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"',
+        "The matching-line gate still consumes the saved Zig archive helper.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        '"preferred_saved_archive_restore_check": preferred_restore_check',
+        "The matching-line gate still surfaces the preferred saved archive restore check.",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        '"preferred_saved_archive_restore": preferred_restore',
+        "The matching-line gate still surfaces the preferred saved archive restore command.",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        'saved_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"',
+        "The recovery route helper still points at saved Zig archive discovery.",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        '"saved_archive_candidate_discovery"',
+        "The recovery route helper still prints the saved archive candidate discovery command.",
+    ),
+    (
+        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        '"Preferred archive restore"',
+        "The recovery route helper still keeps the preferred archive restore section visible.",
+    ),
+    (
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        'SAVED_ZIG_ARCHIVE_CANDIDATES_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_zig_archive_candidates.py"',
+        "The Linux build-readiness route helper still carries the saved Zig archive helper path.",
+    ),
+    (
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        "Saved Zig archive candidate discovery when the exact 0.15.x archive path is not known yet",
+        "The Linux build-readiness route helper still explains when to use saved Zig archive discovery.",
+    ),
 )
 
 
@@ -139,7 +214,10 @@ class SavedZigArchiveCandidatesSurfaceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._tmpdir: tempfile.TemporaryDirectory[str] | None = None
-        if os.environ.get("LIGHTPANDA_FIXTURE_REPO") == "1":
+        env_root = os.environ.get("LIGHTPANDA_REPO_ROOT", "").strip()
+        if env_root:
+            cls.repo_root = Path(env_root).resolve()
+        elif os.environ.get("LIGHTPANDA_FIXTURE_REPO") == "1":
             cls._tmpdir = tempfile.TemporaryDirectory()
             cls.repo_root = Path(cls._tmpdir.name)
             build_fixture_repo(cls.repo_root)
@@ -167,6 +245,27 @@ class SavedZigArchiveCandidatesSurfaceTests(unittest.TestCase):
             self.assertIn(
                 "scripts/linux/show_issue3_saved_zig_archive_candidates.sh",
                 result["missing_files"],
+            )
+
+    def test_missing_build_readiness_route_snippet_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            build_fixture_repo(repo_root)
+            target = repo_root / "scripts/linux/show_issue3_linux_build_readiness_route.sh"
+            target.write_text("fixture\n", encoding="utf-8")
+
+            result = collect_surface_state(repo_root)
+
+            missing = {
+                (entry["path"], entry["snippet"])
+                for entry in result["missing_snippets"]
+            }
+            self.assertIn(
+                (
+                    "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+                    "Saved Zig archive candidate discovery when the exact 0.15.x archive path is not known yet",
+                ),
+                missing,
             )
 
     def test_missing_saved_archives_override_snippet_is_reported(self) -> None:
