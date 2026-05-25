@@ -43,6 +43,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
+    (
+        "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+        "saved Zig archive candidates route note",
+    ),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build-inputs note"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
     (
@@ -69,6 +73,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
         "issue #11 progress-tracker route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+        "saved Zig archive candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+        "saved Zig archive candidates route printer",
     ),
     ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
     (
@@ -701,6 +713,99 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/check_issue3_saved_zig_archive_candidates.py", missing)
+
+    def test_saved_zig_archive_candidates_route_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md", missing)
+
+    def test_saved_zig_archive_candidates_route_surface_checker_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn(
+                "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+                missing,
+            )
+
+    def test_saved_zig_archive_candidates_route_printer_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+                missing,
+            )
 
     def test_zig_toolchain_match_gate_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
