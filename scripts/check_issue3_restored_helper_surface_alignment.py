@@ -62,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
 class SurfaceAlignmentTests(unittest.TestCase):
     def test_parse_restore_paths(self) -> None:
         text = textwrap.dedent(
-            '''\\
+            '''\
             declare -a HELPER_SURFACE_PATHS=(
                 "docs/A.md"
                 "scripts/B.py"
@@ -73,7 +73,7 @@ class SurfaceAlignmentTests(unittest.TestCase):
 
     def test_parse_required_paths(self) -> None:
         text = textwrap.dedent(
-            '''\\
+            '''\
             REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
                 ("docs/A.md", "a"),
                 ("scripts/B.py", "b"),
