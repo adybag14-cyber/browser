@@ -51,6 +51,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
+- `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -77,8 +78,10 @@ build-readiness is trusted.
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
 surface the staged Zig candidate helper before unpacking the archive again,
-run the matching-line gate after any staged restore, and surface the archive-
-restore checker before broader readiness is trusted again.
+surface `scripts/check_issue3_build_readiness_rerun.py` after a matching staged
+toolchain appears so it can print the exact Linux or WSL rerun command, run the
+matching-line gate after any staged restore, and surface the archive-restore
+checker before broader readiness is trusted again.
 
 Only move back to issue `#3`-specific runtime commits after the environment
 gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
@@ -135,6 +138,13 @@ when the attached archive is not sitting beside the repo workspace and the
 saved-Rust, saved-Zig, saved-Memory, build-readiness, or Zig recovery follow-up
 helpers need to inspect the same surfaced archive path.
 
+When a matching staged Zig candidate already exists, print the exact Linux or
+WSL build-readiness rerun command before broader readiness is trusted again:
+
+```bash
+python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
+```
+
 After restoring a saved Zig candidate, fail fast on the matching-line gate and
 the archive-restore surface before broader readiness is trusted again:
 
@@ -157,8 +167,8 @@ saved-Rust, saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up
 routes all need to inspect the same surfaced archive path.
 
 Use `--json` when another helper wants the issue number, issue URL, staged Zig
-candidate command, start template, completion template, and follow-up route
-commands as structured output.
+candidate command, build-readiness rerun command, start template, completion
+template, and follow-up route commands as structured output.
 
 ## Compact Comment Shapes
 
