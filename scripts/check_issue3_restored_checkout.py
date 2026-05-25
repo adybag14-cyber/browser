@@ -102,6 +102,11 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh", "runtime revalidation surface check"),
     ("scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh", "runtime revalidation route printer"),
     ("scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh", "Zig toolchain recovery surface check"),
+    ("scripts/linux/check_issue3_zig_toolchain_match.sh", "Zig toolchain matching-line gate"),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+        "Zig toolchain archive-restore surface check",
+    ),
     ("scripts/linux/show_issue3_zig_toolchain_recovery_route.sh", "Zig toolchain recovery route printer"),
     ("scripts/linux/restore_issue3_fallback_zig_toolchain.sh", "fallback Zig restore helper"),
     ("scripts/linux/restore_zig_toolchain_archive.sh", "saved Zig archive restore helper"),
