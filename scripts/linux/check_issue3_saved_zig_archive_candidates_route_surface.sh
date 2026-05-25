@@ -65,6 +65,8 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|check_issue3_saved_zig_archive_candidates.py|The Linux build-readiness route still references saved archive discovery."
     "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|saved Zig archive candidates route|The route printer still introduces the route clearly."
     "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_saved_zig_archive_candidates.py|The route printer still exposes the Python helper."
+    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_zig_toolchain_match.sh|The route printer still exposes the matching-line gate."
+    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|Matching-line gate after any restore:|The route printer still prints the matching-line gate step."
     "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|check_issue3_zig_toolchain_archive_restore_route_surface.sh|The route printer still exposes archive-restore surface checks."
     "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh|show_issue3_zig_toolchain_recovery_route.sh|The route printer still points back to the broader Zig recovery route."
 )
