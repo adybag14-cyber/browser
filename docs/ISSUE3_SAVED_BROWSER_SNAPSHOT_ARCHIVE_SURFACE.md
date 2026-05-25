@@ -17,8 +17,11 @@ Companion helpers:
 
 - `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/linux/check_issue3_zig_toolchain_match.sh`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
@@ -85,6 +88,8 @@ The required helper surface mirrors the synced helper contract from
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
+- `scripts/linux/check_issue3_zig_toolchain_match.sh`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
@@ -100,7 +105,8 @@ The required helper surface mirrors the synced helper contract from
 - Prefer a plain restore only when the helper reports that the archive already
   contains the current restore and runtime helper surface.
 - Prefer `--sync-helper-surface` when one or more helper paths are missing from
-  the saved archive.
+  the saved archive, especially the Zig matching-line or archive-restore guard
+  scripts.
 - Keep the live helper root for the next follow-up commands whenever the archive
   helper surface is stale.
 - Treat this helper as a fast restore-route preflight, not as proof that Linux
