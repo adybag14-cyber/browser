@@ -12,6 +12,7 @@ Keep these nearby:
 - `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
 - `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_linux_build_readiness.py`
@@ -37,9 +38,12 @@ A restored checkout can still fail follow-up work when:
 - the checkout is missing core browser repo files such as `build.zig.zon`
 - the synced issue `#3` helper surface was not copied into the restored checkout
 - the restored helper files drift from the live helper root that produced the route
+- the newer issue `#11` Linux/WSL re-entry route files are still missing or stale even when the older helper surface looks mostly usable
 - the next run starts calling saved-memory or runtime helpers against an incomplete follow-up root
 
 That is why `scripts/check_issue3_restored_checkout.py` should run immediately after restore and before the saved-memory preflight, saved-archive integrity check, Linux build-readiness route, or direct runtime re-entry route.
+
+That is also why `scripts/check_issue3_restored_helper_surface_sync.py` is worth using once the restore was supposed to carry a synced helper surface: it focuses on the smaller set of late-added re-entry routes that older restored snapshots can still miss.
 
 ## Practical Order
 
@@ -116,28 +120,36 @@ python ./scripts/check_issue3_restored_checkout.py \
   --expect-helper-surface
 ```
 
-8. Only after the restored checkout passes, run the saved-memory preflight:
+8. If the restored checkout is supposed to carry the newer issue `#11` Linux/WSL re-entry routes too, run the narrower sync check before widening out to saved-memory or runtime follow-up helpers:
+
+```bash
+python ./scripts/check_issue3_restored_helper_surface_sync.py \
+  --helper-root . \
+  --restored-root ../browser-memory-snapshot
+```
+
+9. Only after the restored checkout passes, run the saved-memory preflight:
 
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-9. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
+10. If the route still depends on the exact saved archives, run the saved-archive integrity helper next:
 
 ```bash
 python ./scripts/check_issue3_saved_archive_integrity.py \
   --repo-root ../browser-memory-snapshot
 ```
 
-10. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
+11. When the restored checkout and saved inputs are both green, move into Linux or WSL build readiness:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
   --repo-root ../browser-memory-snapshot
 ```
 
-11. Reopen the narrowed runtime route only after the restored checkout, saved inputs, and build-readiness surfaces agree:
+12. Reopen the narrowed runtime route only after the restored checkout, saved inputs, build-readiness surfaces, and newer helper-surface sync check agree:
 
 ```bash
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh \
@@ -150,6 +162,7 @@ Treat the restored checkout as ready only when all of these are true:
 
 - `scripts/check_issue3_restored_checkout.py` passes without missing required browser repo files
 - synced helper-surface mode reports no drift against the live helper root
+- `scripts/check_issue3_restored_helper_surface_sync.py` reports that the newer issue `#11` Linux/WSL route files are present and in sync with the live helper root
 - the saved-memory preflight sees the repo snapshot, README, blocker intelligence, dependency bundles, and optional fallback Zig archive in the expected places
 - the saved-archive integrity and build-readiness routes no longer fail on missing checkout state
 
@@ -160,6 +173,7 @@ If the restored-checkout helper fails:
 - do not treat later Linux or WSL helper output as trustworthy yet
 - rerun the snapshot restore in synced helper-surface mode when the restored checkout should become its own follow-up root
 - use the `--sync-only` refresh route when the restored checkout already exists and only the helper surface needs to be repaired in place
+- use `scripts/check_issue3_restored_helper_surface_sync.py` to separate older core restore success from missing newer route files when the checkout still looks mostly usable
 - keep using the live helper root when the restored checkout should remain a clean historical snapshot
 - fix the checkout-state problem before blaming the direct `Page.zig` plus `win32_backend.zig` runtime slice
 
@@ -167,4 +181,4 @@ If the restored-checkout helper fails:
 
 For saved-snapshot re-entry, the first meaningful checkpoint after restore is not the saved-memory preflight. It is the restored-checkout readiness check.
 
-Run the restored-checkout route surface checker and route printer first, then `scripts/check_issue3_restored_checkout.py`, then widen into saved inputs, archive integrity, Linux build readiness, and finally the direct issue `#3` runtime route.
+Run the restored-checkout route surface checker and route printer first, then `scripts/check_issue3_restored_checkout.py`, then `scripts/check_issue3_restored_helper_surface_sync.py` when the synced helper surface matters, then widen into saved inputs, archive integrity, Linux build readiness, and finally the direct issue `#3` runtime route.
