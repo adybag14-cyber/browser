@@ -79,10 +79,14 @@ def format_command(parts: list[str]) -> str:
 
 helper_script = repo_root / "scripts" / "check_issue3_workspace_context.py"
 route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_workspace_context_route_surface.sh"
+progress_tracker_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_progress_tracker_route_surface.sh"
 progress_tracker_route_script = repo_root / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh"
+saved_snapshot_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_saved_browser_snapshot_route_surface.sh"
 saved_snapshot_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_browser_snapshot_route.sh"
+linux_build_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_linux_build_readiness_route_surface.sh"
 linux_build_route_script = repo_root / "scripts" / "linux" / "show_issue3_linux_build_readiness_route.sh"
 zig_recovery_route_script = repo_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"
+saved_zig_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_saved_zig_archive_candidates_route_surface.sh"
 saved_zig_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_zig_archive_candidates_route.sh"
 
 helper_command = [
@@ -115,13 +119,22 @@ except json.JSONDecodeError as exc:
 surface_command = format_command(
     ["bash", str(route_surface_script), "--repo-root", str(repo_root)]
 )
+progress_tracker_surface_command = format_command(
+    ["bash", str(progress_tracker_route_surface_script), "--repo-root", str(repo_root)]
+)
 progress_tracker_command = format_command(
     ["bash", str(progress_tracker_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
 )
+saved_snapshot_surface_command = format_command(
+    ["bash", str(saved_snapshot_route_surface_script), "--repo-root", str(repo_root)]
+)
 saved_snapshot_command = format_command(
     ["bash", str(saved_snapshot_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+linux_build_surface_command = format_command(
+    ["bash", str(linux_build_route_surface_script), "--repo-root", str(repo_root)]
 )
 linux_build_command = format_command(
     ["bash", str(linux_build_route_script), "--repo-root", str(repo_root)]
@@ -130,6 +143,9 @@ linux_build_command = format_command(
 zig_recovery_command = format_command(
     ["bash", str(zig_recovery_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+saved_zig_surface_command = format_command(
+    ["bash", str(saved_zig_route_surface_script), "--repo-root", str(repo_root)]
 )
 saved_zig_command = format_command(
     ["bash", str(saved_zig_route_script), "--repo-root", str(repo_root)]
@@ -151,10 +167,14 @@ result = {
     "commands": {
         "route_surface": surface_command,
         "workspace_context_helper": format_command(helper_command[:-1]),
+        "issue11_progress_tracker_route_surface": progress_tracker_surface_command,
         "issue11_progress_tracker_route": progress_tracker_command,
+        "saved_browser_snapshot_route_surface": saved_snapshot_surface_command,
         "saved_browser_snapshot_route": saved_snapshot_command,
+        "linux_build_readiness_route_surface": linux_build_surface_command,
         "linux_build_readiness_route": linux_build_command,
         "zig_toolchain_recovery_route": zig_recovery_command,
+        "saved_zig_archive_candidates_route_surface": saved_zig_surface_command,
         "saved_zig_archive_candidates_route": saved_zig_command,
         "readiness_command": readiness_command,
     },
@@ -162,10 +182,11 @@ result = {
     "notes": [
         "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts the wrapper route.",
         "Use the helper command first when a restored checkout sits deeper than the default sibling layout and the next route would otherwise guess the wrong shared roots.",
-        "Use the printed issue #11 route when the next rerun is still environment-gated after the shared roots are surfaced.",
-        "Use the printed saved-browser-snapshot route when no reusable checkout exists yet after workspace discovery.",
-        "Use the printed Linux build-readiness or Zig recovery routes when the shared roots are known and the next rerun can move straight into those gates.",
-        "Use the printed saved Zig archive candidates route when the next rerun needs to pick or restage a branch-compatible 0.15.x archive before broader recovery is trusted.",
+        "Run the printed issue #11 surface check before the tracker route when the next rerun is still environment-gated after the shared roots are surfaced.",
+        "Run the printed saved-browser-snapshot surface check before the saved-browser-snapshot route when no reusable checkout exists yet after workspace discovery.",
+        "Run the printed Linux build-readiness surface check before the Linux build-readiness route when the shared roots are known and the next rerun can move straight into those gates.",
+        "Use the printed Zig toolchain recovery route when the next rerun already has the practical roots but still lacks a branch-compatible 0.15.x toolchain.",
+        "Run the printed saved Zig archive candidates surface check before the saved Zig archive candidates route when the next rerun needs to pick or restage a branch-compatible 0.15.x archive before broader recovery is trusted.",
         "Use the printed readiness command as the shortest direct handoff once the practical roots are already surfaced and the next step does not need a broader route wrapper.",
         "Thread --fallback-zig-archive through this route when the attached archive is outside the nearest discovered agent_files root so every follow-up route inspects the same surfaced path.",
     ],
@@ -207,17 +228,29 @@ print()
 print("  Workspace-context helper:")
 print(f"    {format_command(helper_command[:-1])}")
 print()
+print("  Issue #11 progress-tracker surface check:")
+print(f"    {progress_tracker_surface_command}")
+print()
 print("  Issue #11 progress-tracker route:")
 print(f"    {progress_tracker_command}")
 print()
+print("  Saved-browser-snapshot surface check:")
+print(f"    {saved_snapshot_surface_command}")
+print()
 print("  Saved-browser-snapshot route:")
 print(f"    {saved_snapshot_command}")
+print()
+print("  Linux build-readiness surface check:")
+print(f"    {linux_build_surface_command}")
 print()
 print("  Linux build-readiness route:")
 print(f"    {linux_build_command}")
 print()
 print("  Zig toolchain recovery route:")
 print(f"    {zig_recovery_command}")
+print()
+print("  Saved Zig archive candidates surface check:")
+print(f"    {saved_zig_surface_command}")
 print()
 print("  Saved Zig archive candidates route:")
 print(f"    {saved_zig_command}")
