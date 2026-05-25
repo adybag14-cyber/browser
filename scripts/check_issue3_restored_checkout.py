@@ -465,6 +465,67 @@ class RestoredCheckoutTests(unittest.TestCase):
             }
             self.assertIn("scripts/check_issue3_restored_checkout.py", missing)
 
+    def test_zig_toolchain_match_gate_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/check_issue3_zig_toolchain_match.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/linux/check_issue3_zig_toolchain_match.sh", missing)
+
+    def test_zig_archive_restore_surface_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn(
+                "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+                missing,
+            )
+
     def test_attached_pages_launcher_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser-memory-snapshot"
