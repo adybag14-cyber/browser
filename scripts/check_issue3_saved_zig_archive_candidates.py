@@ -45,10 +45,16 @@ def classify_version(expected: str, actual: str) -> str:
 
 
 def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
-    dependencies_root = saved_archives_root / "dependencies"
-    if dependencies_root.is_dir():
-        return dependencies_root.resolve()
     return saved_archives_root.resolve()
+
+
+def build_saved_archive_search_roots(saved_archives_root: pathlib.Path) -> list[pathlib.Path]:
+    normalized_root = normalize_saved_archives_root(saved_archives_root)
+    search_roots = [normalized_root]
+    dependencies_root = normalized_root / "dependencies"
+    if dependencies_root.is_dir():
+        search_roots.append(dependencies_root.resolve())
+    return search_roots
 
 
 def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:
@@ -152,23 +158,23 @@ def looks_like_zig_toolchain_archive(path: pathlib.Path, version: str | None, to
     return archive_contains_zig_binary(entries)
 
 
-def discover_zig_archives(root: pathlib.Path) -> list[pathlib.Path]:
-    if not root.exists() or not root.is_dir():
-        return []
-
+def discover_zig_archives(search_roots: list[pathlib.Path]) -> list[pathlib.Path]:
     discovered: list[pathlib.Path] = []
     seen: set[pathlib.Path] = set()
-    for pattern in ARCHIVE_PATTERNS:
-        for path in sorted(root.rglob(pattern)):
-            resolved = path.resolve()
-            if resolved in seen or not resolved.is_file():
-                continue
-            seen.add(resolved)
+    for root in search_roots:
+        if not root.exists() or not root.is_dir():
+            continue
+        for pattern in ARCHIVE_PATTERNS:
+            for path in sorted(root.rglob(pattern)):
+                resolved = path.resolve()
+                if resolved in seen or not resolved.is_file():
+                    continue
+                seen.add(resolved)
 
-            version, top_level = infer_archive_version(resolved)
-            if not looks_like_zig_toolchain_archive(resolved, version, top_level):
-                continue
-            discovered.append(resolved)
+                version, top_level = infer_archive_version(resolved)
+                if not looks_like_zig_toolchain_archive(resolved, version, top_level):
+                    continue
+                discovered.append(resolved)
     return discovered
 
 
@@ -236,6 +242,7 @@ def build_report(
     *,
     repo_root: pathlib.Path,
     saved_archives_root: pathlib.Path,
+    saved_archives_search_roots: list[pathlib.Path],
     toolchains_root: pathlib.Path,
     minimum_zig: str,
     archive_reports: list[dict[str, str]],
@@ -246,6 +253,7 @@ def build_report(
         "status": "passed" if preferred_archive is not None else "failed",
         "repo_root": str(repo_root),
         "saved_archives_root": str(saved_archives_root),
+        "saved_archives_search_roots": [str(root) for root in saved_archives_search_roots],
         "toolchains_root": str(toolchains_root),
         "minimum_zig": minimum_zig,
         "zig_archives": archive_reports,
@@ -267,8 +275,9 @@ def build_report(
     failures: list[str] = []
     if preferred_archive is None:
         expected_prefix = f"{parse_semver(minimum_zig)[0]}.{parse_semver(minimum_zig)[1]}.x"
+        searched_roots = ", ".join(str(root) for root in saved_archives_search_roots)
         failures.append(
-            f"no saved Zig archive under {saved_archives_root} matches the branch's expected {expected_prefix} line"
+            f"no saved Zig archive under {searched_roots} matches the branch's expected {expected_prefix} line"
         )
         if fallback_archive is None:
             failures.append("no surfaced fallback Zig archive is available beside the repo workspace")
@@ -302,12 +311,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 class SavedZigArchiveHelperTests(unittest.TestCase):
-    def test_normalize_saved_archives_root_prefers_dependencies_subdirectory(self) -> None:
+    def test_normalize_saved_archives_root_preserves_browser_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)
             dependencies = root / "dependencies"
             dependencies.mkdir()
-            self.assertEqual(normalize_saved_archives_root(root), dependencies.resolve())
+            self.assertEqual(normalize_saved_archives_root(root), root.resolve())
+
+    def test_build_saved_archive_search_roots_includes_browser_root_and_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies = root / "dependencies"
+            dependencies.mkdir()
+            self.assertEqual(
+                build_saved_archive_search_roots(root),
+                [root.resolve(), dependencies.resolve()],
+            )
 
     def test_discover_and_classify_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -319,7 +338,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             with zipfile.ZipFile(archive_b, "w") as archive:
                 archive.writestr("zig-linux-x86_64-0.17.0-dev.299+a76ce7710/zig", "binary")
 
-            reports = [describe_archive("0.15.2", path) for path in discover_zig_archives(root)]
+            reports = [describe_archive("0.15.2", path) for path in discover_zig_archives([root])]
 
             self.assertEqual(len(reports), 2)
             self.assertEqual(reports[0]["status"], "matches-expected-line")
@@ -373,9 +392,31 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             with tarfile.open(archive_path, "w:xz") as archive:
                 archive.add(extracted_file.parent, arcname=top_level)
 
-            discovered = discover_zig_archives(root)
+            discovered = discover_zig_archives([root])
 
             self.assertEqual(discovered, [archive_path.resolve()])
+
+    def test_discover_zig_archives_scans_browser_root_and_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies = root / "dependencies"
+            dependencies.mkdir()
+            root_archive = root / "zig-linux-x86_64-0.15.2.zip"
+            deps_archive = dependencies / "zig-linux-x86_64-0.17.0-dev.299+a76ce7710.zip"
+            with zipfile.ZipFile(root_archive, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.15.2/zig", "binary")
+            with zipfile.ZipFile(deps_archive, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.17.0-dev.299+a76ce7710/zig", "binary")
+
+            discovered = discover_zig_archives(build_saved_archive_search_roots(root))
+            reports = [describe_archive("0.15.2", path) for path in discovered]
+            preferred = choose_preferred_archive("0.15.2", reports)
+
+            self.assertEqual(discovered, [root_archive.resolve(), deps_archive.resolve()])
+            self.assertIsNotNone(preferred)
+            assert preferred is not None
+            self.assertEqual(preferred["path"], str(root_archive.resolve()))
+            self.assertEqual(preferred["version"], "0.15.2")
 
     def test_discover_zig_archives_skips_invalid_archive_named_like_toolchain(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -383,7 +424,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             archive_path = root / "zig-linux-x86_64-0.15.2.tar.xz"
             archive_path.write_text("not-an-archive", encoding="utf-8")
 
-            discovered = discover_zig_archives(root)
+            discovered = discover_zig_archives([root])
 
             self.assertEqual(discovered, [])
 
@@ -394,7 +435,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             with zipfile.ZipFile(archive_path, "w") as archive:
                 archive.writestr("zig-browser-depo/README.md", "not a toolchain")
 
-            discovered = discover_zig_archives(root)
+            discovered = discover_zig_archives([root])
 
             self.assertEqual(discovered, [])
 
@@ -429,9 +470,14 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
         self.assertEqual(command[-1], "--check-only")
 
     def test_build_report_fails_without_matching_archive(self) -> None:
+        search_roots = [
+            pathlib.Path("/tmp/memory/repo_archives/browser"),
+            pathlib.Path("/tmp/memory/repo_archives/browser/dependencies"),
+        ]
         report = build_report(
             repo_root=pathlib.Path("/tmp/browser"),
-            saved_archives_root=pathlib.Path("/tmp/memory/repo_archives/browser/dependencies"),
+            saved_archives_root=pathlib.Path("/tmp/memory/repo_archives/browser"),
+            saved_archives_search_roots=search_roots,
             toolchains_root=pathlib.Path("/tmp/toolchains"),
             minimum_zig="0.15.2",
             archive_reports=[],
@@ -439,7 +485,15 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             fallback_archive=None,
         )
         self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            report["saved_archives_search_roots"],
+            [str(root) for root in search_roots],
+        )
         self.assertTrue(report["failures"])
+        self.assertIn(
+            "/tmp/memory/repo_archives/browser, /tmp/memory/repo_archives/browser/dependencies",
+            report["failures"][0],
+        )
 
 
 def main() -> int:
@@ -456,6 +510,7 @@ def main() -> int:
         else resolve_default_saved_archives_root(repo_root)
     )
     saved_archives_root = normalize_saved_archives_root(saved_archives_root)
+    saved_archives_search_roots = build_saved_archive_search_roots(saved_archives_root)
     toolchains_root = (
         pathlib.Path(args.toolchains_root).resolve()
         if args.toolchains_root
@@ -468,12 +523,16 @@ def main() -> int:
     )
 
     minimum_zig = load_minimum_zig(repo_root)
-    archive_reports = [describe_archive(minimum_zig, path) for path in discover_zig_archives(saved_archives_root)]
+    archive_reports = [
+        describe_archive(minimum_zig, path)
+        for path in discover_zig_archives(saved_archives_search_roots)
+    ]
     preferred_archive = choose_preferred_archive(minimum_zig, archive_reports)
 
     report = build_report(
         repo_root=repo_root,
         saved_archives_root=saved_archives_root,
+        saved_archives_search_roots=saved_archives_search_roots,
         toolchains_root=toolchains_root,
         minimum_zig=minimum_zig,
         archive_reports=archive_reports,
@@ -487,12 +546,13 @@ def main() -> int:
 
     print("Issue #3 saved Zig archive candidates")
     print()
-    print(f"Repo root:           {repo_root}")
-    print(f"Saved archives root: {saved_archives_root}")
-    print(f"Toolchains root:     {toolchains_root}")
-    print(f"Minimum Zig line:    {minimum_zig}")
+    print(f"Repo root:              {repo_root}")
+    print(f"Saved archives root:    {saved_archives_root}")
+    print(f"Saved archive search:   {', '.join(str(root) for root in saved_archives_search_roots)}")
+    print(f"Toolchains root:        {toolchains_root}")
+    print(f"Minimum Zig line:       {minimum_zig}")
     print(
-        "Fallback archive:    "
+        "Fallback archive:       "
         f"{fallback_archive if fallback_archive is not None else 'not found beside the repo workspace'}"
     )
     print()
