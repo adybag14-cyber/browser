@@ -52,6 +52,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
     (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        "saved Zig archive candidate helper",
+    ),
+    (
         "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
         "saved snapshot archive-surface helper",
     ),
@@ -668,6 +672,35 @@ class RestoredCheckoutTests(unittest.TestCase):
                 "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
                 missing,
             )
+
+    def test_saved_zig_archive_candidate_helper_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_saved_zig_archive_candidates.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_saved_zig_archive_candidates.py", missing)
 
     def test_zig_toolchain_match_gate_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
