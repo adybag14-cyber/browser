@@ -40,7 +40,31 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+resolve_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+locate_first_existing() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+start = pathlib.Path(sys.argv[1]).resolve()
+relative = pathlib.Path(sys.argv[2])
+for ancestor in (start, *start.parents):
+    candidate = ancestor / relative
+    if candidate.exists():
+        print(candidate.resolve())
+        break
+PY
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 SAVED_ARCHIVES_ROOT=""
@@ -79,12 +103,23 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    DISCOVERED_SAVED_ARCHIVES_ROOT="$(locate_first_existing "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -n "${DISCOVERED_SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="${DISCOVERED_SAVED_ARCHIVES_ROOT}"
+    else
+        SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    DISCOVERED_TOOLCHAINS_ROOT="$(locate_first_existing "${REPO_ROOT}" "toolchains" || true)"
+    if [[ -n "${DISCOVERED_TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="${DISCOVERED_TOOLCHAINS_ROOT}"
+    else
+        TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    fi
 fi
+TOOLCHAINS_ROOT="$(resolve_path "${TOOLCHAINS_ROOT}")"
 
 ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md"
 TOOLCHAIN_ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
@@ -125,7 +160,8 @@ print(json.dumps({
         "Hand off to the saved Rust toolchain route once the preferred archive or reusable staged candidate is known.",
         "Use the issue #11 progress-tracker route when this slice is still part of the environment-gated Linux or WSL re-entry lane.",
         "Return to the broader Linux build-readiness route when the Rust archive decision is settled and the next rerun needs the wider helper ladder again.",
-        "The saved_archives_root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized before discovery runs."
+        "The saved_archives_root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized before discovery runs.",
+        "When the checkout is nested or restored deeper in the workspace, this route reuses the nearest practical ancestor Memory and toolchains roots before it falls back to the simple sibling layout."
     ]
 }, indent=2))
 PY
@@ -181,4 +217,5 @@ Working rules
   - Use the issue #11 progress-tracker route when this slice is still part of the environment-gated Linux or WSL re-entry lane.
   - Return to the broader Linux build-readiness route when the Rust archive decision is settled and the next rerun needs the wider helper ladder again.
   - The saved-archives root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized before discovery runs.
+  - When the checkout is nested or restored deeper in the workspace, this route reuses the nearest practical ancestor Memory and toolchains roots before it falls back to the simple sibling layout.
 EOF
