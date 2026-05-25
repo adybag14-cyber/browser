@@ -38,6 +38,8 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
         "saved snapshot archive-surface note",
     ),
+    ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
+    ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
@@ -54,6 +56,7 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "saved snapshot archive-surface helper",
     ),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
+    ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
     (
@@ -97,6 +100,8 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
         "restored-checkout re-entry route printer",
     ),
+    ("scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh", "saved-Memory route surface check"),
+    ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-Memory route printer"),
     ("scripts/linux/check_issue3_linux_build_readiness_route_surface.sh", "Linux build-readiness surface check"),
     ("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer"),
     ("scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh", "runtime revalidation surface check"),
@@ -116,6 +121,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/linux/check_issue3_offline_build_inputs_route_surface.sh", "offline inputs surface check"),
     ("scripts/linux/show_issue3_offline_build_inputs_route.sh", "offline inputs route printer"),
     ("scripts/linux/prepare_offline_build_inputs.sh", "offline inputs restore helper"),
+    (
+        "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
+        "Windows runtime handoff surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+        "Windows runtime handoff route printer",
+    ),
 )
 
 
@@ -436,6 +449,64 @@ class RestoredCheckoutTests(unittest.TestCase):
             }
             self.assertIn("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", missing)
 
+    def test_progress_tracker_route_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", missing)
+
+    def test_workspace_context_route_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", missing)
+
     def test_restored_checkout_checker_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser-memory-snapshot"
@@ -464,6 +535,67 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/check_issue3_restored_checkout.py", missing)
+
+    def test_workspace_context_checker_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue3_workspace_context.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn("scripts/check_issue3_workspace_context.py", missing)
+
+    def test_saved_memory_route_surface_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn(
+                "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+                missing,
+            )
 
     def test_zig_toolchain_match_gate_is_required_for_synced_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -523,6 +655,38 @@ class RestoredCheckoutTests(unittest.TestCase):
             }
             self.assertIn(
                 "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+                missing,
+            )
+
+    def test_windows_runtime_handoff_surface_is_required_for_synced_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertIn(
+                "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
                 missing,
             )
 
