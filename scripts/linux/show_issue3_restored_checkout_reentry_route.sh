@@ -143,6 +143,7 @@ SAVED_SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/li
 SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND} --sync-helper-surface"
 RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
+RESTORED_HELPER_SURFACE_SYNC_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_helper_surface_sync.py") --helper-root $(format_shell_arg "${HELPER_ROOT}") --restored-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${RESTORED_CHECKOUT_CHECK_COMMAND}"
 if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
     PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND="${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}"
@@ -189,6 +190,7 @@ print(json.dumps({
         "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "synced_restored_checkout_check": ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
         "preferred_restored_checkout_check": ${PREFERRED_RESTORED_CHECKOUT_CHECK_COMMAND@Q},
+        "restored_helper_surface_sync_check": ${RESTORED_HELPER_SURFACE_SYNC_COMMAND@Q},
         "saved_memory_preflight": ${SAVED_MEMORY_PREFLIGHT_COMMAND@Q},
         "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
         "linux_build_route": ${LINUX_BUILD_ROUTE_COMMAND@Q},
@@ -201,8 +203,9 @@ print(json.dumps({
         "Use sync_only_saved_snapshot_route when the restored checkout already exists and only the helper surface needs to be refreshed in place.",
         "Run restored_checkout_check immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run synced_restored_checkout_check when the restored checkout was rebuilt with --sync-helper-surface and should be compared against the live helper root for drift.",
+        "Run restored_helper_surface_sync_check after the synced restored-checkout check when the restored checkout is supposed to carry the newer issue #11 Linux/WSL helper surface too.",
         "When repo_root already points at browser-memory-snapshot, the route auto-prefers the current working tree as helper_root if it still looks like the live helper checkout.",
-        "Run saved_memory_preflight against the restored checkout after the restored-checkout check.",
+        "Run saved_memory_preflight against the restored checkout after the restored-checkout checks.",
         "Run saved_archive_integrity next when the route needs to prove the restored checkout still points back to the expected saved repo and dependency archives.",
         "Use linux_build_route when the next blocker is still toolchain or offline dependency staging.",
         "Use runtime_route only after the restored checkout exists and the environment gate is no longer the blocker."
@@ -255,6 +258,9 @@ Suggested route
   Synced helper-surface restored-checkout check:
     ${SYNCED_RESTORED_CHECKOUT_CHECK_COMMAND}
 
+  Restored helper-surface sync check:
+    ${RESTORED_HELPER_SURFACE_SYNC_COMMAND}
+
   Saved-Memory preflight against the restored checkout:
     ${SAVED_MEMORY_PREFLIGHT_COMMAND}
 
@@ -276,7 +282,8 @@ Working rules
   - When repo_root already points at browser-memory-snapshot, the route auto-prefers the current working tree as helper_root if it still looks like the live helper checkout.
   - Run the restored-checkout readiness check right after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.
   - Use the synced helper-surface restored-checkout check when the restored checkout was rebuilt with --sync-helper-surface.
-  - Run the saved-Memory preflight against the restored checkout after the restored-checkout readiness check and before trusting broader helper output.
+  - Run the restored helper-surface sync check right after the synced restored-checkout check when the restored checkout is supposed to carry the newer issue #11 Linux or WSL helper surface too.
+  - Run the saved-Memory preflight against the restored checkout after the restored-checkout checks and before trusting broader helper output.
   - Run the saved-archive integrity preflight after the saved-Memory preflight when the route needs to prove the repo snapshot and dependency bundles still match the expected exact saved artifacts.
   - Use the Linux or WSL build-readiness route when the next blocked step is still toolchain or offline dependency staging.
   - Reopen the direct Page.zig plus win32_backend.zig runtime lane only after the restored checkout exists and the branch-compatible validation gate is no longer the blocker.
