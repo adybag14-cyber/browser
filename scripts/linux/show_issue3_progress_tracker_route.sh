@@ -70,6 +70,7 @@ ISSUE_URL="https://github.com/adybag14-cyber/browser/issues/11"
 ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -98,6 +99,7 @@ print(json.dumps({
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "saved_zig_archive_route_surface": ${SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND@Q},
         "saved_memory_inputs_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
         "saved_zig_archive_candidates_route": ${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND@Q},
         "linux_build_readiness_route": ${BUILD_ROUTE_COMMAND@Q},
@@ -141,6 +143,9 @@ Suggested route
 ===============
   Route surface check:
     ${ROUTE_SURFACE_COMMAND}
+
+  Saved Zig route surface check:
+    ${SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND}
 
   Saved-Memory follow-up route:
     ${SAVED_MEMORY_ROUTE_COMMAND}
