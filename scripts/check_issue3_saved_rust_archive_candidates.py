@@ -59,10 +59,19 @@ def locate_first_existing(start: pathlib.Path, relative_path: str) -> pathlib.Pa
 
 
 def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
-    dependencies_root = saved_archives_root / "dependencies"
+    normalized_root = saved_archives_root.resolve()
+    if normalized_root.name == "dependencies" and normalized_root.parent.is_dir():
+        return normalized_root.parent
+    return normalized_root
+
+
+def build_saved_archive_search_roots(saved_archives_root: pathlib.Path) -> list[pathlib.Path]:
+    normalized_root = normalize_saved_archives_root(saved_archives_root)
+    search_roots = [normalized_root]
+    dependencies_root = normalized_root / "dependencies"
     if dependencies_root.is_dir():
-        return dependencies_root.resolve()
-    return saved_archives_root.resolve()
+        search_roots.append(dependencies_root.resolve())
+    return search_roots
 
 
 def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path:
@@ -79,10 +88,21 @@ def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
     return (repo_root.parent / "toolchains").resolve()
 
 
-def discover_rust_archives(root: pathlib.Path) -> list[pathlib.Path]:
-    if not root.exists() or not root.is_dir():
-        return []
-    return sorted(path.resolve() for path in root.glob("01-rust-*.tar.xz") if path.is_file())
+def discover_rust_archives(search_roots: list[pathlib.Path]) -> list[pathlib.Path]:
+    discovered: list[pathlib.Path] = []
+    seen: set[pathlib.Path] = set()
+    for root in search_roots:
+        if not root.exists() or not root.is_dir():
+            continue
+        for path in sorted(root.rglob("01-rust-*.tar.xz")):
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            discovered.append(resolved)
+    return discovered
 
 
 def infer_archive_metadata(path: pathlib.Path) -> tuple[str | None, str]:
@@ -160,6 +180,7 @@ def build_report(
     *,
     repo_root: pathlib.Path,
     saved_archives_root: pathlib.Path,
+    saved_archives_search_roots: list[pathlib.Path],
     toolchains_root: pathlib.Path,
     expected_rust: str,
     archive_reports: list[dict[str, str]],
@@ -169,6 +190,7 @@ def build_report(
         "status": "passed" if preferred_archive is not None else "failed",
         "repo_root": str(repo_root),
         "saved_archives_root": str(saved_archives_root),
+        "saved_archives_search_roots": [str(root) for root in saved_archives_search_roots],
         "toolchains_root": str(toolchains_root),
         "expected_rust": expected_rust,
         "rust_archives": archive_reports,
@@ -201,8 +223,9 @@ def build_report(
     failures: list[str] = []
     if preferred_archive is None:
         expected_prefix = f"{parse_semver(expected_rust)[0]}.{parse_semver(expected_rust)[1]}.x"
+        searched_roots = ", ".join(str(root) for root in saved_archives_search_roots)
         failures.append(
-            f"no saved Rust archive under {saved_archives_root} matches the expected {expected_prefix} line"
+            f"no saved Rust archive under {searched_roots} matches the expected {expected_prefix} line"
         )
     report["failures"] = failures
     return report
@@ -234,12 +257,42 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 class SavedRustArchiveHelperTests(unittest.TestCase):
-    def test_normalize_saved_archives_root_prefers_dependencies_subdirectory(self) -> None:
+    def test_normalize_saved_archives_root_preserves_browser_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)
             dependencies = root / "dependencies"
             dependencies.mkdir()
-            self.assertEqual(normalize_saved_archives_root(root), dependencies.resolve())
+            self.assertEqual(normalize_saved_archives_root(root), root.resolve())
+
+    def test_build_saved_archive_search_roots_includes_browser_root_and_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies = root / "dependencies"
+            dependencies.mkdir()
+            self.assertEqual(
+                build_saved_archive_search_roots(root),
+                [root.resolve(), dependencies.resolve()],
+            )
+
+    def test_build_saved_archive_search_roots_accepts_dependencies_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies = root / "dependencies"
+            dependencies.mkdir()
+            root_archive = root / "01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz"
+            deps_archive = dependencies / "01-rust-1.80.1-x86_64-unknown-linux-gnu.tar.xz"
+            root_archive.write_text("rust", encoding="utf-8")
+            deps_archive.write_text("rust", encoding="utf-8")
+
+            discovered = discover_rust_archives(build_saved_archive_search_roots(dependencies))
+            reports = [describe_archive("1.79.0", path) for path in discovered]
+            preferred = choose_preferred_archive("1.79.0", reports)
+
+            self.assertEqual(set(discovered), {root_archive.resolve(), deps_archive.resolve()})
+            self.assertIsNotNone(preferred)
+            assert preferred is not None
+            self.assertEqual(preferred["path"], str(root_archive.resolve()))
+            self.assertEqual(preferred["version"], "1.79.0")
 
     def test_describe_archive_parses_version_and_triple(self) -> None:
         archive = pathlib.Path("/tmp/01-rust-1.79.0-x86_64-unknown-linux-gnu.tar.xz")
@@ -297,20 +350,33 @@ class SavedRustArchiveHelperTests(unittest.TestCase):
             toolchains_root = workspace_root / "toolchains"
             toolchains_root.mkdir()
 
-            self.assertEqual(resolve_default_saved_archives_root(repo_root), dependencies_root.resolve())
+            self.assertEqual(resolve_default_saved_archives_root(repo_root), saved_archives_root.resolve())
             self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
 
     def test_build_report_fails_without_matching_archive(self) -> None:
+        search_roots = [
+            pathlib.Path("/tmp/memory/repo_archives/browser"),
+            pathlib.Path("/tmp/memory/repo_archives/browser/dependencies"),
+        ]
         report = build_report(
             repo_root=pathlib.Path("/tmp/browser"),
-            saved_archives_root=pathlib.Path("/tmp/memory/repo_archives/browser/dependencies"),
+            saved_archives_root=pathlib.Path("/tmp/memory/repo_archives/browser"),
+            saved_archives_search_roots=search_roots,
             toolchains_root=pathlib.Path("/tmp/toolchains"),
             expected_rust="1.79.0",
             archive_reports=[],
             preferred_archive=None,
         )
         self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            report["saved_archives_search_roots"],
+            [str(root) for root in search_roots],
+        )
         self.assertTrue(report["failures"])
+        self.assertIn(
+            "/tmp/memory/repo_archives/browser, /tmp/memory/repo_archives/browser/dependencies",
+            report["failures"][0],
+        )
 
 
 def main() -> int:
@@ -327,18 +393,23 @@ def main() -> int:
         else resolve_default_saved_archives_root(repo_root)
     )
     saved_archives_root = normalize_saved_archives_root(saved_archives_root)
+    saved_archives_search_roots = build_saved_archive_search_roots(saved_archives_root)
     toolchains_root = (
         pathlib.Path(args.toolchains_root).resolve()
         if args.toolchains_root
         else resolve_default_toolchains_root(repo_root)
     )
 
-    archive_reports = [describe_archive(args.expected_rust, path) for path in discover_rust_archives(saved_archives_root)]
+    archive_reports = [
+        describe_archive(args.expected_rust, path)
+        for path in discover_rust_archives(saved_archives_search_roots)
+    ]
     preferred_archive = choose_preferred_archive(args.expected_rust, archive_reports)
 
     report = build_report(
         repo_root=repo_root,
         saved_archives_root=saved_archives_root,
+        saved_archives_search_roots=saved_archives_search_roots,
         toolchains_root=toolchains_root,
         expected_rust=args.expected_rust,
         archive_reports=archive_reports,
@@ -351,10 +422,11 @@ def main() -> int:
 
     print("Issue #11 saved Rust archive candidates")
     print()
-    print(f"Repo root:            {repo_root}")
-    print(f"Saved archives root:  {saved_archives_root}")
-    print(f"Toolchains root:      {toolchains_root}")
-    print(f"Expected Rust line:   {args.expected_rust}")
+    print(f"Repo root:              {repo_root}")
+    print(f"Saved archives root:    {saved_archives_root}")
+    print(f"Saved archive search:   {', '.join(str(root) for root in saved_archives_search_roots)}")
+    print(f"Toolchains root:        {toolchains_root}")
+    print(f"Expected Rust line:     {args.expected_rust}")
     print()
     if archive_reports:
         print("Discovered saved Rust archives:")
