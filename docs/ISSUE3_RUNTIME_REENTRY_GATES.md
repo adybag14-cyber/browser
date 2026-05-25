@@ -16,12 +16,27 @@ Read this together with:
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
+- `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
+- `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
+- `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
+- `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+- `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
+- `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+- `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 - `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
@@ -133,10 +148,12 @@ bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh --sync-helper-s
 ```
 
 8. If the restore route is creating or reusing `../browser-memory-snapshot`, run
-   the restored-checkout helper before the saved-memory preflight or
-   archive-integrity helpers:
+   the restored-checkout route surface first and then print the restored-checkout
+   helper before the saved-memory preflight or archive-integrity helpers:
 
 ```bash
+bash ./scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_checkout_reentry_route.sh
 python scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py \
   --repo-root ../browser-memory-snapshot \
@@ -144,10 +161,13 @@ python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py \
   --expect-helper-surface
 ```
 
-9. If the run depends on the saved Memory repo and dependency bundles, run the
-   saved-input preflight before the Linux or WSL build-readiness helpers:
+9. If the run depends on the saved Memory repo and dependency bundles, surface
+   the saved-memory route first and then run the saved-input preflight before the
+   Linux or WSL build-readiness helpers:
 
 ```bash
+bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
@@ -161,7 +181,41 @@ bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 python scripts/check_issue3_saved_archive_integrity.py --repo-root .
 ```
 
-11. When the run is using Linux or WSL staging, start with the direct runtime
+11. When the route still depends on the saved Rust archive, run the saved Rust
+    surface first and then print the saved Rust toolchain route before host
+    `cargo` or `rustc` are treated as meaningful signals:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh
+```
+
+12. When the route still only sees the attached Zig `0.17` fallback or needs a
+    branch-compatible `0.15.x` decision, run the Zig recovery surface first and
+    then print the toolchain recovery route before trusting focused Zig output:
+
+```bash
+bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
+bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
+```
+
+13. If a real Zig `0.15.x` archive is available but not staged yet, fail fast
+    on the archive-restore surface before rebuilding the restore command by
+    hand:
+
+```bash
+bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh
+```
+
+14. If the route still needs `../zig-v8-fork`, `../boringssl-zig`, or
+    `../offline-deps`, print the offline build-inputs route before dropping to
+    the raw archive restore commands:
+
+```bash
+bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh
+```
+
+15. When the run is using Linux or WSL staging, start with the direct runtime
     Linux or WSL surface and then print the compact re-entry route so the source
     contract check, build-readiness route, and Windows follow-up commands stay on
     one branch-local surface:
@@ -171,18 +225,18 @@ bash ./scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh
 bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh
 ```
 
-12. Re-check Linux or WSL build readiness before trusting file-level Zig output:
+16. Re-check Linux or WSL build readiness before trusting file-level Zig output:
 
 ```bash
 python scripts/check_linux_build_readiness.py --repo-root . --skip-zig-check
 ```
 
-13. Only after a matching Zig line is actually staged, rerun the readiness helper
+17. Only after a matching Zig line is actually staged, rerun the readiness helper
     without the Zig skip and then validate the toolchain with the normal project
     build flow before using focused file-level `zig test` as evidence.
-14. Only after those gates are green, reopen the direct code patch and the
+18. Only after those gates are green, reopen the direct code patch and the
     focused regression tests.
-15. After the focused tests are green, move back to the reduced Google probe and
+19. After the focused tests are green, move back to the reduced Google probe and
     then the broader Windows replay ladder.
 
 ## Validation Ladder After The Gates Open
@@ -223,9 +277,9 @@ If the publication gate is still closed:
   re-entry surface so the exact runtime route does not need to be rebuilt by hand
 - use `show_issue3_saved_browser_snapshot_route.sh` first when the missing piece
   is still the disposable checkout for the next Linux or WSL validation pass
-- keep the restored-checkout helper visible between the saved snapshot restore
-  and the saved-memory preflight so the next Linux or WSL follow-up does not
-  trust an incomplete checkout
+- keep the restored-checkout route surface and helper visible between the saved
+  snapshot restore and the saved-memory preflight so the next Linux or WSL
+  follow-up does not trust an incomplete checkout
 - prefer `show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface`
   when the restored checkout should become its own follow-up root because the
   saved archive can lag the current branch-local helper surface
@@ -235,11 +289,12 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the saved-memory preflight, the saved-archive integrity route, the
-  Linux or WSL direct runtime surface check, the compact direct runtime route,
-  the build-readiness surface, the saved-archive Linux route, and the readiness
-  helper as the fast preflight set before widening back out to larger replay
-  plans
+- keep using the saved-memory route, the saved-archive integrity route, the
+  saved Rust route, the Zig recovery route, the Zig archive-restore surface,
+  the offline build-inputs route, the Linux or WSL direct runtime surface check,
+  the compact direct runtime route, the build-readiness surface, the saved-archive
+  Linux route, and the readiness helper as the fast preflight set before
+  widening back out to larger replay plans
 
 ## Working Rule
 
@@ -254,10 +309,14 @@ helper to reopen the same branch-local route quickly, use the Linux build-
 readiness route when the saved archives must be restaged, use the saved-browser-
 snapshot route when the next run still lacks a reusable checkout, use the
 restored-checkout route when the saved snapshot already exists but the follow-up
-root still needs a quick readiness answer, prefer the synced helper-surface
-restore when the restored checkout should become its own follow-up root because
-the saved archive can lag the current branch-local helper surface, use the
-Linux-or-WSL-to-Windows handoff route when the gates are green and the next
-operator needs the Windows-only replay ladder reopened from a Linux or WSL
-staging pass, and spend scheduled cycles on smaller slices that improve the
-next real re-entry instead of repeating the same blocked attempt.
+root still needs a quick readiness answer, use the saved-memory route before raw
+presence checks when the helper chain itself may have drifted, use the saved
+Rust and Zig recovery routes before trusting host toolchains or fallback Zig
+output, use the offline build-inputs route before rebuilding archive-restore
+commands by hand, prefer the synced helper-surface restore when the restored
+checkout should become its own follow-up root because the saved archive can lag
+the current branch-local helper surface, use the Linux-or-WSL-to-Windows handoff
+route when the gates are green and the next operator needs the Windows-only
+replay ladder reopened from a Linux or WSL staging pass, and spend scheduled
+cycles on smaller slices that improve the next real re-entry instead of
+repeating the same blocked attempt.
