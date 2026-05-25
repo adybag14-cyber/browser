@@ -121,6 +121,20 @@ python ./scripts/check_issue3_saved_memory_inputs.py \
   --restored-checkout-root ../browser-memory-snapshot
 ```
 
+If the extracted snapshot may lag behind the current live helper surface, run
+the preflight from the restored tree but keep `--helper-root` pointed at the
+live branch checkout before you trust route commands from that restored tree:
+
+```bash
+python ./scripts/check_issue3_saved_memory_inputs.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --restored-checkout-root ../browser-memory-snapshot
+```
+
+That path catches stale restored snapshots before a run tries to invoke newer
+route notes or helper scripts from the extracted archive itself.
+
 ## Keep The Progress Tracker Visible
 
 If this run is still working in the Linux or WSL re-entry lane and the direct
@@ -187,6 +201,9 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Use the restored-checkout override when a reusable checkout already exists
   and the route should confirm that helper surface before broader route output
   is trusted.
+- Use the live-helper restored-checkout preflight when the extracted snapshot
+  may be older than the current helper surface and the run needs that drift to
+  fail before it starts calling route commands from the restored tree.
 - Keep `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md` visible whenever the route is
   still working in the Linux or WSL re-entry lane so start and completion
   updates go to issue `#11`.
