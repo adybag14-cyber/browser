@@ -32,6 +32,9 @@ Use this route when any of these are true:
   surface before unpacking anything
 - issue `#11` is still tracking toolchain reuse or restore work and the exact
   saved Rust archive-selection path needs a lower-volume route of its own
+- the checkout was restored or nested deeper in the workspace and the run wants
+  this route to surface the nearest practical Memory and toolchains roots
+  instead of rebuilding those overrides by hand
 
 ## Run The Surface Check First
 
@@ -93,3 +96,7 @@ Use `--json` when another helper wants the preferred staged candidate and its
 - Return to `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md` once the saved Rust
   archive choice is settled and the next rerun needs the broader build-readiness
   ladder again.
+- When the checkout is nested or restored deeper in the workspace, let the
+  branch-local route scripts surface the nearest practical ancestor
+  `memory/repo_archives/browser` and `toolchains` roots before falling back to
+  the simple sibling layout.
