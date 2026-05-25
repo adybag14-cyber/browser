@@ -147,7 +147,7 @@ RESTORE_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_
 PATH_COMMAND="export PATH=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin"):$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin"):\$PATH"
 CARGO_COMMAND="export CARGO=$(format_shell_arg "${TOOLCHAIN_ROOT}/cargo/bin/cargo")"
 RUSTC_COMMAND="export RUSTC=$(format_shell_arg "${TOOLCHAIN_ROOT}/rustc/bin/rustc")"
-PREFLIGHT_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --skip-zig-check"
+PREFLIGHT_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAIN_PARENT}") --saved-archives-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --skip-zig-check"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -179,7 +179,7 @@ print(json.dumps({
         "Use the restore command to keep the saved Rust 1.79.0 extraction path on one branch-local surface.",
         "Reuse the PATH, CARGO, and RUSTC exports before rerunning Linux or WSL build-readiness checks.",
         "By default this route now restores into ../toolchains/rust-1.79.0 so it matches the broader Linux build-readiness helper.",
-        "When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor memory and toolchains roots before it falls back to the simple sibling layout."
+        "When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor memory and toolchains roots before it falls back to the simple sibling layout, and it keeps those resolved roots threaded into the surfaced readiness preflight."
     ]
 }, indent=2))
 PY
@@ -235,5 +235,5 @@ Working rules
   - Use the restore command instead of rebuilding the tar extraction path by hand.
   - Reuse the exported PATH, CARGO, and RUSTC values before rerunning Linux or WSL build-readiness helpers.
   - The default restore location now matches the broader Linux build-readiness route: ../toolchains/rust-1.79.0.
-  - When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor Memory and toolchains roots before it falls back to the simple sibling layout.
+  - When the checkout is nested or restored deeper in the workspace, the route now reuses the nearest practical ancestor Memory and toolchains roots before it falls back to the simple sibling layout, and it keeps those resolved roots threaded into the surfaced readiness preflight.
 EOF_ROUTE
