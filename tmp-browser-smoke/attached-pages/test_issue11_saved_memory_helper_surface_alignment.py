@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -79,7 +80,13 @@ def build_fixture_repo() -> Path:
 class Issue11SavedMemoryHelperSurfaceAlignmentTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.repo_root = build_fixture_repo()
+        env_root = os.environ.get("LIGHTPANDA_REPO_ROOT", "").strip()
+        if env_root:
+            cls.repo_root = Path(env_root).resolve()
+        elif os.environ.get("LIGHTPANDA_FIXTURE_REPO") == "1":
+            cls.repo_root = build_fixture_repo()
+        else:
+            cls.repo_root = Path(__file__).resolve().parents[2]
         cls.saved_memory_helper = read_text(
             cls.repo_root / "scripts/check_issue3_saved_memory_inputs.py"
         )
