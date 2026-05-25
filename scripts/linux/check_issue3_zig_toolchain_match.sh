@@ -8,18 +8,36 @@ Usage:
   bash scripts/linux/check_issue3_zig_toolchain_match.sh \
     [--repo-root /path/to/browser-repo] \
     [--toolchains-root /path/to/toolchains] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
 Fail fast when no branch-compatible Zig 0.15.x toolchain is staged for the
-issue #3 Linux/WSL recovery route.
+issue #3 Linux/WSL recovery route, and surface any saved restore candidate that
+matches the branch line before broader readiness is retried.
 EOF
+}
+
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 TOOLCHAINS_ROOT=""
+SAVED_ARCHIVES_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -31,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --toolchains-root)
             TOOLCHAINS_ROOT="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
             shift 2
             ;;
         --fallback-zig-archive)
@@ -57,6 +79,10 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
 fi
+if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
@@ -64,19 +90,21 @@ if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     fi
 fi
 
-python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
+python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
 from __future__ import annotations
 
 import json
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 
 repo_root = pathlib.Path(sys.argv[1]).resolve()
 toolchains_root = pathlib.Path(sys.argv[2]).resolve()
-fallback_zig_archive = pathlib.Path(sys.argv[3]).resolve() if sys.argv[3] else None
-emit_json = sys.argv[4] == "1"
+saved_archives_root = pathlib.Path(sys.argv[3]).resolve()
+fallback_zig_archive = pathlib.Path(sys.argv[4]).resolve() if sys.argv[4] else None
+emit_json = sys.argv[5] == "1"
 
 build_zon = repo_root / "build.zig.zon"
 if not build_zon.is_file():
@@ -92,7 +120,8 @@ minimum_zig = minimum_match.group(1)
 
 semver_re = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 fallback_version_re = re.compile(r"(\d+\.\d+\.\d+)")
-patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
+toolchain_patterns = ("zig*/zig", "zig*/bin/zig", "*/zig", "*/bin/zig", "zig")
+archive_patterns = ("zig*.tar", "zig*.tar.gz", "zig*.tgz", "zig*.tar.xz", "zig*.zip")
 
 
 def parse_semver(text: str) -> tuple[int, int, int]:
@@ -112,12 +141,32 @@ def classify(version_text: str) -> str:
     return "mismatched-line"
 
 
+def format_command(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def build_restore_command(archive_path: pathlib.Path, *, check_only: bool) -> str:
+    command = [
+        "bash",
+        str(repo_root / "scripts" / "linux" / "restore_zig_toolchain_archive.sh"),
+        "--browser-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--archive",
+        str(archive_path),
+    ]
+    if check_only:
+        command.append("--check-only")
+    return format_command(command)
+
+
 candidates: list[dict[str, str]] = []
 matching_candidates: list[dict[str, str]] = []
 seen: set[pathlib.Path] = set()
 
 if toolchains_root.is_dir():
-    for pattern in patterns:
+    for pattern in toolchain_patterns:
         for path in sorted(toolchains_root.glob(pattern)):
             resolved = path.resolve()
             if resolved in seen or not resolved.is_file():
@@ -140,6 +189,46 @@ if toolchains_root.is_dir():
             if status == "matches-expected-line":
                 matching_candidates.append(record)
 
+saved_archives: list[dict[str, str]] = []
+seen_archives: set[pathlib.Path] = set()
+if saved_archives_root.is_dir():
+    for pattern in archive_patterns:
+        for path in sorted(saved_archives_root.glob(pattern)):
+            resolved = path.resolve()
+            if resolved in seen_archives or not resolved.is_file():
+                continue
+            seen_archives.add(resolved)
+            version_match = semver_re.search(resolved.name)
+            version = version_match.group(0) if version_match is not None else ""
+            status = classify(version) if version else "unknown-version"
+            saved_archives.append(
+                {
+                    "path": str(resolved),
+                    "version": version,
+                    "status": status,
+                }
+            )
+
+preferred_saved_archive = next(
+    (
+        archive
+        for archive in saved_archives
+        if archive["status"] == "matches-expected-line" and archive["version"] == minimum_zig
+    ),
+    None,
+)
+if preferred_saved_archive is None:
+    matching_saved_archives = [
+        archive
+        for archive in saved_archives
+        if archive["status"] == "matches-expected-line" and archive["version"]
+    ]
+    if matching_saved_archives:
+        preferred_saved_archive = max(
+            matching_saved_archives,
+            key=lambda archive: parse_semver(archive["version"]),
+        )
+
 fallback_record: dict[str, str] | None = None
 if fallback_zig_archive is not None and fallback_zig_archive.is_file():
     version_match = fallback_version_re.search(fallback_zig_archive.name)
@@ -158,12 +247,28 @@ if fallback_zig_archive is not None and fallback_zig_archive.is_file():
         }
 
 failures: list[str] = []
+preferred_restore_check = None
+preferred_restore = None
+if preferred_saved_archive is not None:
+    preferred_restore_check = build_restore_command(
+        pathlib.Path(preferred_saved_archive["path"]),
+        check_only=True,
+    )
+    preferred_restore = build_restore_command(
+        pathlib.Path(preferred_saved_archive["path"]),
+        check_only=False,
+    )
+
 if not matching_candidates:
     minimum_parts = parse_semver(minimum_zig)
     failures.append(
         f"no staged Zig candidate under {toolchains_root} matches the branch's expected "
         f"{minimum_parts[0]}.{minimum_parts[1]}.x line"
     )
+    if preferred_saved_archive is not None:
+        failures.append(
+            f"saved Zig archive {pathlib.Path(preferred_saved_archive['path']).name} matches that line but is not staged yet"
+        )
     if fallback_record is None:
         failures.append("no surfaced fallback Zig archive is available beside the repo workspace")
     elif fallback_record["status"] == "mismatched-line":
@@ -176,20 +281,29 @@ if not matching_candidates:
             f"fallback Zig archive {pathlib.Path(fallback_record['path']).name} is older than the branch minimum {minimum_zig}"
         )
 
+suggested_next_step = None
+if failures:
+    suggested_next_step = (
+        preferred_restore_check
+        if preferred_restore_check is not None
+        else f"bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root {repo_root}"
+    )
+
 report = {
     "status": "failed" if failures else "passed",
     "repo_root": str(repo_root),
     "minimum_zig": minimum_zig,
     "toolchains_root": str(toolchains_root),
+    "saved_archives_root": str(saved_archives_root),
     "zig_candidates": candidates,
     "matching_zig_candidates": matching_candidates,
+    "saved_zig_archives": saved_archives,
+    "preferred_saved_archive": preferred_saved_archive,
+    "preferred_saved_archive_restore_check": preferred_restore_check,
+    "preferred_saved_archive_restore": preferred_restore,
     "fallback_zig_archive": fallback_record,
     "failures": failures,
-    "suggested_next_step": (
-        f"Run bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root {repo_root}"
-        if failures
-        else None
-    ),
+    "suggested_next_step": suggested_next_step,
 }
 
 if emit_json:
@@ -199,12 +313,26 @@ if emit_json:
 print(f"Repo root: {repo_root}")
 print(f"Minimum Zig from build.zig.zon: {minimum_zig}")
 print(f"Toolchains root: {toolchains_root}")
+print(f"Saved archives root: {saved_archives_root}")
 if candidates:
     print("Discovered Zig candidates:")
     for candidate in candidates:
         print(f"  - {candidate['path']} [{candidate['version']}; {candidate['status']}]")
 else:
     print("Discovered Zig candidates: none")
+
+if saved_archives:
+    print("Saved Zig archives:")
+    for archive in saved_archives:
+        version = archive["version"] or "unknown"
+        print(f"  - {archive['path']} [{version}; {archive['status']}]")
+else:
+    print("Saved Zig archives: none")
+
+if preferred_saved_archive is not None and preferred_restore_check is not None and preferred_restore is not None:
+    print("Preferred saved archive restore:")
+    print(f"  {preferred_restore_check}")
+    print(f"  {preferred_restore}")
 
 if fallback_record is not None:
     print(
@@ -216,11 +344,7 @@ if failures:
     print("\nMatching Zig toolchain check failed:", file=sys.stderr)
     for failure in failures:
         print(f"  - {failure}", file=sys.stderr)
-    print(
-        "\nSuggested next step: "
-        f"bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh --repo-root {repo_root}",
-        file=sys.stderr,
-    )
+    print(f"\nSuggested next step: {suggested_next_step}", file=sys.stderr)
     raise SystemExit(1)
 
 print("\nMatching Zig toolchain check passed.")
