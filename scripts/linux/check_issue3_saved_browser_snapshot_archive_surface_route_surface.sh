@@ -68,7 +68,7 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_saved_browser_snapshot_archive_surface_route.sh|show_issue3_progress_tracker_route.sh|The route printer still exposes the issue #11 progress-tracker follow-up route."
     "scripts/linux/show_issue3_saved_browser_snapshot_archive_surface_route.sh|show_issue3_enter_submit_runtime_revalidation_route.sh|The route printer still exposes the narrowed runtime follow-up route."
     "scripts/linux/show_issue3_saved_browser_snapshot_archive_surface_route.sh|recommended_restore_mode|The route printer JSON output exposes the restore recommendation explicitly."
-    "scripts/linux/show_issue3_saved_BROWSER_snapshot_archive_surface_route.sh|missing_paths|The route printer JSON output exposes missing helper paths explicitly."
+    "scripts/linux/show_issue3_saved_browser_snapshot_archive_surface_route.sh|missing_paths|The route printer JSON output exposes missing helper paths explicitly."
 )
 
 json_escape() {
