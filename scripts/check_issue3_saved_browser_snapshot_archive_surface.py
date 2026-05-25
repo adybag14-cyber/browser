@@ -7,7 +7,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
+from pathlib import Path
+import tempfile
+import unittest
 import zipfile
 from dataclasses import asdict, dataclass
 
@@ -230,6 +232,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print a JSON summary instead of the human-readable surface.",
     )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run focused helper tests and exit.",
+    )
     return parser.parse_args()
 
 
@@ -275,6 +282,31 @@ def build_statuses(names: set[str], top_level_folder: str) -> list[PathStatus]:
         PathStatus(path=path, present=f"{prefix}{path}" in names, purpose=purpose)
         for path, purpose in REQUIRED_PATHS
     ]
+
+
+def load_archive_names(archive_path: str) -> set[str]:
+    with zipfile.ZipFile(archive_path) as archive:
+        bad_member = archive.testzip()
+        if bad_member is not None:
+            raise ValueError(f"Snapshot archive failed CRC validation at: {bad_member}")
+        return set(archive.namelist())
+
+
+def build_payload(archive_path: str, names: set[str]) -> dict[str, object]:
+    top_level_folder = infer_top_level_folder(names)
+    statuses = build_statuses(names, top_level_folder)
+    missing_paths = [status.path for status in statuses if not status.present]
+    return {
+        "issue": "issue3-saved-browser-snapshot-archive-surface",
+        "archive_path": archive_path,
+        "archive_top_level_root": top_level_folder,
+        "helper_surface_complete": not missing_paths,
+        "recommended_restore_mode": (
+            "sync-helper-surface" if missing_paths else "plain"
+        ),
+        "missing_paths": missing_paths,
+        "required_paths": [asdict(status) for status in statuses],
+    }
 
 
 def human_output(archive_path: str, top_level_folder: str, statuses: list[PathStatus]) -> str:
@@ -323,41 +355,107 @@ def human_output(archive_path: str, top_level_folder: str, statuses: list[PathSt
     return "\n".join(lines)
 
 
+class SavedBrowserSnapshotArchiveSurfaceTests(unittest.TestCase):
+    def test_infer_top_level_folder_returns_single_prefix(self) -> None:
+        names = {
+            "browser-fork-headed-mode-foundation/build.zig.zon",
+            "browser-fork-headed-mode-foundation/docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+        }
+        self.assertEqual(
+            infer_top_level_folder(names),
+            "browser-fork-headed-mode-foundation",
+        )
+
+    def test_build_payload_marks_missing_paths_and_sync_restore(self) -> None:
+        names = {
+            "browser-fork-headed-mode-foundation/build.zig.zon",
+            "browser-fork-headed-mode-foundation/docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+        }
+        payload = build_payload("/tmp/archive.zip", names)
+
+        self.assertFalse(payload["helper_surface_complete"])
+        self.assertEqual(payload["recommended_restore_mode"], "sync-helper-surface")
+        self.assertIn(
+            "scripts/check_issue3_saved_memory_inputs.py",
+            payload["missing_paths"],
+        )
+
+    def test_build_payload_marks_plain_restore_when_surface_is_complete(self) -> None:
+        top_level = "browser-fork-headed-mode-foundation"
+        names = {f"{top_level}/{path}" for path, _purpose in REQUIRED_PATHS}
+        payload = build_payload("/tmp/archive.zip", names)
+
+        self.assertTrue(payload["helper_surface_complete"])
+        self.assertEqual(payload["recommended_restore_mode"], "plain")
+        self.assertEqual(payload["missing_paths"], [])
+
+    def test_resolve_archive_path_prefers_existing_memory_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            memory_root = Path(tmpdir) / "memory"
+            repo_root.mkdir()
+            memory_root.mkdir()
+
+            args = argparse.Namespace(
+                repo_root=str(repo_root),
+                memory_root=None,
+                archive=None,
+            )
+            resolved_memory_root, archive_path = resolve_archive_path(args)
+
+            self.assertEqual(resolved_memory_root, str(memory_root.resolve()))
+            self.assertEqual(
+                archive_path,
+                str(
+                    (
+                        memory_root
+                        / "repo_archives/browser"
+                        / DEFAULT_ARCHIVE_NAME
+                    ).resolve()
+                ),
+            )
+
+    def test_load_archive_names_rejects_crc_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = Path(tmpdir) / "broken.zip"
+            archive_path.write_text("not a zip", encoding="utf-8")
+
+            with self.assertRaises(zipfile.BadZipFile):
+                load_archive_names(str(archive_path))
+
+
 def main() -> int:
     args = parse_args()
+    if args.self_test:
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(
+            SavedBrowserSnapshotArchiveSurfaceTests
+        )
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+
     _, archive_path = resolve_archive_path(args)
     if not os.path.isfile(archive_path):
-        print(f"Snapshot archive not found: {archive_path}", file=sys.stderr)
+        print(f"Snapshot archive not found: {archive_path}", file=os.sys.stderr)
         return 1
 
-    with zipfile.ZipFile(archive_path) as archive:
-        bad_member = archive.testzip()
-        if bad_member is not None:
-            print(f"Snapshot archive failed CRC validation at: {bad_member}", file=sys.stderr)
-            return 1
-        names = set(archive.namelist())
+    try:
+        names = load_archive_names(archive_path)
+    except (ValueError, zipfile.BadZipFile) as exc:
+        print(str(exc), file=os.sys.stderr)
+        return 1
 
-    top_level_folder = infer_top_level_folder(names)
-    statuses = build_statuses(names, top_level_folder)
-    missing_paths = [status.path for status in statuses if not status.present]
-    payload = {
-        "issue": "issue3-saved-browser-snapshot-archive-surface",
-        "archive_path": archive_path,
-        "archive_top_level_root": top_level_folder,
-        "helper_surface_complete": not missing_paths,
-        "recommended_restore_mode": (
-            "sync-helper-surface" if missing_paths else "plain"
-        ),
-        "missing_paths": missing_paths,
-        "required_paths": [asdict(status) for status in statuses],
-    }
+    payload = build_payload(archive_path, names)
+    top_level_folder = payload["archive_top_level_root"]
+    statuses = [
+        PathStatus(**entry) for entry in payload["required_paths"]
+    ]
 
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
         print(human_output(archive_path, top_level_folder, statuses))
 
-    return 0 if not missing_paths else 2
+    return 0 if not payload["missing_paths"] else 2
 
 
 if __name__ == "__main__":
