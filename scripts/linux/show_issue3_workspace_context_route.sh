@@ -10,9 +10,18 @@ Usage:
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
-Print the compact workspace-context route for the blocked issue #3 Linux or WSL
-re-entry lane.
+Print the issue #3 workspace-context route for nested or restored Linux or WSL
+re-entry work.
 EOF
+}
+
+format_shell_arg() {
+    python3 - "$1" <<'PY'
+import shlex
+import sys
+
+print(shlex.quote(sys.argv[1]))
+PY
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -50,173 +59,162 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
-WORKSPACE_CONTEXT_COMMAND=(
-    "python"
-    "${REPO_ROOT}/scripts/check_issue3_workspace_context.py"
-    "--repo-root"
-    "${REPO_ROOT}"
-)
-WORKSPACE_CONTEXT_DISPLAY_COMMAND=(
-    "python"
-    "scripts/check_issue3_workspace_context.py"
-    "--repo-root"
-    "${REPO_ROOT}"
-)
-SAVED_ZIG_ROUTE_DISPLAY_COMMAND=(
-    "bash"
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh"
-    "--repo-root"
-    "${REPO_ROOT}"
-)
-if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    WORKSPACE_CONTEXT_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
-    WORKSPACE_CONTEXT_DISPLAY_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
-    SAVED_ZIG_ROUTE_DISPLAY_COMMAND+=("--fallback-zig-archive" "${FALLBACK_ZIG_ARCHIVE}")
-fi
+python3 - "${REPO_ROOT}" "${FALLBACK_ZIG_ARCHIVE}" "${JSON}" <<'PY'
+from __future__ import annotations
 
-CONTEXT_JSON="$(python3 - <<'PY' "${WORKSPACE_CONTEXT_COMMAND[@]}"
+import json
+import pathlib
+import shlex
 import subprocess
 import sys
 
-completed = subprocess.run(sys.argv[1:] + ["--json"], check=True, capture_output=True, text=True)
-print(completed.stdout)
-PY
-)"
+repo_root = pathlib.Path(sys.argv[1]).resolve()
+fallback_zig_archive = sys.argv[2]
+emit_json = sys.argv[3] == "1"
 
-if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<'PY' "${CONTEXT_JSON}" "${FALLBACK_ZIG_ARCHIVE}"
-import json
-import sys
 
-context = json.loads(sys.argv[1])
-fallback = sys.argv[2]
-repo_root = context["repo_root"]
-workspace_context_command = [
-    "python",
-    "scripts/check_issue3_workspace_context.py",
-    "--repo-root",
-    repo_root,
-]
-saved_zig_route_command = [
-    "bash",
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
-    "--repo-root",
-    repo_root,
-]
-if fallback:
-    workspace_context_command.extend(("--fallback-zig-archive", fallback))
-    saved_zig_route_command.extend(("--fallback-zig-archive", fallback))
-
-route = {
-    "issue": "issue3-workspace-context-route",
-    "repo_root": repo_root,
-    "route_note_path": f"{repo_root}/docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
-    "surface_check_command": [
-        "bash",
-        "scripts/linux/check_issue3_workspace_context_route_surface.sh",
-        "--repo-root",
-        repo_root,
-    ],
-    "workspace_context_command": workspace_context_command,
-    "resolved_roots": {
-        "toolchains_root": context["toolchains_root"],
-        "memory_root": context["memory_root"],
-        "saved_archives_root": context["saved_archives_root"],
-        "agent_files_root": context["agent_files_root"],
-        "offline_deps_root": context["offline_deps_root"],
-        "restored_checkout_root": context["restored_checkout_root"],
-        "fallback_zig_archive": context["fallback_zig_archive"],
-    },
-    "follow_up_commands": {
-        "issue11_progress_tracker_route": context["suggested_progress_tracker_route_command"],
-        "saved_snapshot_route": context["suggested_saved_snapshot_route_command"],
-        "linux_build_readiness_route": context["suggested_build_readiness_route_command"],
-        "zig_toolchain_recovery_route": context["suggested_zig_recovery_route_command"],
-        "zig_toolchain_match_gate": context["suggested_zig_match_command"],
-        "saved_zig_archive_candidates_route": saved_zig_route_command,
-    },
-}
-print(json.dumps(route, indent=2))
-PY
-    exit 0
-fi
-
-python3 - <<'PY' "${CONTEXT_JSON}" "${FALLBACK_ZIG_ARCHIVE}"
-import json
-import shlex
-import sys
-
-context = json.loads(sys.argv[1])
-fallback = sys.argv[2]
-
-def join_command(parts):
+def format_command(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
-workspace_context_command = [
-    "python",
-    "scripts/check_issue3_workspace_context.py",
-    "--repo-root",
-    context["repo_root"],
-]
-saved_zig_route_command = [
-    "bash",
-    "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
-    "--repo-root",
-    context["repo_root"],
-]
-if fallback:
-    workspace_context_command.extend(("--fallback-zig-archive", fallback))
-    saved_zig_route_command.extend(("--fallback-zig-archive", fallback))
 
-print("Issue #3 workspace-context route")
+helper_script = repo_root / "scripts" / "check_issue3_workspace_context.py"
+route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_workspace_context_route_surface.sh"
+progress_tracker_route_script = repo_root / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh"
+saved_snapshot_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_browser_snapshot_route.sh"
+linux_build_route_script = repo_root / "scripts" / "linux" / "show_issue3_linux_build_readiness_route.sh"
+zig_recovery_route_script = repo_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"
+saved_zig_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_zig_archive_candidates_route.sh"
+
+helper_command = [
+    sys.executable,
+    str(helper_script),
+    "--repo-root",
+    str(repo_root),
+    "--json",
+]
+if fallback_zig_archive:
+    helper_command.extend(("--fallback-zig-archive", fallback_zig_archive))
+
+completed = subprocess.run(
+    helper_command,
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if not completed.stdout.strip():
+    detail = completed.stderr.strip()
+    if detail:
+        detail = f"; stderr: {detail}"
+    raise SystemExit(f"workspace-context helper produced no JSON output{detail}")
+
+try:
+    helper_report = json.loads(completed.stdout)
+except json.JSONDecodeError as exc:
+    raise SystemExit(f"workspace-context helper returned invalid JSON: {exc}") from exc
+
+surface_command = format_command(
+    ["bash", str(route_surface_script), "--repo-root", str(repo_root)]
+)
+progress_tracker_command = format_command(
+    ["bash", str(progress_tracker_route_script), "--repo-root", str(repo_root)]
+    + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+saved_snapshot_command = format_command(
+    ["bash", str(saved_snapshot_route_script), "--repo-root", str(repo_root)]
+    + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+linux_build_command = format_command(
+    ["bash", str(linux_build_route_script), "--repo-root", str(repo_root)]
+    + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+zig_recovery_command = format_command(
+    ["bash", str(zig_recovery_route_script), "--repo-root", str(repo_root)]
+    + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+saved_zig_command = format_command(
+    ["bash", str(saved_zig_route_script), "--repo-root", str(repo_root)]
+    + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
+)
+
+result = {
+    "issue": "Google issue #3 workspace-context route",
+    "repo_root": str(repo_root),
+    "route_note_path": str(repo_root / "docs" / "ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"),
+    "fallback_zig_archive": helper_report.get("fallback_zig_archive"),
+    "toolchains_root": helper_report.get("toolchains_root"),
+    "saved_archives_root": helper_report.get("saved_archives_root"),
+    "offline_deps_root": helper_report.get("offline_deps_root"),
+    "restored_checkout_root": helper_report.get("restored_checkout_root"),
+    "commands": {
+        "route_surface": surface_command,
+        "workspace_context_helper": format_command(helper_command[:-1]),
+        "issue11_progress_tracker_route": progress_tracker_command,
+        "saved_browser_snapshot_route": saved_snapshot_command,
+        "linux_build_readiness_route": linux_build_command,
+        "zig_toolchain_recovery_route": zig_recovery_command,
+        "saved_zig_archive_candidates_route": saved_zig_command,
+    },
+    "helper_report": helper_report,
+    "notes": [
+        "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts the wrapper route.",
+        "Use the helper command first when a restored checkout sits deeper than the default sibling layout and the next route would otherwise guess the wrong shared roots.",
+        "Use the printed issue #11 route when the next rerun is still environment-gated after the shared roots are surfaced.",
+        "Use the printed saved-browser-snapshot route when no reusable checkout exists yet after workspace discovery.",
+        "Use the printed Linux build-readiness or Zig recovery routes when the shared roots are known and the next rerun can move straight into those gates.",
+        "Thread --fallback-zig-archive through this route when the attached archive is outside the nearest discovered agent_files root so every follow-up route inspects the same surfaced path.",
+    ],
+}
+
+if emit_json:
+    print(json.dumps(result, indent=2))
+    raise SystemExit(0)
+
+print("Google issue #3 workspace-context route")
 print()
-print(f"Repo root:   {context['repo_root']}")
-print(f"Route note:  {context['repo_root']}/docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md")
+print(f"Repo root:              {repo_root}")
+print(f"Route note:             {result['route_note_path']}")
+print(f"Toolchains root:        {result['toolchains_root']}")
+print(f"Saved archives root:    {result['saved_archives_root']}")
+print(f"Offline deps root:      {result['offline_deps_root']}")
+print(f"Restored checkout root: {result['restored_checkout_root']}")
+print(
+    "Fallback Zig archive:   "
+    f"{result['fallback_zig_archive'] or 'not found beside the repo workspace'}"
+)
+print()
+print("Read first")
+print("==========")
+print("  docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md")
+print("  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md")
+print("  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")
+print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
+print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
 print()
 print("Suggested route")
 print("===============")
 print("  Route surface check:")
-print(f"    bash scripts/linux/check_issue3_workspace_context_route_surface.sh --repo-root {shlex.quote(context['repo_root'])}")
+print(f"    {surface_command}")
 print()
 print("  Workspace-context helper:")
-print(f"    {join_command(workspace_context_command)}")
+print(f"    {format_command(helper_command[:-1])}")
 print()
-print("Resolved roots")
-print("==============")
-print(f"  Toolchains root:         {context['toolchains_root']}")
-print(f"  Memory root:             {context['memory_root']}")
-print(f"  Saved archives root:     {context['saved_archives_root']}")
-print(f"  Agent files root:        {context['agent_files_root']}")
-print(f"  Offline deps root:       {context['offline_deps_root']}")
-print(f"  Restored checkout root:  {context['restored_checkout_root']}")
-print(f"  Fallback Zig archive:    {context['fallback_zig_archive']}")
-print()
-print("Follow-up routes")
-print("================")
 print("  Issue #11 progress-tracker route:")
-print(f"    {join_command(context['suggested_progress_tracker_route_command'])}")
+print(f"    {progress_tracker_command}")
 print()
-print("  Saved browser-snapshot route:")
-print(f"    {join_command(context['suggested_saved_snapshot_route_command'])}")
+print("  Saved-browser-snapshot route:")
+print(f"    {saved_snapshot_command}")
 print()
-print("  Linux or WSL build-readiness route:")
-print(f"    {join_command(context['suggested_build_readiness_route_command'])}")
+print("  Linux build-readiness route:")
+print(f"    {linux_build_command}")
 print()
-print("  Zig recovery route:")
-print(f"    {join_command(context['suggested_zig_recovery_route_command'])}")
+print("  Zig toolchain recovery route:")
+print(f"    {zig_recovery_command}")
 print()
-print("  Zig matching-line gate:")
-print(f"    {join_command(context['suggested_zig_match_command'])}")
-print()
-print("  Saved Zig archive-candidates route:")
-print(f"    {join_command(saved_zig_route_command)}")
+print("  Saved Zig archive candidates route:")
+print(f"    {saved_zig_command}")
 print()
 print("Working rules")
 print("=============")
-print("  - Run the route surface check first so note or helper drift fails before the route is trusted.")
-print("  - Run the workspace-context helper next so nested or restored checkouts surface the practical shared roots.")
-print("  - When a restored checkout sits deeper than the default sibling layout, keep the same explicit fallback Zig archive path threaded through this route and its follow-up helper commands.")
-print("  - Use the printed issue #11 route when the run still needs a lower-volume progress tracker before reopening the direct runtime patch.")
-print("  - Use the saved browser-snapshot or Zig recovery follow-up routes when the surfaced roots show that restore or matching-line staging is still the blocker.")
-print("  - Use the saved Zig archive-candidates route before hand-picking a Zig archive from Memory dependencies.")
+for note in result["notes"]:
+    print(f"  - {note}")
 PY
