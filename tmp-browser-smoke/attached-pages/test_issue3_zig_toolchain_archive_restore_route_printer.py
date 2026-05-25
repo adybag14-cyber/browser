@@ -62,14 +62,15 @@ class ZigArchiveRestoreRoutePrinterTests(unittest.TestCase):
         self.assertIn("Google issue #3 Zig toolchain archive restore route", output)
         self.assertIn("Surface check", output)
         self.assertIn("Archive restore commands", output)
-        self.assertIn("show_issue3_zig_toolchain_recovery_route.sh", output)
         self.assertIn("provide --archive /path/to/zig-0.15.2.tar.xz", output)
+        self.assertIn("After restore, rerun the recovery route", output)
 
     def test_json_output_reports_compact_route_when_no_archive_is_selected(self) -> None:
         completed = self.run_script("--json")
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["issue"], "Google issue #3 Zig toolchain archive restore route")
         self.assertEqual(payload["archive_path"], "")
+        self.assertEqual(payload["zig_path_candidates"], [])
         self.assertIn("surface_check", payload["commands"])
         self.assertIn("recovery_route", payload["commands"])
         self.assertNotIn("restore_check_only", payload["commands"])
@@ -81,9 +82,27 @@ class ZigArchiveRestoreRoutePrinterTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["archive_path"], str(archive))
         self.assertTrue(payload["destination"].endswith("zig-0.15.2"))
+        self.assertEqual(
+            payload["zig_path_candidates"],
+            [
+                str(Path(payload["destination"]) / "zig"),
+                str(Path(payload["destination"]) / "bin/zig"),
+            ],
+        )
+        self.assertIn("--zig '<restored-zig-path>'", payload["commands"]["full_readiness"])
         self.assertIn("restore_check_only", payload["commands"])
         self.assertIn("restore", payload["commands"])
         self.assertIn("full_readiness", payload["commands"])
+
+    def test_text_output_explains_candidate_paths_and_placeholder_followup(self) -> None:
+        archive = self.root / "zig-x86_64-linux-0.15.2.tar.xz"
+        archive.write_text("placeholder archive path\n", encoding="utf-8")
+        completed = self.run_script("--archive", str(archive))
+        output = completed.stdout
+        self.assertIn("Candidate zig paths:", output)
+        self.assertIn("/zig-x86_64-linux-0.15.2/zig", output)
+        self.assertIn("/zig-x86_64-linux-0.15.2/bin/zig", output)
+        self.assertIn("Replace <restored-zig-path> with the actual zig path printed by restore_zig_toolchain_archive.sh after extraction.", output)
 
 
 if __name__ == "__main__":
