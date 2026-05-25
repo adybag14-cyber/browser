@@ -571,7 +571,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
 
 def main() -> int:
     args = build_parser().parse_args()
-    if args.self-test:
+    if args.self_test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(SavedZigArchiveHelperTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
