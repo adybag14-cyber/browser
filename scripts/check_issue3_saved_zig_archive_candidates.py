@@ -45,7 +45,10 @@ def classify_version(expected: str, actual: str) -> str:
 
 
 def normalize_saved_archives_root(saved_archives_root: pathlib.Path) -> pathlib.Path:
-    return saved_archives_root.resolve()
+    normalized_root = saved_archives_root.resolve()
+    if normalized_root.name == "dependencies" and normalized_root.parent.is_dir():
+        return normalized_root.parent
+    return normalized_root
 
 
 def build_saved_archive_search_roots(saved_archives_root: pathlib.Path) -> list[pathlib.Path]:
@@ -327,6 +330,28 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
                 build_saved_archive_search_roots(root),
                 [root.resolve(), dependencies.resolve()],
             )
+
+    def test_build_saved_archive_search_roots_accepts_dependencies_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            dependencies = root / "dependencies"
+            dependencies.mkdir()
+            root_archive = root / "zig-linux-x86_64-0.15.2.zip"
+            deps_archive = dependencies / "zig-linux-x86_64-0.17.0-dev.299+a76ce7710.zip"
+            with zipfile.ZipFile(root_archive, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.15.2/zig", "binary")
+            with zipfile.ZipFile(deps_archive, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.17.0-dev.299+a76ce7710/zig", "binary")
+
+            discovered = discover_zig_archives(build_saved_archive_search_roots(dependencies))
+            reports = [describe_archive("0.15.2", path) for path in discovered]
+            preferred = choose_preferred_archive("0.15.2", reports)
+
+            self.assertEqual(discovered, [root_archive.resolve(), deps_archive.resolve()])
+            self.assertIsNotNone(preferred)
+            assert preferred is not None
+            self.assertEqual(preferred["path"], str(root_archive.resolve()))
+            self.assertEqual(preferred["version"], "0.15.2")
 
     def test_discover_and_classify_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
