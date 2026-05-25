@@ -14,6 +14,7 @@ Companion helpers:
 
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
 - `scripts/linux/restore_saved_rust_toolchain.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/check_linux_build_readiness.py`
@@ -42,6 +43,18 @@ bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
 Use `--json` when another helper wants the surface-check result as structured
 output.
 
+## Surface Saved Archive Candidates Before Restore
+
+When the run wants to confirm which saved Rust archive should drive the restore
+command, print the candidate summary first:
+
+```bash
+python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
+```
+
+Use `--json` when another helper wants the preferred archive, saved-archives
+root, or restore commands as structured output.
+
 ## Run The Route
 
 From the browser repo root:
@@ -68,12 +81,14 @@ The helper prints:
 
 1. a fail-fast surface check command for
    `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-2. a `--check-only` surface check for `restore_saved_rust_toolchain.sh`
-3. the restore command for the saved Rust `1.79.0` archive
-4. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore
-5. the matching `check_linux_build_readiness.py` preflight to rerun after the
+2. a saved-archive candidate discovery command for
+   `scripts/check_issue3_saved_rust_archive_candidates.py`
+3. a `--check-only` surface check for `restore_saved_rust_toolchain.sh`
+4. the restore command for the saved Rust `1.79.0` archive
+5. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore
+6. the matching `check_linux_build_readiness.py` preflight to rerun after the
    toolchain is restored
-6. the aligned default restore destination under `../toolchains/rust-1.79.0`
+7. the aligned default restore destination under `../toolchains/rust-1.79.0`
    so the saved-Rust route and the broader build-readiness route point at the
    same toolchain tree
 
@@ -82,6 +97,9 @@ The helper prints:
 - Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
   first so missing route docs or helper drift fails before the saved archive is
   blamed.
+- Run `python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .`
+  before hand-picking the saved Rust archive or rebuilding restore commands by
+  hand.
 - Run this route before blaming missing `cargo` or `rustc` on the source tree.
 - Keep the saved Rust restore on this helper surface instead of rebuilding the
   tar extraction command by hand.
