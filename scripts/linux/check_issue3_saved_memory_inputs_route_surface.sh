@@ -76,6 +76,8 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh|The saved-Memory-inputs note keeps the saved Zig archive candidates follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--skip-archive-integrity-check|The saved-Memory-inputs note keeps the quick presence-only mode visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--restored-checkout-root ../browser-memory-snapshot|The saved-Memory-inputs note keeps the restored-checkout override visible."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--repo-root ../browser-memory-snapshot|The saved-Memory-inputs note keeps the live-helper restored-checkout example visible."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--helper-root .|The saved-Memory-inputs note keeps the live helper-root override visible for restored checkouts."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_saved_browser_snapshot_route.sh|The saved-Memory-inputs note keeps the saved-browser-snapshot follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The saved-Memory-inputs note keeps the Linux or WSL build-readiness follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The saved-Memory-inputs note keeps the direct runtime follow-up route visible."
@@ -91,6 +93,9 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|show_issue3_saved_zig_archive_candidates_route.sh|The route printer still exposes the saved Zig archive candidates follow-up."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|Saved-archive integrity route:|The route printer still prints the saved-archive integrity route section."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|Saved Zig archive candidates route:|The route printer still prints the saved Zig archive candidates route section."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|live_helper_restored_checkout_preflight|The route printer JSON output still exposes the live-helper restored-checkout preflight command."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|Live-helper preflight from the restored checkout itself:|The route printer still prints the live-helper restored-checkout preflight section."
+    "scripts/linux/show_issue3_saved_memory_inputs_route.sh|extracted snapshot may lag behind the live helper surface|The route printer still warns about stale restored snapshots before follow-up route commands run from the restored tree."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|saved_archive_integrity_route|The route printer JSON output exposes the saved-archive integrity route explicitly."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|saved_zig_archive_candidates_route|The route printer JSON output exposes the saved Zig archive candidates route explicitly."
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh|--skip-archive-integrity-check|The route printer still supports the quick presence-only mode."
@@ -214,4 +219,3 @@ fi
 echo
 
 echo "All saved-Memory-input route surfaces are present."
-EOF
