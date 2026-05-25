@@ -131,8 +131,8 @@ def infer_archive_version(path: pathlib.Path) -> tuple[str | None, str]:
     return None, top_level or ""
 
 
-def archive_contains_zig_binary(path: pathlib.Path) -> bool:
-    for member_name in archive_member_names(path):
+def archive_contains_zig_binary(entries: list[str]) -> bool:
+    for member_name in entries:
         normalized = member_name.rstrip("/")
         if any(normalized.endswith(suffix) for suffix in ZIG_BINARY_SUFFIXES):
             return True
@@ -140,12 +140,16 @@ def archive_contains_zig_binary(path: pathlib.Path) -> bool:
 
 
 def looks_like_zig_toolchain_archive(path: pathlib.Path, version: str | None, top_level: str) -> bool:
+    entries = archive_member_names(path)
+    if not entries:
+        return False
+
     candidate_names = (top_level, strip_archive_suffix(path.name), path.name)
     if version is not None:
         for candidate in candidate_names:
             if candidate and strip_archive_suffix(candidate).startswith("zig"):
                 return True
-    return archive_contains_zig_binary(path)
+    return archive_contains_zig_binary(entries)
 
 
 def discover_zig_archives(root: pathlib.Path) -> list[pathlib.Path]:
@@ -308,17 +312,19 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
     def test_discover_and_classify_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)
-            archive_a = root / "zig-linux-x86_64-0.15.2.tar.xz"
-            archive_b = root / "zig-linux-x86_64-0.17.0-dev.299+a76ce7710.tar.xz"
-            archive_a.write_text("a", encoding="utf-8")
-            archive_b.write_text("b", encoding="utf-8")
+            archive_a = root / "zig-linux-x86_64-0.15.2.zip"
+            archive_b = root / "zig-linux-x86_64-0.17.0-dev.299+a76ce7710.zip"
+            with zipfile.ZipFile(archive_a, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.15.2/zig", "binary")
+            with zipfile.ZipFile(archive_b, "w") as archive:
+                archive.writestr("zig-linux-x86_64-0.17.0-dev.299+a76ce7710/zig", "binary")
 
             reports = [describe_archive("0.15.2", path) for path in discover_zig_archives(root)]
 
             self.assertEqual(len(reports), 2)
             self.assertEqual(reports[0]["status"], "matches-expected-line")
             self.assertEqual(reports[1]["status"], "mismatched-line")
-            self.assertEqual(reports[0]["top_level"], "")
+            self.assertEqual(reports[0]["top_level"], "zig-linux-x86_64-0.15.2")
 
     def test_describe_archive_uses_top_level_when_filename_is_generic(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -370,6 +376,16 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             discovered = discover_zig_archives(root)
 
             self.assertEqual(discovered, [archive_path.resolve()])
+
+    def test_discover_zig_archives_skips_invalid_archive_named_like_toolchain(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            archive_path = root / "zig-linux-x86_64-0.15.2.tar.xz"
+            archive_path.write_text("not-an-archive", encoding="utf-8")
+
+            discovered = discover_zig_archives(root)
+
+            self.assertEqual(discovered, [])
 
     def test_discover_zig_archives_skips_non_toolchain_browser_deps_archive(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
