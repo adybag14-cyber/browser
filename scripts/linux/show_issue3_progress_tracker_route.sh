@@ -3,16 +3,22 @@
 set -euo pipefail
 
 usage() {
-    cat <<'EOF'
+    cat <<'EOF2'
 Usage:
   bash scripts/linux/show_issue3_progress_tracker_route.sh \
     [--repo-root /path/to/browser-repo] \
+    [--helper-root /path/to/live/helper/browser-repo] \
+    [--memory-root /path/to/workspace/memory] \
+    [--restored-checkout-root /path/to/browser-memory-snapshot] \
+    [--saved-archives-root /path/to/memory/repo_archives/browser[/dependencies]] \
+    [--toolchains-root /path/to/toolchains] \
+    [--offline-deps-root /path/to/offline-deps] \
     [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
 Print the issue #11 progress-tracker route for the blocked issue #3 Linux or
 WSL re-entry lane.
-EOF
+EOF2
 }
 
 format_shell_arg() {
@@ -24,10 +30,40 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
+json_escape() {
+    python3 - "$1" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1]))
+PY
+}
+
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+HELPER_ROOT=""
+MEMORY_ROOT=""
+RESTORED_CHECKOUT_ROOT=""
+SAVED_ARCHIVES_ROOT=""
+TOOLCHAINS_ROOT=""
+OFFLINE_DEPS_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -35,6 +71,30 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
+            shift 2
+            ;;
+        --helper-root)
+            HELPER_ROOT="$2"
+            shift 2
+            ;;
+        --memory-root)
+            MEMORY_ROOT="$2"
+            shift 2
+            ;;
+        --restored-checkout-root)
+            RESTORED_CHECKOUT_ROOT="$2"
+            shift 2
+            ;;
+        --saved-archives-root)
+            SAVED_ARCHIVES_ROOT="$2"
+            shift 2
+            ;;
+        --toolchains-root)
+            TOOLCHAINS_ROOT="$2"
+            shift 2
+            ;;
+        --offline-deps-root)
+            OFFLINE_DEPS_ROOT="$2"
             shift 2
             ;;
         --fallback-zig-archive)
@@ -58,8 +118,30 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${HELPER_ROOT}" ]]; then
+    HELPER_ROOT="${REPO_ROOT}"
+fi
+HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
+HELPER_WORKSPACE_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)"
+if [[ -z "${MEMORY_ROOT}" ]]; then
+    MEMORY_ROOT="${HELPER_WORKSPACE_ROOT}/memory"
+fi
+if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
+    RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
+fi
+if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+    SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
+if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+    TOOLCHAINS_ROOT="${HELPER_WORKSPACE_ROOT}/toolchains"
+fi
+if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+    OFFLINE_DEPS_ROOT="${HELPER_WORKSPACE_ROOT}/offline-deps"
+fi
+RUST_TOOLCHAIN_DIR="${TOOLCHAINS_ROOT}/rust-1.79.0"
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${HELPER_WORKSPACE_ROOT}/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
@@ -67,14 +149,14 @@ fi
 
 ISSUE_NUMBER=11
 ISSUE_URL="https://github.com/adybag14-cyber/browser/issues/11"
-ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
+ROUTE_NOTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
-ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-ZIG_RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --rust-toolchain-dir $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
+ZIG_RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SAVED_MEMORY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -87,48 +169,57 @@ START_COMMENT_TEMPLATE=$'Goal: <state the exact Linux/WSL re-entry helper or env
 COMPLETION_COMMENT_TEMPLATE=$'Achieved: <state what route, helper, or branch-safe re-entry improvement landed>\nCompleted: <UTC timestamp>\nCommit: <commit sha>\nValidation: <state the focused helper check, self-test, or follow-up route that now applies>'
 
 if [[ "${JSON}" -eq 1 ]]; then
-    python3 - <<PY
-import json
-
-print(json.dumps({
-    "issue": "Google issue #3 issue #11 progress-tracker route",
-    "repo_root": ${REPO_ROOT@Q},
-    "issue_number": ${ISSUE_NUMBER},
-    "issue_url": ${ISSUE_URL@Q},
-    "route_note_path": ${ROUTE_NOTE_PATH@Q},
-    "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
-    "commands": {
-        "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
-        "saved_zig_archive_route_surface": ${SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND@Q},
-        "saved_memory_inputs_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
-        "saved_zig_archive_candidates_route": ${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND@Q},
-        "linux_build_readiness_route": ${BUILD_ROUTE_COMMAND@Q},
-        "zig_toolchain_recovery_route": ${ZIG_RECOVERY_ROUTE_COMMAND@Q}
-    },
-    "start_comment_template": ${START_COMMENT_TEMPLATE@Q},
-    "completion_comment_template": ${COMPLETION_COMMENT_TEMPLATE@Q},
-    "notes": [
-        "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.",
-        "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.",
-        "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.",
-        "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-input, saved-Zig, build-readiness, and Zig recovery helpers all inspect the same surfaced path.",
-        "Keep the start comment compact with Goal, Started, and Next.",
-        "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.",
-        "When the next step is still environment-gated, follow the saved-memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch."
-    ]
-}, indent=2))
-PY
+    printf '{\n'
+    printf '  "issue": %s,\n' "$(json_escape "Google issue #3 issue #11 progress-tracker route")"
+    printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
+    printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
+    printf '  "memory_root": %s,\n' "$(json_escape "${MEMORY_ROOT}")"
+    printf '  "restored_checkout_root": %s,\n' "$(json_escape "${RESTORED_CHECKOUT_ROOT}")"
+    printf '  "saved_archives_root": %s,\n' "$(json_escape "${SAVED_ARCHIVES_ROOT}")"
+    printf '  "toolchains_root": %s,\n' "$(json_escape "${TOOLCHAINS_ROOT}")"
+    printf '  "offline_deps_root": %s,\n' "$(json_escape "${OFFLINE_DEPS_ROOT}")"
+    printf '  "issue_number": %s,\n' "$(json_escape "${ISSUE_NUMBER}")"
+    printf '  "issue_url": %s,\n' "$(json_escape "${ISSUE_URL}")"
+    printf '  "route_note_path": %s,\n' "$(json_escape "${ROUTE_NOTE_PATH}")"
+    printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
+    printf '  "commands": {\n'
+    printf '    "route_surface": %s,\n' "$(json_escape "${ROUTE_SURFACE_COMMAND}")"
+    printf '    "saved_zig_archive_route_surface": %s,\n' "$(json_escape "${SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND}")"
+    printf '    "saved_memory_inputs_route": %s,\n' "$(json_escape "${SAVED_MEMORY_ROUTE_COMMAND}")"
+    printf '    "saved_zig_archive_candidates_route": %s,\n' "$(json_escape "${SAVED_ZIG_ARCHIVE_ROUTE_COMMAND}")"
+    printf '    "linux_build_readiness_route": %s,\n' "$(json_escape "${BUILD_ROUTE_COMMAND}")"
+    printf '    "zig_toolchain_recovery_route": %s\n' "$(json_escape "${ZIG_RECOVERY_ROUTE_COMMAND}")"
+    printf '  },\n'
+    printf '  "start_comment_template": %s,\n' "$(json_escape "${START_COMMENT_TEMPLATE}")"
+    printf '  "completion_comment_template": %s,\n' "$(json_escape "${COMPLETION_COMMENT_TEMPLATE}")"
+    printf '  "notes": [\n'
+    printf '    %s,\n' "$(json_escape "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.")"
+    printf '    %s,\n' "$(json_escape "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.")"
+    printf '    %s,\n' "$(json_escape "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.")"
+    printf '    %s,\n' "$(json_escape "Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.")"
+    printf '    %s,\n' "$(json_escape "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-input, saved-Zig, build-readiness, and Zig recovery helpers all inspect the same surfaced path.")"
+    printf '    %s,\n' "$(json_escape "Keep the start comment compact with Goal, Started, and Next.")"
+    printf '    %s,\n' "$(json_escape "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.")"
+    printf '    %s\n' "$(json_escape "When the next step is still environment-gated, follow the saved-memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.")"
+    printf '  ]\n'
+    printf '}\n'
     exit 0
 fi
 
-cat <<EOF
+cat <<EOF2
 Google issue #3 issue #11 progress-tracker route
 
-Repo root:             ${REPO_ROOT}
-Issue:                 #${ISSUE_NUMBER}
-Issue URL:             ${ISSUE_URL}
-Route note:            ${ROUTE_NOTE_PATH}
-Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
+Repo root:               ${REPO_ROOT}
+Live helper root:        ${HELPER_ROOT}
+Memory root:             ${MEMORY_ROOT}
+Restored checkout root:  ${RESTORED_CHECKOUT_ROOT}
+Saved archives root:     ${SAVED_ARCHIVES_ROOT}
+Toolchains root:         ${TOOLCHAINS_ROOT}
+Offline deps root:       ${OFFLINE_DEPS_ROOT}
+Issue:                   #${ISSUE_NUMBER}
+Issue URL:               ${ISSUE_URL}
+Route note:              ${ROUTE_NOTE_PATH}
+Fallback Zig archive:    ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 
 Read first
 ==========
@@ -177,8 +268,9 @@ Working rules
   - Run the route surface check first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
   - When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.
+  - Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.
   - Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-input, saved-Zig, build-readiness, and Zig recovery helpers all inspect the same surfaced path.
   - Keep the start comment compact with Goal, Started, and Next.
   - Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.
   - When the next step is still environment-gated, follow the saved-Memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
-EOF
+EOF2
