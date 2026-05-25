@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-REPO_ROOT="$(cd "${REPO_ROOT}")" && pwd
+REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_helper_surface_parity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PARITY_TEXT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_helper_surface_parity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PARITY_JSON_COMMAND="${PARITY_TEXT_COMMAND} --json"
