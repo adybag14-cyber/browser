@@ -47,10 +47,13 @@ REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|file|Read-first saved Rust restore note for the blocked issue #3 Linux or WSL route."
+    "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md|file|Read-first saved Rust archive-candidate note for the blocked issue #3 Linux or WSL route."
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Linux build-readiness companion that should still point runs at the saved Rust helper route."
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the Linux build-readiness lane visible before the direct runtime patch is reopened."
-    "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh|file|Fail-fast surface checker for the saved Rust restore route."
-    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|file|Compact saved Rust restore route printer."
+    "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|file|Fail-fast surface checker for the saved Rust archive-candidate route."
+    "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|file|Compact saved Rust archive-candidate route printer."
+    "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh|file|Fail-fast surface checker for the saved Rust toolchain restore route."
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh|file|Compact saved Rust toolchain restore route printer."
     "scripts/check_issue3_saved_rust_archive_candidates.py|file|Saved Rust archive candidate helper that surfaces the preferred restore commands."
     "scripts/check_issue3_staged_rust_toolchain_candidates.py|file|Staged Rust toolchain helper that surfaces a reusable 1.79.0 candidate before restore."
     "scripts/linux/restore_saved_rust_toolchain.sh|file|Saved Rust restore helper that should keep the check-only and restore commands on one branch-local surface."
@@ -58,6 +61,9 @@ declare -a REFERENCE_PATHS=(
 )
 
 declare -a CONTENT_EXPECTATIONS=(
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md|The saved Rust route note keeps the saved Rust archive-candidate note visible."
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|The saved Rust route note keeps the archive-candidate route surface checker visible."
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|The saved Rust route note keeps the archive-candidate route printer visible."
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh|The saved Rust route note keeps the dedicated route surface checker visible."
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh|The saved Rust route note prints the dedicated route surface-check command."
     "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md|check_issue3_saved_rust_archive_candidates.py|The saved Rust route note surfaces the saved archive candidate helper."
