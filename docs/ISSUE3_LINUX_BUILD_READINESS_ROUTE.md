@@ -28,6 +28,7 @@ helpers:
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+- `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
@@ -49,6 +50,8 @@ Give the next writable checkout one branch-local route for:
   builder-attached Zig `0.17` dev bundle is available
 - surfacing staged Zig candidates under `../toolchains` before the fallback Zig
   `0.17` path is blamed for branch behavior
+- failing fast when no staged Zig candidate matches the branch's expected
+  `0.15.x` line before the broader readiness rerun is trusted again
 - replaying the offline build-inputs restore route, including its saved-archive
   integrity preflight, through one compact helper surface before a raw archive
   command is trusted
@@ -156,6 +159,20 @@ staged `../toolchains` candidates it can probe, and prints the exact
 `check_linux_build_readiness.py --zig ...` command to rerun once a matching
 `0.15.x` toolchain is available.
 
+Before trusting that broader readiness rerun, run the dedicated matching-line
+gate against the same derived toolchains root:
+
+```bash
+bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
+```
+
+Use `--json` when another helper needs the staged-candidate result as structured
+output.
+
+This gate fails fast when no staged Zig executable under `../toolchains`
+matches the branch's expected `0.15.x` line, even if the attached `0.17`
+fallback archive is visible beside the repo workspace.
+
 If a real Zig `0.15.x` archive is available but has not been staged yet, fail
 fast on the archive-restore surface before rebuilding the restore command by
 hand:
@@ -246,25 +263,27 @@ The Linux route now stays short and ordered:
    `scripts/check_issue3_saved_archive_integrity.py`
 8. A Zig-line recovery helper using
    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-9. A Zig archive-restore surface check using
-   `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-10. A saved Rust route surface check using
+9. A dedicated Zig matching-line gate using
+   `scripts/linux/check_issue3_zig_toolchain_match.sh`
+10. A Zig archive-restore surface check using
+    `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+11. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-11. A saved Rust restore route using
+12. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-12. A dedicated offline build-inputs route using
+13. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-13. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-14. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+14. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+15. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-15. A saved Rust `1.79.0` restore command
-16. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-17. The attached fallback Zig archive location when it is present beside the
+16. A saved Rust `1.79.0` restore command
+17. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+18. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-18. A full readiness command that expects the saved archives, offline deps, and
+19. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-19. A direct handoff back to the smaller Windows runtime revalidation route once
+20. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
