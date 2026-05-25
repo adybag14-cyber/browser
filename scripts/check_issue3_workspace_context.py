@@ -6,6 +6,8 @@ This helper is intentionally small and create-only so scheduled runs can answer:
 - where the nearest shared toolchains directory lives
 - where the saved Memory browser archives live
 - where the attached fallback Zig archive is visible from this checkout
+- where the nearest shared offline dependency root and Memory root live
+- which saved-snapshot and build-readiness route commands already match those roots
 
 It is useful when a restored checkout sits deeper than the default sibling
 layout assumed by the existing route notes.
@@ -22,6 +24,7 @@ import unittest
 
 
 DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_RESTORED_CHECKOUT_ROOT_NAME = "browser-memory-snapshot"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -77,6 +80,13 @@ def infer_toolchains_root(repo_root: Path) -> tuple[Path, bool]:
     return (repo_root.parent / "toolchains").resolve(), False
 
 
+def infer_memory_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, "memory")
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / "memory").resolve(), False
+
+
 def infer_saved_archives_root(repo_root: Path) -> tuple[Path, bool]:
     located = locate_first_existing(repo_root, "memory/repo_archives/browser")
     if located is not None and located.is_dir():
@@ -89,6 +99,20 @@ def infer_agent_files_root(repo_root: Path) -> tuple[Path, bool]:
     if located is not None and located.is_dir():
         return located, True
     return (repo_root.parent / "agent_files").resolve(), False
+
+
+def infer_offline_deps_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, "offline-deps")
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / "offline-deps").resolve(), False
+
+
+def infer_restored_checkout_root(repo_root: Path) -> tuple[Path, bool]:
+    located = locate_first_existing(repo_root, DEFAULT_RESTORED_CHECKOUT_ROOT_NAME)
+    if located is not None and located.is_dir():
+        return located, True
+    return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME).resolve(), False
 
 
 def infer_fallback_zig_archive(
@@ -109,9 +133,13 @@ def infer_fallback_zig_archive(
 def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str, object]:
     build_zon = repo_root / "build.zig.zon"
     toolchains_root, toolchains_found = infer_toolchains_root(repo_root)
+    memory_root, memory_found = infer_memory_root(repo_root)
     saved_archives_root, saved_archives_found = infer_saved_archives_root(repo_root)
     agent_files_root, agent_files_found = infer_agent_files_root(repo_root)
+    offline_deps_root, offline_deps_found = infer_offline_deps_root(repo_root)
+    restored_checkout_root, restored_checkout_found = infer_restored_checkout_root(repo_root)
     fallback_zig_archive, fallback_found = infer_fallback_zig_archive(repo_root, explicit_archive)
+    rust_toolchain_dir = (toolchains_root / "rust-1.79.0").resolve()
 
     readiness_command = [
         "python",
@@ -122,9 +150,44 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(toolchains_root),
         "--saved-archives-root",
         str(saved_archives_root),
+        "--offline-deps-root",
+        str(offline_deps_root),
+    ]
+    build_readiness_route_command = [
+        "bash",
+        "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        "--repo-root",
+        str(repo_root),
+        "--memory-root",
+        str(memory_root),
+        "--restored-checkout-root",
+        str(restored_checkout_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--rust-toolchain-dir",
+        str(rust_toolchain_dir),
+        "--offline-deps-root",
+        str(offline_deps_root),
+    ]
+    saved_snapshot_route_command = [
+        "bash",
+        "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
+        "--repo-root",
+        str(repo_root),
+        "--memory-root",
+        str(memory_root),
+        "--restored-checkout-root",
+        str(restored_checkout_root),
+        "--sync-helper-surface",
     ]
     if fallback_zig_archive is not None:
         readiness_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        build_readiness_route_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        saved_snapshot_route_command.extend(
             ("--fallback-zig-archive", str(fallback_zig_archive))
         )
 
@@ -139,13 +202,21 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "build_zig_zon_exists": build_zon.is_file(),
         "toolchains_root": str(toolchains_root),
         "toolchains_root_found": toolchains_found,
+        "memory_root": str(memory_root),
+        "memory_root_found": memory_found,
         "saved_archives_root": str(saved_archives_root),
         "saved_archives_root_found": saved_archives_found,
         "agent_files_root": str(agent_files_root),
         "agent_files_root_found": agent_files_found,
+        "offline_deps_root": str(offline_deps_root),
+        "offline_deps_root_found": offline_deps_found,
+        "restored_checkout_root": str(restored_checkout_root),
+        "restored_checkout_root_found": restored_checkout_found,
         "fallback_zig_archive": str(fallback_zig_archive) if fallback_zig_archive else None,
         "fallback_zig_archive_found": fallback_found,
         "suggested_readiness_command": readiness_command,
+        "suggested_build_readiness_route_command": build_readiness_route_command,
+        "suggested_saved_snapshot_route_command": saved_snapshot_route_command,
         "failures": failures,
     }
 
@@ -158,6 +229,10 @@ def emit_text(context: dict[str, object]) -> None:
         f"[{'found' if context['toolchains_root_found'] else 'defaulted'}]"
     )
     print(
+        f"Memory root: {context['memory_root']} "
+        f"[{'found' if context['memory_root_found'] else 'defaulted'}]"
+    )
+    print(
         f"Saved archives root: {context['saved_archives_root']} "
         f"[{'found' if context['saved_archives_root_found'] else 'defaulted'}]"
     )
@@ -166,11 +241,23 @@ def emit_text(context: dict[str, object]) -> None:
         f"[{'found' if context['agent_files_root_found'] else 'defaulted'}]"
     )
     print(
+        f"Offline deps root: {context['offline_deps_root']} "
+        f"[{'found' if context['offline_deps_root_found'] else 'defaulted'}]"
+    )
+    print(
+        f"Restored checkout root: {context['restored_checkout_root']} "
+        f"[{'found' if context['restored_checkout_root_found'] else 'defaulted'}]"
+    )
+    print(
         f"Fallback Zig archive: {context['fallback_zig_archive']} "
         f"[{'found' if context['fallback_zig_archive_found'] else 'not found'}]"
     )
     print("Suggested readiness command:")
     print("  " + " ".join(context["suggested_readiness_command"]))
+    print("Suggested build-readiness route command:")
+    print("  " + " ".join(context["suggested_build_readiness_route_command"]))
+    print("Suggested synced saved-snapshot route command:")
+    print("  " + " ".join(context["suggested_saved_snapshot_route_command"]))
     if context["failures"]:
         print("\nWorkspace-context check failed:", file=sys.stderr)
         for failure in context["failures"]:
@@ -187,10 +274,16 @@ class WorkspaceContextTests(unittest.TestCase):
 
             toolchains_root = base / "toolchains"
             toolchains_root.mkdir()
-            saved_archives_root = base / "memory" / "repo_archives" / "browser"
+            memory_root = base / "memory"
+            memory_root.mkdir()
+            saved_archives_root = memory_root / "repo_archives" / "browser"
             saved_archives_root.mkdir(parents=True)
             agent_files_root = base / "agent_files"
             agent_files_root.mkdir()
+            offline_deps_root = base / "offline-deps"
+            offline_deps_root.mkdir()
+            restored_checkout_root = base / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME
+            restored_checkout_root.mkdir()
             fallback = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
             fallback.write_text("zig", encoding="utf-8")
 
@@ -198,10 +291,22 @@ class WorkspaceContextTests(unittest.TestCase):
 
             self.assertEqual(context["status"], "passed")
             self.assertEqual(context["toolchains_root"], str(toolchains_root.resolve()))
+            self.assertEqual(context["memory_root"], str(memory_root.resolve()))
             self.assertEqual(context["saved_archives_root"], str(saved_archives_root.resolve()))
             self.assertEqual(context["agent_files_root"], str(agent_files_root.resolve()))
+            self.assertEqual(context["offline_deps_root"], str(offline_deps_root.resolve()))
+            self.assertEqual(context["restored_checkout_root"], str(restored_checkout_root.resolve()))
             self.assertEqual(context["fallback_zig_archive"], str(fallback.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
+            self.assertIn("--offline-deps-root", context["suggested_readiness_command"])
+            self.assertIn(
+                "scripts/linux/show_issue3_linux_build_readiness_route.sh",
+                context["suggested_build_readiness_route_command"],
+            )
+            self.assertIn(
+                "--sync-helper-surface",
+                context["suggested_saved_snapshot_route_command"],
+            )
 
     def test_defaults_when_ancestor_roots_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -213,8 +318,11 @@ class WorkspaceContextTests(unittest.TestCase):
 
             self.assertEqual(context["status"], "passed")
             self.assertFalse(context["toolchains_root_found"])
+            self.assertFalse(context["memory_root_found"])
             self.assertFalse(context["saved_archives_root_found"])
             self.assertFalse(context["agent_files_root_found"])
+            self.assertFalse(context["offline_deps_root_found"])
+            self.assertFalse(context["restored_checkout_root_found"])
             self.assertFalse(context["fallback_zig_archive_found"])
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
@@ -230,6 +338,7 @@ class WorkspaceContextTests(unittest.TestCase):
 
             self.assertEqual(context["fallback_zig_archive"], str(explicit_archive.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_snapshot_route_command"])
 
     def test_missing_build_zon_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
