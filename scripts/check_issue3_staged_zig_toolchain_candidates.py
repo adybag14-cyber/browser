@@ -46,7 +46,29 @@ def classify_version(minimum_zig: str, actual: str | None) -> str:
     return "mismatched-line"
 
 
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
@@ -181,7 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the shared toolchains directory (default: ../toolchains beside the repo root)",
+        help="Path to the shared toolchains directory (default: nearest ancestor toolchains root or ../toolchains)",
     )
     parser.add_argument("--json", action="store_true", help="Emit JSON output")
     parser.add_argument("--self-test", action="store_true", help="Run focused unit tests and exit")
@@ -259,6 +281,16 @@ class StagedZigToolchainCandidateTests(unittest.TestCase):
     def test_infer_toolchain_root_handles_bin_layout(self) -> None:
         path = Path("/tmp/toolchains/zig-linux-x86_64-0.15.2/bin/zig")
         self.assertEqual(infer_toolchain_root(path), Path("/tmp/toolchains/zig-linux-x86_64-0.15.2"))
+
+    def test_default_toolchains_root_discovers_ancestor_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            toolchains_root = workspace_root / "toolchains"
+            toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
 
 
 def main() -> int:
