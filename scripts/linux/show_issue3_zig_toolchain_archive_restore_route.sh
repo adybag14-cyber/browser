@@ -78,11 +78,12 @@ if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
 fi
 
 SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh"
+SAVED_ARCHIVE_CANDIDATES_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_zig_archive_candidates.py"
 RESTORE_SCRIPT="${REPO_ROOT}/scripts/linux/restore_zig_toolchain_archive.sh"
 RECOVERY_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
 READINESS_SCRIPT="${REPO_ROOT}/scripts/check_linux_build_readiness.py"
 
-python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${ARCHIVE_PATH}" "${OFFLINE_DEPS_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${SURFACE_SCRIPT}" "${RESTORE_SCRIPT}" "${RECOVERY_SCRIPT}" "${READINESS_SCRIPT}" "${JSON}" <<'PY'
+python3 - "${REPO_ROOT}" "${TOOLCHAINS_ROOT}" "${ARCHIVE_PATH}" "${OFFLINE_DEPS_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${SURFACE_SCRIPT}" "${SAVED_ARCHIVE_CANDIDATES_SCRIPT}" "${RESTORE_SCRIPT}" "${RECOVERY_SCRIPT}" "${READINESS_SCRIPT}" "${JSON}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -96,10 +97,11 @@ archive_arg = sys.argv[3]
 offline_deps_root = pathlib.Path(sys.argv[4]).resolve()
 saved_archives_root = pathlib.Path(sys.argv[5]).resolve()
 surface_script = pathlib.Path(sys.argv[6]).resolve()
-restore_script = pathlib.Path(sys.argv[7]).resolve()
-recovery_script = pathlib.Path(sys.argv[8]).resolve()
-readiness_script = pathlib.Path(sys.argv[9]).resolve()
-emit_json = sys.argv[10] == "1"
+saved_archive_candidates_script = pathlib.Path(sys.argv[7]).resolve()
+restore_script = pathlib.Path(sys.argv[8]).resolve()
+recovery_script = pathlib.Path(sys.argv[9]).resolve()
+readiness_script = pathlib.Path(sys.argv[10]).resolve()
+emit_json = sys.argv[11] == "1"
 
 
 def quote(parts: list[str]) -> str:
@@ -125,6 +127,18 @@ if archive_path is not None:
     ]
 
 surface_check = quote(["bash", str(surface_script), "--repo-root", str(repo_root)])
+saved_archive_candidates = quote(
+    [
+        "python",
+        str(saved_archive_candidates_script),
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
+)
 restore_check = None
 restore_run = None
 readiness = None
@@ -200,6 +214,7 @@ result = {
     "zig_path_candidates": zig_path_candidates,
     "commands": {
         "surface_check": surface_check,
+        "saved_archive_candidates": saved_archive_candidates,
         "recovery_route": recovery,
     },
 }
@@ -241,10 +256,15 @@ print("Surface check")
 print("=============")
 print(f"  {surface_check}")
 print()
+print("Saved archive discovery")
+print("=======================")
+print(f"  {saved_archive_candidates}")
+print("  Use this first when the saved archives root is known but the exact matching Zig archive path is not.")
+print()
 if restore_check is None:
     print("Archive restore commands")
     print("========================")
-    print("  Re-run with --archive /path/to/zig-0.15.2.tar.xz to print the exact check-only, restore, and readiness commands.")
+    print("  Re-run with --archive /path/to/zig-0.15.2.tar.xz after using the saved-archive discovery helper to choose the matching Zig archive.")
 else:
     print("Archive restore commands")
     print("========================")
@@ -260,6 +280,7 @@ print()
 print("Working rules")
 print("=============")
 print("  - Run the surface check first so route drift fails fast before toolchain staging starts.")
+print("  - Use the saved-archive discovery command before hand-building an archive path when the saved archive bundle is present.")
 print("  - Prefer a Zig 0.15.x archive for honest branch validation on this headed-mode branch.")
 print("  - Use the restore_check_only command before extraction when a run only needs the derived destination and follow-up commands.")
 print("  - After restore, rerun the recovery route so the current workspace can rediscover the staged Zig candidate.")
