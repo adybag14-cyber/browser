@@ -1080,7 +1080,7 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
-                "scripts/linux/check_linux_build_readiness.py",
+                "scripts/check_linux_build_readiness.py",
                 result["missing_helper_surface_files"],
             )
             self.assertIn(
