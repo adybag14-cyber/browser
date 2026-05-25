@@ -12,6 +12,9 @@ helper: `../toolchains/rust-1.79.0` beside the repo workspace.
 
 Companion helpers:
 
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
@@ -47,14 +50,29 @@ output.
 ## Surface Saved Archive Candidates Before Restore
 
 When the run wants to confirm which saved Rust archive should drive the restore
-command, print the candidate summary first:
+command, fail fast on the dedicated candidate route surface first and then print
+its compact route:
 
 ```bash
+bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
 python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
 ```
 
-Use `--json` when another helper wants the preferred archive, saved-archives
-root, or restore commands as structured output.
+The first command checks that the route note, saved-archive helper,
+staged-toolchain helper, and follow-up saved-Rust route are all present before
+the run trusts archive-selection output.
+
+The second command keeps the candidate helper, staged-toolchain helper,
+saved-Rust restore route, issue `#11` handoff, and Linux build-readiness route
+on one compact branch-local surface when archive selection is the immediate
+slice.
+
+Use `--json` on either route helper when another helper wants the surfaced
+commands as structured output.
+
+Use `--json` on the raw Python helper when another helper wants the preferred
+archive, saved-archives root, or restore commands as structured output.
 
 ## Surface Staged Rust Toolchain Candidates Before Restore
 
@@ -113,6 +131,10 @@ The helper prints:
 - Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
   first so missing route docs or helper drift fails before the saved archive is
   blamed.
+- Run `bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+  and `bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+  when the immediate slice is choosing the saved archive or proving that archive
+  selection still lands on the intended issue `#11` helper chain.
 - Run `python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .`
   before hand-picking the saved Rust archive or rebuilding restore commands by
   hand.
