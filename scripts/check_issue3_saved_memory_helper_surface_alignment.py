@@ -1,154 +1,194 @@
 #!/usr/bin/env python3
 
-"""Check alignment between saved-memory and restored-checkout helper surfaces."""
+"""Compare the saved-memory and restored-checkout helper-surface contracts.
+
+This helper exists for the Linux/WSL issue #3 re-entry lane. It makes one
+specific mismatch visible: the saved-memory preflight can drift behind the
+restored-checkout helper surface, which creates a false "ready" signal before a
+run widens into larger restore or build-readiness steps.
+"""
 
 from __future__ import annotations
 
 import argparse
 import ast
 import json
-import pathlib
-import re
+from pathlib import Path
 import tempfile
 import textwrap
 import unittest
 
 
-SAVED_MEMORY_PATTERN = re.compile(
-    r"REQUIRED_RESTORED_HELPER_FILES:\s*tuple\[tuple\[str, str\], \.\.\.\]\s*=\s*\(",
-    re.S,
-)
-RESTORED_CHECKOUT_PATTERN = re.compile(
-    r"HELPER_SURFACE_PATHS:\s*tuple\[tuple\[str, str\], \.\.\.\]\s*=\s*\(",
-    re.S,
-)
+DEFAULT_SAVED_MEMORY_VARIABLE = "REQUIRED_RESTORED_HELPER_FILES"
+DEFAULT_RESTORED_CHECKOUT_VARIABLE = "HELPER_SURFACE_PATHS"
+
+
+def load_tuple_path_map(path: Path, variable_name: str) -> dict[str, str]:
+    module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in module.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == variable_name:
+                value = ast.literal_eval(node.value)
+                return {relative_path: label for relative_path, label in value}
+    raise ValueError(f"Could not find {variable_name} in {path}")
+
+
+def build_alignment_report(
+    saved_memory_paths: dict[str, str],
+    restored_checkout_paths: dict[str, str],
+) -> dict[str, object]:
+    saved_memory_set = set(saved_memory_paths)
+    restored_checkout_set = set(restored_checkout_paths)
+
+    only_in_saved_memory = sorted(saved_memory_set - restored_checkout_set)
+    only_in_restored_checkout = sorted(restored_checkout_set - saved_memory_set)
+    shared_paths = sorted(saved_memory_set & restored_checkout_set)
+
+    label_mismatches: list[dict[str, str]] = []
+    for relative_path in shared_paths:
+        saved_label = saved_memory_paths[relative_path]
+        restored_label = restored_checkout_paths[relative_path]
+        if saved_label == restored_label:
+            continue
+        label_mismatches.append(
+            {
+                "path": relative_path,
+                "saved_memory_label": saved_label,
+                "restored_checkout_label": restored_label,
+            }
+        )
+
+    ok = not only_in_saved_memory and not only_in_restored_checkout and not label_mismatches
+    return {
+        "ok": ok,
+        "saved_memory_count": len(saved_memory_paths),
+        "restored_checkout_count": len(restored_checkout_paths),
+        "shared_count": len(shared_paths),
+        "only_in_saved_memory": only_in_saved_memory,
+        "only_in_restored_checkout": only_in_restored_checkout,
+        "label_mismatches": label_mismatches,
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "Check that saved-memory and restored-checkout issue #3 helper "
-            "surfaces still require the same branch paths."
-        )
+        description="Compare the saved-memory and restored-checkout helper-surface contracts."
     )
-    parser.add_argument("--repo-root", default=".", help="Path to the browser repo root")
-    parser.add_argument("--json", action="store_true", help="Emit JSON instead of plain text")
+    parser.add_argument(
+        "--saved-memory-helper",
+        default="scripts/check_issue3_saved_memory_inputs.py",
+        help="Path to the saved-memory preflight helper",
+    )
+    parser.add_argument(
+        "--saved-memory-variable",
+        default=DEFAULT_SAVED_MEMORY_VARIABLE,
+        help="Tuple variable name to read from the saved-memory helper",
+    )
+    parser.add_argument(
+        "--restored-checkout-helper",
+        default="scripts/check_issue3_restored_checkout.py",
+        help="Path to the restored-checkout helper",
+    )
+    parser.add_argument(
+        "--restored-checkout-variable",
+        default=DEFAULT_RESTORED_CHECKOUT_VARIABLE,
+        help="Tuple variable name to read from the restored-checkout helper",
+    )
+    parser.add_argument("--json", action="store_true", help="Emit JSON instead of text")
     parser.add_argument("--self-test", action="store_true", help="Run focused unit tests and exit")
     return parser
 
 
-def extract_tuple_entries(text: str, pattern: re.Pattern[str], label: str) -> list[str]:
-    match = pattern.search(text)
-    if match is None:
-        raise ValueError(f"Could not find {label} in source text")
+def emit_text(
+    report: dict[str, object],
+    *,
+    saved_memory_helper: Path,
+    saved_memory_variable: str,
+    restored_checkout_helper: Path,
+    restored_checkout_variable: str,
+) -> None:
+    print("Issue #3 saved-memory helper-surface alignment")
+    print()
+    print(f"Saved-memory helper:      {saved_memory_helper}")
+    print(f"Saved-memory variable:    {saved_memory_variable}")
+    print(f"Restored-checkout helper: {restored_checkout_helper}")
+    print(f"Restored variable:        {restored_checkout_variable}")
+    print(f"Saved-memory paths:       {report['saved_memory_count']}")
+    print(f"Restored-checkout paths:  {report['restored_checkout_count']}")
+    print(f"Shared paths:             {report['shared_count']}")
 
-    start = text.find("(", match.start())
-    depth = 0
-    end = -1
-    for index in range(start, len(text)):
-        char = text[index]
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
-            if depth == 0:
-                end = index + 1
-                break
-    if end == -1:
-        raise ValueError(f"Could not parse tuple body for {label}")
+    def print_section(title: str, values: list[str]) -> None:
+        print()
+        print(title)
+        if not values:
+            print("  - none")
+            return
+        for value in values:
+            print(f"  - {value}")
 
-    tuple_value = ast.literal_eval(text[start:end])
-    return [path for path, _desc in tuple_value]
+    print_section("Only in saved-memory helper:", report["only_in_saved_memory"])
+    print_section("Only in restored-checkout helper:", report["only_in_restored_checkout"])
 
-
-def build_report(repo_root: pathlib.Path) -> dict[str, object]:
-    saved_memory_path = repo_root / "scripts/check_issue3_saved_memory_inputs.py"
-    restored_checkout_path = repo_root / "scripts/check_issue3_restored_checkout.py"
-
-    missing_sources: list[str] = []
-    if not saved_memory_path.is_file():
-        missing_sources.append(str(saved_memory_path))
-    if not restored_checkout_path.is_file():
-        missing_sources.append(str(restored_checkout_path))
-    if missing_sources:
-        return {
-            "status": "failed",
-            "repo_root": str(repo_root),
-            "missing_sources": missing_sources,
-            "saved_memory_only": [],
-            "restored_checkout_only": [],
-            "shared_path_count": 0,
-            "failures": ["missing alignment source files"],
-        }
-
-    saved_memory_paths = extract_tuple_entries(
-        saved_memory_path.read_text(encoding="utf-8"),
-        SAVED_MEMORY_PATTERN,
-        "REQUIRED_RESTORED_HELPER_FILES",
-    )
-    restored_checkout_paths = extract_tuple_entries(
-        restored_checkout_path.read_text(encoding="utf-8"),
-        RESTORED_CHECKOUT_PATTERN,
-        "HELPER_SURFACE_PATHS",
-    )
-
-    saved_memory_only = sorted(set(saved_memory_paths) - set(restored_checkout_paths))
-    restored_checkout_only = sorted(set(restored_checkout_paths) - set(saved_memory_paths))
-    failures: list[str] = []
-    if saved_memory_only:
-        failures.append("saved-memory helper requires paths missing from restored-checkout helper surface")
-    if restored_checkout_only:
-        failures.append("restored-checkout helper requires paths missing from saved-memory helper surface")
-
-    return {
-        "status": "failed" if failures else "passed",
-        "repo_root": str(repo_root),
-        "missing_sources": [],
-        "saved_memory_only": saved_memory_only,
-        "restored_checkout_only": restored_checkout_only,
-        "shared_path_count": len(set(saved_memory_paths) & set(restored_checkout_paths)),
-        "failures": failures,
-    }
+    print()
+    print("Label mismatches:")
+    if not report["label_mismatches"]:
+        print("  - none")
+    else:
+        for mismatch in report["label_mismatches"]:
+            print(f"  - {mismatch['path']}")
+            print(f"    saved-memory: {mismatch['saved_memory_label']}")
+            print(f"    restored-checkout: {mismatch['restored_checkout_label']}")
 
 
-class SavedMemoryHelperSurfaceAlignmentTests(unittest.TestCase):
-    def test_extract_tuple_entries_handles_annotated_python_tuple(self) -> None:
-        text = textwrap.dedent(
-            """
-            REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
-                ("docs/A.md", "A"),
-                ("scripts/B.py", "B"),
-            )
-            """
+class AlignmentHelperTests(unittest.TestCase):
+    def test_build_alignment_report_flags_missing_paths(self) -> None:
+        report = build_alignment_report(
+            {
+                "docs/a.md": "A",
+                "docs/b.md": "B",
+            },
+            {
+                "docs/b.md": "B",
+                "docs/c.md": "C",
+            },
         )
+
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["only_in_saved_memory"], ["docs/a.md"])
+        self.assertEqual(report["only_in_restored_checkout"], ["docs/c.md"])
+        self.assertEqual(report["label_mismatches"], [])
+
+    def test_build_alignment_report_flags_label_mismatches(self) -> None:
+        report = build_alignment_report(
+            {"docs/a.md": "saved label"},
+            {"docs/a.md": "restored label"},
+        )
+
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["only_in_saved_memory"], [])
+        self.assertEqual(report["only_in_restored_checkout"], [])
         self.assertEqual(
-            extract_tuple_entries(text, SAVED_MEMORY_PATTERN, "saved-memory"),
-            ["docs/A.md", "scripts/B.py"],
+            report["label_mismatches"],
+            [
+                {
+                    "path": "docs/a.md",
+                    "saved_memory_label": "saved label",
+                    "restored_checkout_label": "restored label",
+                }
+            ],
         )
 
-    def test_build_report_detects_bidirectional_drift(self) -> None:
+    def test_load_tuple_path_map_reads_literal_tuples(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = pathlib.Path(tmpdir)
-            scripts_root = repo_root / "scripts"
-            scripts_root.mkdir(parents=True, exist_ok=True)
-            (scripts_root / "check_issue3_saved_memory_inputs.py").write_text(
+            helper_path = Path(tmpdir) / "helper.py"
+            helper_path.write_text(
                 textwrap.dedent(
                     """
-                    REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
-                        ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "tracker"),
-                        ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-memory route"),
-                    )
-                    """
-                ).strip()
-                + "\n",
-                encoding="utf-8",
-            )
-            (scripts_root / "check_issue3_restored_checkout.py").write_text(
-                textwrap.dedent(
-                    """
-                    HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
-                        ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "tracker"),
-                        ("scripts/linux/show_issue3_windows_runtime_handoff_route.sh", "handoff route"),
+                    REQUIRED_PATHS = (
+                        ("docs/a.md", "A"),
+                        ("docs/b.md", "B"),
                     )
                     """
                 ).strip()
@@ -156,98 +196,56 @@ class SavedMemoryHelperSurfaceAlignmentTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = build_report(repo_root)
+            result = load_tuple_path_map(helper_path, "REQUIRED_PATHS")
+            self.assertEqual(result, {"docs/a.md": "A", "docs/b.md": "B"})
 
-            self.assertEqual(report["status"], "failed")
-            self.assertEqual(
-                report["saved_memory_only"],
-                ["scripts/linux/show_issue3_saved_memory_inputs_route.sh"],
-            )
-            self.assertEqual(
-                report["restored_checkout_only"],
-                ["scripts/linux/show_issue3_windows_runtime_handoff_route.sh"],
-            )
-
-    def test_build_report_passes_when_helper_surfaces_match(self) -> None:
+    def test_load_tuple_path_map_raises_for_missing_variable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = pathlib.Path(tmpdir)
-            scripts_root = repo_root / "scripts"
-            scripts_root.mkdir(parents=True, exist_ok=True)
-            shared_text = textwrap.dedent(
-                """
-                (
-                    ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "tracker"),
-                    ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-memory route"),
-                )
-                """
-            ).strip()
-            (scripts_root / "check_issue3_saved_memory_inputs.py").write_text(
-                "REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = "
-                + shared_text
-                + "\n",
-                encoding="utf-8",
-            )
-            (scripts_root / "check_issue3_restored_checkout.py").write_text(
-                "HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = "
-                + shared_text
-                + "\n",
-                encoding="utf-8",
-            )
+            helper_path = Path(tmpdir) / "helper.py"
+            helper_path.write_text("OTHER = ()\n", encoding="utf-8")
 
-            report = build_report(repo_root)
-
-            self.assertEqual(report["status"], "passed")
-            self.assertEqual(report["saved_memory_only"], [])
-            self.assertEqual(report["restored_checkout_only"], [])
+            with self.assertRaises(ValueError):
+                load_tuple_path_map(helper_path, "REQUIRED_PATHS")
 
 
 def main() -> int:
     args = build_parser().parse_args()
     if args.self_test:
-        suite = unittest.defaultTestLoader.loadTestsFromTestCase(
-            SavedMemoryHelperSurfaceAlignmentTests
-        )
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(AlignmentHelperTests)
         result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
 
-    repo_root = pathlib.Path(args.repo_root).resolve()
-    report = build_report(repo_root)
-
+    saved_memory_helper = Path(args.saved_memory_helper).resolve()
+    restored_checkout_helper = Path(args.restored_checkout_helper).resolve()
+    saved_memory_paths = load_tuple_path_map(saved_memory_helper, args.saved_memory_variable)
+    restored_checkout_paths = load_tuple_path_map(
+        restored_checkout_helper,
+        args.restored_checkout_variable,
+    )
+    report = build_alignment_report(saved_memory_paths, restored_checkout_paths)
     if args.json:
-        print(json.dumps(report, indent=2))
-        return 1 if report["failures"] else 0
-
-    print("Issue #3 saved-memory helper-surface alignment check")
-    print()
-    print(f"Repo root: {repo_root}")
-    print(f"Shared paths: {report['shared_path_count']}")
-
-    if report["missing_sources"]:
-        print()
-        print("Missing source files:")
-        for path in report["missing_sources"]:
-            print(f"  - {path}")
-
-    if report["saved_memory_only"]:
-        print()
-        print("Saved-memory-only paths:")
-        for path in report["saved_memory_only"]:
-            print(f"  - {path}")
-
-    if report["restored_checkout_only"]:
-        print()
-        print("Restored-checkout-only paths:")
-        for path in report["restored_checkout_only"]:
-            print(f"  - {path}")
-
-    if report["failures"]:
-        print()
-        print("Alignment check failed.")
-        return 1
-
-    print()
-    print("Alignment check passed.")
-    return 0
+        print(
+            json.dumps(
+                {
+                    "profile": "issue3-saved-memory-helper-surface-alignment",
+                    "saved_memory_helper": str(saved_memory_helper),
+                    "saved_memory_variable": args.saved_memory_variable,
+                    "restored_checkout_helper": str(restored_checkout_helper),
+                    "restored_checkout_variable": args.restored_checkout_variable,
+                    **report,
+                },
+                indent=2,
+            )
+        )
+    else:
+        emit_text(
+            report,
+            saved_memory_helper=saved_memory_helper,
+            saved_memory_variable=args.saved_memory_variable,
+            restored_checkout_helper=restored_checkout_helper,
+            restored_checkout_variable=args.restored_checkout_variable,
+        )
+    return 0 if report["ok"] else 1
 
 
 if __name__ == "__main__":
