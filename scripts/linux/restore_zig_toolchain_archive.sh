@@ -23,10 +23,10 @@ extracting it.
 
 Defaults:
   browser root        parent of this script
-  toolchains root     <browser-root>/../toolchains
-  archive             <browser-root>/../agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz if present
-  saved archives root <browser-root>/../memory/repo_archives/browser (normalized to dependencies/ when present)
-  offline deps root   <browser-root>/../offline-deps
+  toolchains root     nearest ancestor toolchains root, or <browser-root>/../toolchains
+  archive             nearest ancestor agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz if present
+  saved archives root nearest ancestor memory/repo_archives/browser (normalized to dependencies/ when present)
+  offline deps root   nearest ancestor offline-deps root, or <browser-root>/../offline-deps
   destination         <toolchains-root>/<archive top-level folder>
 
 Supported archive types:
@@ -43,6 +43,15 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+canonicalize_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
 normalize_saved_archives_root() {
     local raw_root="$1"
     if [[ -d "${raw_root}/dependencies" ]]; then
@@ -56,6 +65,22 @@ normalize_saved_archives_root() {
         return 0
     fi
     printf '%s\n' "${raw_root}"
+}
+
+resolve_first_existing_path() {
+    local start="$1"
+    local relative_path="$2"
+    local current="$start"
+    while true; do
+        if [[ -e "${current}/${relative_path}" ]]; then
+            canonicalize_path "${current}/${relative_path}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            return 1
+        fi
+        current="$(dirname "${current}")"
+    done
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -133,20 +158,40 @@ if [[ ! -d "${BROWSER_ROOT}" ]]; then
 fi
 BROWSER_ROOT="$(cd "${BROWSER_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/toolchains"
+    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${BROWSER_ROOT}" "toolchains" || true)"
+    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="$(canonicalize_path "${BROWSER_ROOT}/../toolchains")"
+    fi
+else
+    TOOLCHAINS_ROOT="$(canonicalize_path "${TOOLCHAINS_ROOT}")"
 fi
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
-    OFFLINE_DEPS_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/offline-deps"
+    OFFLINE_DEPS_ROOT="$(resolve_first_existing_path "${BROWSER_ROOT}" "offline-deps" || true)"
+    if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+        OFFLINE_DEPS_ROOT="$(canonicalize_path "${BROWSER_ROOT}/../offline-deps")"
+    fi
+else
+    OFFLINE_DEPS_ROOT="$(canonicalize_path "${OFFLINE_DEPS_ROOT}")"
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${BROWSER_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${BROWSER_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="$(canonicalize_path "${BROWSER_ROOT}/../memory/repo_archives/browser")"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ARCHIVE="$(cd "${BROWSER_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ARCHIVE_NAME}"
-    if [[ -f "${CANDIDATE_FALLBACK_ARCHIVE}" ]]; then
-        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ARCHIVE}"
+    RESOLVED_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${BROWSER_ROOT}" "agent_files/${DEFAULT_FALLBACK_ARCHIVE_NAME}" || true)"
+    if [[ -n "${RESOLVED_FALLBACK_ZIG_ARCHIVE}" && -f "${RESOLVED_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${RESOLVED_FALLBACK_ZIG_ARCHIVE}"
+    else
+        CANDIDATE_FALLBACK_ARCHIVE="$(canonicalize_path "${BROWSER_ROOT}/../agent_files/${DEFAULT_FALLBACK_ARCHIVE_NAME}")"
+        if [[ -f "${CANDIDATE_FALLBACK_ARCHIVE}" ]]; then
+            FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ARCHIVE}"
+        fi
     fi
+else
+    FALLBACK_ZIG_ARCHIVE="$(canonicalize_path "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
