@@ -41,8 +41,11 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_zig_toolchain_match.sh`
+- `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
@@ -59,8 +62,9 @@ Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
-archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible and
-surface that helper route before falling back to the broader Zig recovery note.
+archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
+run the matching-line gate after any staged restore, and surface the archive-
+restore checker before broader readiness is trusted again.
 
 Only move back to issue `#3`-specific runtime commits after the environment
 gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
@@ -91,6 +95,14 @@ Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.t
 when the attached archive is not sitting beside the repo workspace and the
 saved-Zig route should inspect the same surfaced fallback path as the saved-
 Memory, build-readiness, or Zig recovery follow-up helpers.
+
+After restoring a saved Zig candidate, fail fast on the matching-line gate and
+the archive-restore surface before broader readiness is trusted again:
+
+```bash
+bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
+bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh
+```
 
 ## Print The Compact Handoff
 
