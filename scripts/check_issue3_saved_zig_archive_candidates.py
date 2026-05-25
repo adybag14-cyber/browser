@@ -10,8 +10,10 @@ import pathlib
 import re
 import shlex
 import sys
+import tarfile
 import tempfile
 import unittest
+import zipfile
 
 
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
@@ -86,18 +88,66 @@ def discover_zig_archives(root: pathlib.Path) -> list[pathlib.Path]:
     return discovered
 
 
-def infer_archive_version(path: pathlib.Path) -> str | None:
-    match = SEMVER_RE.search(path.name)
-    if match is None:
+def strip_archive_suffix(name: str) -> str:
+    for suffix in (".tar.gz", ".tar.xz", ".tgz", ".zip", ".tar"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return pathlib.Path(name).stem
+
+
+def first_top_level(entries: list[str]) -> str | None:
+    names: list[str] = []
+    for raw_name in entries:
+        if not raw_name or raw_name.startswith("__MACOSX/"):
+            continue
+        normalized = raw_name[2:] if raw_name.startswith("./") else raw_name
+        if normalized:
+            names.append(normalized)
+
+    if not names:
         return None
-    return match.group(0)
+
+    top_levels = sorted({name.rstrip("/").split("/", 1)[0] for name in names if name.rstrip("/")})
+    if len(top_levels) != 1:
+        return None
+
+    top_level = top_levels[0]
+    if not any(name.startswith(f"{top_level}/") for name in names):
+        return None
+    return top_level
+
+
+def infer_archive_top_level(path: pathlib.Path) -> str | None:
+    try:
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path) as archive:
+                return first_top_level(archive.namelist())
+        if tarfile.is_tarfile(path):
+            with tarfile.open(path) as archive:
+                return first_top_level(archive.getnames())
+    except (OSError, tarfile.TarError, zipfile.BadZipFile):
+        return None
+    return None
+
+
+def infer_archive_version(path: pathlib.Path) -> tuple[str | None, str]:
+    top_level = infer_archive_top_level(path)
+    candidates = [top_level, strip_archive_suffix(path.name), path.name]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        match = SEMVER_RE.search(candidate)
+        if match is not None:
+            return match.group(0), top_level or ""
+    return None, top_level or ""
 
 
 def describe_archive(expected: str, path: pathlib.Path) -> dict[str, str]:
-    version = infer_archive_version(path)
+    version, top_level = infer_archive_version(path)
     status = "unknown-version" if version is None else classify_version(expected, version)
     return {
         "path": str(path),
+        "top_level": top_level,
         "version": version or "",
         "status": status,
     }
@@ -242,6 +292,41 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
             self.assertEqual(len(reports), 2)
             self.assertEqual(reports[0]["status"], "matches-expected-line")
             self.assertEqual(reports[1]["status"], "mismatched-line")
+            self.assertEqual(reports[0]["top_level"], "")
+
+    def test_describe_archive_uses_top_level_when_filename_is_generic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            archive_path = root / "saved-zig-toolchain.tar.xz"
+            top_level = "zig-linux-x86_64-0.15.2"
+            extracted_file = root / top_level / "zig"
+            extracted_file.parent.mkdir(parents=True)
+            extracted_file.write_text("zig", encoding="utf-8")
+            with tarfile.open(archive_path, "w:xz") as archive:
+                archive.add(extracted_file.parent, arcname=top_level)
+
+            report = describe_archive("0.15.2", archive_path)
+
+            self.assertEqual(report["top_level"], top_level)
+            self.assertEqual(report["version"], "0.15.2")
+            self.assertEqual(report["status"], "matches-expected-line")
+
+    def test_describe_archive_reports_unknown_when_filename_and_top_level_lack_semver(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            archive_path = root / "saved-zig-toolchain.tar.xz"
+            top_level = "staged-zig"
+            extracted_file = root / top_level / "zig"
+            extracted_file.parent.mkdir(parents=True)
+            extracted_file.write_text("zig", encoding="utf-8")
+            with tarfile.open(archive_path, "w:xz") as archive:
+                archive.add(extracted_file.parent, arcname=top_level)
+
+            report = describe_archive("0.15.2", archive_path)
+
+            self.assertEqual(report["top_level"], top_level)
+            self.assertEqual(report["version"], "")
+            self.assertEqual(report["status"], "unknown-version")
 
     def test_choose_preferred_archive_prefers_exact_version(self) -> None:
         reports = [
@@ -345,7 +430,8 @@ def main() -> int:
         print("Discovered saved Zig archives:")
         for archive in archive_reports:
             version = archive["version"] or "unknown-version"
-            print(f"  - {archive['path']} [{version}; {archive['status']}]")
+            top_level = archive["top_level"] or "unknown-top-level"
+            print(f"  - {archive['path']} [top-level={top_level}; {version}; {archive['status']}]")
     else:
         print("Discovered saved Zig archives: none")
 
