@@ -149,6 +149,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"
     "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh"
     "scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh"
+    "scripts/linux/check_issue3_zig_toolchain_match.sh"
+    "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh"
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
     "scripts/linux/restore_issue3_fallback_zig_toolchain.sh"
     "scripts/linux/restore_zig_toolchain_archive.sh"
