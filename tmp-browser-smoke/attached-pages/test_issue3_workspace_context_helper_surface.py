@@ -40,14 +40,18 @@ FIXTURE_FILES = {
     "suggested_progress_tracker_route_command"
     "suggested_build_readiness_route_command"
     "suggested_saved_snapshot_route_command"
+    "suggested_saved_rust_route_command"
+    "suggested_saved_rust_archive_candidates_command"
+    "suggested_staged_rust_toolchain_candidates_command"
     "suggested_zig_recovery_route_command"
     "suggested_zig_match_command"
     "suggested_saved_zig_archive_candidates_command"
     "scripts/linux/show_issue3_progress_tracker_route.sh"
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh"
     "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+    "scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
     "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"
-    "scripts/linux/check_issue3_zig_toolchain_match.sh"
+    "scripts/check_issue3_saved_rust_archive_candidates.py"
+    "scripts/check_issue3_staged_rust_toolchain_candidates.py"
     "scripts/check_issue3_saved_zig_archive_candidates.py"
     "--memory-root"
     "--saved-archives-root"
@@ -70,8 +74,12 @@ FIXTURE_FILES = {
     - `scripts/check_linux_build_readiness.py`
     - `show_issue3_progress_tracker_route.sh`
     - `show_issue3_saved_browser_snapshot_route.sh`
+    - `show_issue3_saved_rust_toolchain_route.sh`
     - `show_issue3_zig_toolchain_recovery_route.sh`
     - `show_issue3_saved_zig_archive_candidates_route.sh`
+    - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+    - `scripts/check_issue3_saved_rust_archive_candidates.py`
+    - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
     - the shared `toolchains` directory
     - the saved Memory browser archives
@@ -87,11 +95,19 @@ FIXTURE_FILES = {
     "offline_deps_root"
     "restored_checkout_root"
     "readiness_command"
+    "saved_rust_toolchain_route_surface"
+    "saved_rust_toolchain_route"
+    "saved_rust_archive_candidates"
+    "staged_rust_toolchain_candidates"
     "show_issue3_progress_tracker_route.sh"
     "show_issue3_saved_browser_snapshot_route.sh"
+    "show_issue3_saved_rust_toolchain_route.sh"
+    "check_issue3_saved_rust_archive_candidates.py"
+    "check_issue3_staged_rust_toolchain_candidates.py"
     "show_issue3_linux_build_readiness_route.sh"
     "show_issue3_zig_toolchain_recovery_route.sh"
     "show_issue3_saved_zig_archive_candidates_route.sh"
+    "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"
     """,
 }
 
@@ -156,6 +172,9 @@ class Issue3WorkspaceContextHelperSurfaceTest(unittest.TestCase):
             '"suggested_progress_tracker_route_command"',
             '"suggested_build_readiness_route_command"',
             '"suggested_saved_snapshot_route_command"',
+            '"suggested_saved_rust_route_command"',
+            '"suggested_saved_rust_archive_candidates_command"',
+            '"suggested_staged_rust_toolchain_candidates_command"',
             '"suggested_zig_recovery_route_command"',
             '"suggested_zig_match_command"',
             '"suggested_saved_zig_archive_candidates_command"',
@@ -165,10 +184,12 @@ class Issue3WorkspaceContextHelperSurfaceTest(unittest.TestCase):
     def test_helper_threads_followup_routes_and_required_overrides(self) -> None:
         for fragment in (
             '"scripts/linux/show_issue3_progress_tracker_route.sh"',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh"',
             '"scripts/linux/show_issue3_saved_browser_snapshot_route.sh"',
+            '"scripts/linux/show_issue3_saved_rust_toolchain_route.sh"',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh"',
             '"scripts/linux/show_issue3_zig_toolchain_recovery_route.sh"',
-            '"scripts/linux/check_issue3_zig_toolchain_match.sh"',
+            '"scripts/check_issue3_saved_rust_archive_candidates.py"',
+            '"scripts/check_issue3_staged_rust_toolchain_candidates.py"',
             '"scripts/check_issue3_saved_zig_archive_candidates.py"',
             '"--memory-root"',
             '"--saved-archives-root"',
@@ -197,8 +218,12 @@ class Issue3WorkspaceContextHelperSurfaceTest(unittest.TestCase):
             "`scripts/check_linux_build_readiness.py`",
             "`show_issue3_progress_tracker_route.sh`",
             "`show_issue3_saved_browser_snapshot_route.sh`",
+            "`show_issue3_saved_rust_toolchain_route.sh`",
             "`show_issue3_zig_toolchain_recovery_route.sh`",
             "`show_issue3_saved_zig_archive_candidates_route.sh`",
+            "`docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`",
+            "`scripts/check_issue3_saved_rust_archive_candidates.py`",
+            "`scripts/check_issue3_staged_rust_toolchain_candidates.py`",
             "--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
             "the shared `toolchains` directory",
             "the saved Memory browser archives",
@@ -216,11 +241,19 @@ class Issue3WorkspaceContextHelperSurfaceTest(unittest.TestCase):
             '"offline_deps_root"',
             '"restored_checkout_root"',
             '"readiness_command"',
+            '"saved_rust_toolchain_route_surface"',
+            '"saved_rust_toolchain_route"',
+            '"saved_rust_archive_candidates"',
+            '"staged_rust_toolchain_candidates"',
             '"show_issue3_progress_tracker_route.sh"',
             '"show_issue3_saved_browser_snapshot_route.sh"',
+            '"show_issue3_saved_rust_toolchain_route.sh"',
+            '"check_issue3_saved_rust_archive_candidates.py"',
+            '"check_issue3_staged_rust_toolchain_candidates.py"',
             '"show_issue3_linux_build_readiness_route.sh"',
             '"show_issue3_zig_toolchain_recovery_route.sh"',
             '"show_issue3_saved_zig_archive_candidates_route.sh"',
+            '"docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md"',
         ):
             self.assertIn(fragment, self.route_printer)
 
