@@ -10,6 +10,7 @@ helpers:
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -27,6 +28,7 @@ helpers:
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
+- `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 
@@ -38,6 +40,8 @@ Give the next writable checkout one branch-local route for:
   archives, and optional fallback Zig bundle are still present
 - checking that the saved repo snapshot and dependency bundles still match the
   expected exact artifacts before a restore or offline staging step trusts them
+- surfacing the practical workspace roots for nested or restored checkouts
+  before the next readiness rerun or explicit route override is rebuilt by hand
 - checking that the Linux build-readiness note and helper surfaces still line up
 - staging the offline sibling dependencies expected by `build.zig.zon`
 - restoring the saved Rust `1.79.0` toolchain through one compact helper route
@@ -62,6 +66,21 @@ bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 
 Use `--json` when another helper needs the surface-check result as structured
 output.
+
+## Resolve Workspace Roots When The Checkout Sits Deeper Than Default Layout
+
+If the repo root is nested more deeply than the default sibling layout, surface
+the nearest practical roots before rebuilding `--saved-archives-root`,
+`--rust-toolchain-dir`, or fallback Zig overrides by hand:
+
+```bash
+python scripts/check_issue3_workspace_context.py --repo-root .
+```
+
+Use `--json` when another helper needs the surfaced paths as structured output.
+That helper prints a ready-to-rerun `scripts/check_linux_build_readiness.py`
+command with the discovered `toolchains`, `memory/repo_archives/browser`, and
+fallback Zig paths already filled in.
 
 ## Restore A Checkout First When Needed
 
@@ -187,8 +206,11 @@ After the saved-memory preflight passes, print the saved-archive-first route:
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 ```
 
-If the repo checkout is not sitting beside the saved Memory folder, override the
-paths explicitly:
+If the repo checkout is not sitting beside the saved Memory folder, run the
+workspace-context helper first so the next readiness command or explicit route
+overrides use surfaced roots instead of hand-built guesses.
+
+When explicit overrides are still needed, the route helper supports them:
 
 ```bash
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh \
@@ -209,37 +231,40 @@ The Linux route now stays short and ordered:
 
 1. A fail-fast surface check using
    `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
-2. A saved-browser-snapshot restore route using
+2. A workspace-context helper using
+   `scripts/check_issue3_workspace_context.py` when a nested checkout needs the
+   nearest practical roots surfaced before other route overrides are rebuilt
+3. A saved-browser-snapshot restore route using
    `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` when no reusable
    checkout exists yet
-3. A saved-Memory route surface check using
+4. A saved-Memory route surface check using
    `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
-4. A saved-Memory route printer using
+5. A saved-Memory route printer using
    `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
-5. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-6. A saved-archive integrity preflight using
+6. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+7. A saved-archive integrity preflight using
    `scripts/check_issue3_saved_archive_integrity.py`
-7. A Zig-line recovery helper using
+8. A Zig-line recovery helper using
    `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-8. A Zig archive-restore surface check using
+9. A Zig archive-restore surface check using
    `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-9. A saved Rust route surface check using
-   `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-10. A saved Rust restore route using
+10. A saved Rust route surface check using
+    `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+11. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-11. A dedicated offline build-inputs route using
+12. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-12. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-13. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+13. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+14. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-14. A saved Rust `1.79.0` restore command
-15. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-16. The attached fallback Zig archive location when it is present beside the
+15. A saved Rust `1.79.0` restore command
+16. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+17. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-17. A full readiness command that expects the saved archives, offline deps, and
+18. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-18. A direct handoff back to the smaller Windows runtime revalidation route once
+19. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
@@ -249,66 +274,11 @@ missing offline deps, Rust setup, or Zig-line mismatch, move back to the direct
 issue `#3` Windows runtime surface before reopening a broader replay:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
+powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1
 ```
 
 Use that pair first so the next run rechecks the direct `Page.zig` plus
 `win32_backend.zig` route, the shared Enter-order ladder, the reduced Google
 fixture, and the current helper-note chain before it widens back out to larger
 attached-page or live-Google replay.
-
-## Working Rules
-
-- If there is no extracted checkout beside the workspace, run
-  `bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh` before the
-  broader readiness helper so the restore and immediate follow-up commands stay
-  on one surface.
-- Run
-  `bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh` and
-  `bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh` when the run
-  wants the saved-input preflight, restored-checkout override, and immediate
-  follow-up routes reopened on one compact helper surface before raw Python
-  commands are trusted.
-- Run `python scripts/check_issue3_saved_memory_inputs.py --repo-root .` before
-  the broader readiness helper when the replay depends on the saved archives in
-  Memory.
-- Run `python scripts/check_issue3_saved_archive_integrity.py --repo-root .`
-  after the saved-Memory preflight when the route needs to prove the saved repo
-  and dependency bundles still match the expected exact artifacts before offline
-  staging starts.
-- Run `bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh` when
-  the route still only shows the attached Zig `0.17` fallback or when multiple
-  staged Zig candidates need a quick `0.15.x` decision.
-- Run `bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-  before staging a real Zig archive so the archive-restore route can fail fast
-  before toolchain staging starts.
-- Use `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` and
-  `restore_zig_toolchain_archive.sh` when a real Zig `0.15.x` archive is ready
-  to be staged under `../toolchains`.
-- Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-  before the saved Rust route when the doc and helper alignment should fail fast
-  before the archive is blamed.
-- Run `bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh` when the
-  saved Rust archive and shell setup need to stay on one compact helper surface.
-- Run `bash ./scripts/linux/show_issue3_offline_build_inputs_route.sh` when the
-  offline dependency restore, its saved-archive integrity preflight, and its
-  immediate follow-up checks need to stay on one compact helper surface before
-  the raw restore command is trusted.
-- Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, rerun
-  `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
-  and then
-  `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1`
-  before widening back out to larger replay routes.
-- Do not treat `403` fetch failures for `brotli`, `zlib`, `nghttp2`, or `curl`
-  as source regressions before the offline restore route is staged.
-- Do not treat Zig `0.17` fallback failures in untouched branch files as issue
-  `#3` evidence.
-- Treat the attached `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz` bundle
-  as a surfaced fallback artifact only; do not treat its Zig `0.17` dev line as
-  honest issue `#3` validation evidence for this branch.
-- Prefer a Zig `0.15.2` toolchain for honest branch validation after the saved
-  archives and Rust toolchain are staged.
-- Reopen the direct `Page.zig` plus `win32_backend.zig` runtime patch only after
-  this Linux or WSL route and the Windows reduced Google route agree that the
-  environment is no longer the blocker.
