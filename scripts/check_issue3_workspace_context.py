@@ -159,6 +159,18 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "scripts/linux/show_issue3_progress_tracker_route.sh",
         "--repo-root",
         str(repo_root),
+        "--helper-root",
+        str(repo_root),
+        "--memory-root",
+        str(memory_root),
+        "--restored-checkout-root",
+        str(restored_checkout_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--offline-deps-root",
+        str(offline_deps_root),
     ]
     build_readiness_route_command = [
         "bash",
@@ -221,6 +233,9 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     ]
     if fallback_zig_archive is not None:
         readiness_command.extend(
+            ("--fallback-zig-archive", str(fallback_zig_archive))
+        )
+        progress_tracker_route_command.extend(
             ("--fallback-zig-archive", str(fallback_zig_archive))
         )
         build_readiness_route_command.extend(
@@ -364,6 +379,22 @@ class WorkspaceContextTests(unittest.TestCase):
                 context["suggested_progress_tracker_route_command"],
             )
             self.assertIn(
+                str(memory_root.resolve()),
+                context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
+                str(restored_checkout_root.resolve()),
+                context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
+                str(toolchains_root.resolve()),
+                context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
+                str(offline_deps_root.resolve()),
+                context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
                 "scripts/linux/show_issue3_linux_build_readiness_route.sh",
                 context["suggested_build_readiness_route_command"],
             )
@@ -420,6 +451,8 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
             )
+            self.assertIn("--memory-root", context["suggested_progress_tracker_route_command"])
+            self.assertIn("--saved-archives-root", context["suggested_progress_tracker_route_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 context["suggested_zig_recovery_route_command"],
@@ -453,6 +486,10 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn(
                 str(explicit_archive.resolve()),
                 context["suggested_saved_zig_archive_candidates_command"],
+            )
+            self.assertIn(
+                str(explicit_archive.resolve()),
+                context["suggested_progress_tracker_route_command"],
             )
 
     def test_missing_build_zon_fails_cleanly(self) -> None:
