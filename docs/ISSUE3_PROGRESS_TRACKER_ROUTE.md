@@ -82,6 +82,11 @@ From the browser repo root:
 bash ./scripts/linux/show_issue3_progress_tracker_route.sh
 ```
 
+Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
+when the attached archive is not sitting beside the repo workspace and the
+saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up routes all
+need to inspect the same surfaced archive path.
+
 Use `--json` when another helper wants the issue number, issue URL, start
 template, completion template, and follow-up route commands as structured
 output.
