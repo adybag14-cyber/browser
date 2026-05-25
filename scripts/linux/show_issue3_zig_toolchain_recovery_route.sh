@@ -153,6 +153,7 @@ def format_command(parts: list[str]) -> str:
 
 
 route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_recovery_route_surface.sh"
+matching_line_gate_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_match.sh"
 saved_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"
 archive_restore_surface_script = repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_archive_restore_route_surface.sh"
 readiness_script = repo_root / "scripts" / "check_linux_build_readiness.py"
@@ -255,6 +256,17 @@ surface_check_command = format_command(
         str(repo_root),
     ]
 )
+matching_line_gate_parts = [
+    "bash",
+    str(matching_line_gate_script),
+    "--repo-root",
+    str(repo_root),
+    "--toolchains-root",
+    str(toolchains_root),
+]
+if fallback_zig_archive:
+    matching_line_gate_parts.extend(("--fallback-zig-archive", fallback_zig_archive))
+matching_line_gate_command = format_command(matching_line_gate_parts)
 saved_archive_candidate_discovery_command = format_command(
     [
         "python",
@@ -391,6 +403,7 @@ result = {
     "preferred_saved_archive_version": preferred_saved_archive["version"] if preferred_saved_archive else "",
     "commands": {
         "surface_check": surface_check_command,
+        "matching_line_gate": matching_line_gate_command,
         "saved_archive_candidate_discovery": saved_archive_candidate_discovery_command,
         "archive_restore_surface_check": archive_restore_surface_check_command,
         "discovery": discovery_command,
@@ -435,6 +448,10 @@ print()
 print("Surface check")
 print("=============")
 print(f"  {surface_check_command}")
+print()
+print("Matching-line gate")
+print("==================")
+print(f"  {matching_line_gate_command}")
 print()
 print("Saved archive candidate discovery")
 print("================================")
@@ -483,6 +500,11 @@ if not candidates:
         "before the route blames the fallback Zig bundle."
     )
     print(
+        "  - Run the matching-line gate right after the surface check so the "
+        "shared toolchains directory has to prove a real 0.15.x candidate exists "
+        "before broader readiness is trusted again."
+    )
+    print(
         "  - Run the saved archive candidate discovery command before choosing "
         "a restore target so the preferred 0.15.x archive stays visible on a "
         "branch-local helper surface."
@@ -515,8 +537,8 @@ if not candidates:
         "only; it is not branch-compatible validation evidence for this checkout."
     )
     print(
-        "  - After staging a matching Zig line, rerun the discovery command and "
-        "then rerun the full readiness helper with that toolchain."
+        "  - After staging a matching Zig line, rerun the discovery command, "
+        "then rerun the matching-line gate before the full readiness helper."
     )
     raise SystemExit(0)
 
@@ -540,6 +562,11 @@ if matching_readiness_command is not None:
     print(
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
+    )
+    print(
+        "  - Run the matching-line gate right after the surface check so the "
+        "shared toolchains directory proves the staged candidate before broader "
+        "readiness is trusted again."
     )
     print(
         "  - Run the saved archive candidate discovery command before choosing "
@@ -586,6 +613,11 @@ else:
     print(
         "  - Run the surface check first so missing docs or helper drift fails "
         "before the route blames the fallback Zig bundle."
+    )
+    print(
+        "  - Run the matching-line gate right after the surface check so the "
+        "shared toolchains directory has to prove a real 0.15.x candidate exists "
+        "before broader readiness is trusted again."
     )
     print(
         "  - Run the saved archive candidate discovery command before choosing "
