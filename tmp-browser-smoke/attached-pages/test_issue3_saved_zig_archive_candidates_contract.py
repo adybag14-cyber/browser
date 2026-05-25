@@ -51,10 +51,16 @@ def choose_preferred_archive(expected, archive_reports):
     )
     if exact_match is not None:
         return exact_match
-    return next(
-        (archive for archive in archive_reports if archive["status"] == "matches-expected-line"),
-        None,
-    )
+    matching_archives = [
+        archive for archive in archive_reports if archive["status"] == "matches-expected-line"
+    ]
+    if not matching_archives:
+        return None
+    return max(matching_archives, key=lambda archive: parse_semver(archive["version"]))
+
+class SavedZigArchiveHelperTests(unittest.TestCase):
+    def test_choose_preferred_archive_prefers_strongest_matching_line_when_exact_missing(self):
+        pass
 
 def build_restore_command(repo_root, toolchains_root, archive_path, *, check_only):
     command = [
@@ -127,11 +133,14 @@ class Issue3SavedZigArchiveCandidatesContractTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.helper_text)
 
-    def test_helper_prefers_exact_matching_archive_before_other_matching_line_candidates(self) -> None:
+    def test_helper_prefers_exact_then_strongest_matching_archive(self) -> None:
         for fragment in (
             'archive["status"] == "matches-expected-line" and archive["version"] == expected',
             'if exact_match is not None:',
-            '(archive for archive in archive_reports if archive["status"] == "matches-expected-line")',
+            'matching_archives = [',
+            'if not matching_archives:',
+            'return max(matching_archives, key=lambda archive: parse_semver(archive["version"]))',
+            'def test_choose_preferred_archive_prefers_strongest_matching_line_when_exact_missing',
         ):
             self.assertIn(fragment, self.helper_text)
 
