@@ -155,6 +155,14 @@ REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "Zig toolchain recovery surface checker",
     ),
     (
+        "scripts/linux/check_issue3_zig_toolchain_match.sh",
+        "Zig toolchain matching-line checker",
+    ),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+        "Zig toolchain archive restore surface checker",
+    ),
+    (
         "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
         "Zig toolchain recovery route helper",
     ),
@@ -610,56 +618,67 @@ def emit_text(result: dict[str, object]) -> None:
     )
     if helper_surface_sync["status"] == "out-of-sync":
         if helper_surface_sync["drifted_files"]:
+            print("         drifted files: " + ", ".join(helper_surface_sync["drifted_files"]))
+        if helper_surface_sync["missing_in_helper_root"]:
             print(
-                "         drifted files: "
-                + ", ".join(helper_surface_sync["drifted_files"])
+                "         missing from helper root: "
+                + ", ".join(helper_surface_sync["missing_in_helper_root"])
             )
         if helper_surface_sync["missing_in_restored_checkout"]:
             print(
-                "         missing in restored checkout: "
+                "         missing from restored checkout: "
                 + ", ".join(helper_surface_sync["missing_in_restored_checkout"])
             )
-        if helper_surface_sync["missing_in_helper_root"]:
-            print(
-                "         missing in helper root: "
-                + ", ".join(helper_surface_sync["missing_in_helper_root"])
-            )
-        print("         suggested next step: re-run the saved-browser restore with --sync-helper-surface before Linux or WSL follow-up work")
-    print("Required Memory inputs:")
+    elif helper_surface_sync["status"] == "restored-checkout-missing":
+        print("         status: no reusable restored checkout yet, so helper sync will be checked after restore")
+    elif helper_surface_sync["status"] == "helper-root-missing":
+        print("         status: helper root is missing; point --helper-root at a live helper checkout")
+
+    print("Required saved Memory files:")
     for entry in result["required_files"]:
         status = "PASS" if entry["exists"] else "FAIL"
-        if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]:
-            status = "FAIL"
-        print(f"  [{status}] {entry['label']}: {entry['path']}")
-        if entry.get("archive_summary"):
-            print(f"         summary: {entry['archive_summary']}")
-        if entry.get("archive_error"):
-            print(f"         archive error: {entry['archive_error']}")
-    print("Optional Memory inputs:")
+        details = []
+        if "archive_readable" in entry:
+            details.append(
+                "archive OK"
+                if entry["archive_readable"]
+                else f"archive unreadable: {entry['archive_error']}"
+            )
+            if entry.get("archive_summary"):
+                details.append(entry["archive_summary"])
+        detail_suffix = f" ({'; '.join(details)})" if details else ""
+        print(f"  [{status}] {entry['label']}: {entry['path']}{detail_suffix}")
+
+    print("Optional saved Memory files:")
     for entry in result["optional_files"]:
         status = "PASS" if entry["exists"] else "WARN"
-        if entry.get("exists") and "archive_readable" in entry and not entry["archive_readable"]:
-            status = "WARN"
         print(f"  [{status}] {entry['label']}: {entry['path']}")
-        if entry.get("archive_summary"):
-            print(f"         summary: {entry['archive_summary']}")
-        if entry.get("archive_error"):
-            print(f"         archive error: {entry['archive_error']}")
+
     fallback = result["fallback_zig_archive"]
     fallback_status = "PASS" if fallback["exists"] else "WARN"
-    if fallback.get("exists") and "archive_readable" in fallback and not fallback["archive_readable"]:
-        fallback_status = "WARN"
-    print(f"Fallback Zig archive: [{fallback_status}] {fallback['path']}")
-    if fallback.get("archive_summary"):
-        print(f"         summary: {fallback['archive_summary']}")
-    if fallback.get("archive_error"):
-        print(f"         archive error: {fallback['archive_error']}")
+    details = []
+    if "archive_readable" in fallback:
+        details.append(
+            "archive OK"
+            if fallback["archive_readable"]
+            else f"archive unreadable: {fallback['archive_error']}"
+        )
+        if fallback.get("archive_summary"):
+            details.append(fallback["archive_summary"])
+    detail_suffix = f" ({'; '.join(details)})" if details else ""
+    print(
+        f"Fallback Zig archive: [{fallback_status}] {fallback['path']}{detail_suffix}"
+    )
+
     if result["ok"]:
-        print("\nSaved Memory input check passed.")
-    else:
-        print("\nSaved Memory input check failed.", file=sys.stderr)
+        print("Saved Memory input check passed.")
         print(
-            "Suggested next step: point --repo-root at a real browser checkout, restore or remount readable saved repo and dependency archives, and rerun the helper before reopening the issue #3 runtime route.",
+            "Next step: use the saved-browser-snapshot or Linux build-readiness routes to reopen the blocked issue #3 runtime lane."
+        )
+    else:
+        print("Saved Memory input check failed.", file=sys.stderr)
+        print(
+            "Fix the missing or unreadable required inputs, then rerun this preflight before trusting Linux or WSL build-readiness or runtime re-entry commands.",
             file=sys.stderr,
         )
 
