@@ -17,15 +17,23 @@ Companion helpers:
 
 - `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue3_workspace_context.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-- `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
+- `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
+- `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 
 ## Usage
 
@@ -49,6 +57,10 @@ The helper inspects the saved archive and reports:
 - which helper paths are missing when the archive is stale
 - whether a plain restore is safe or `--sync-helper-surface` should be used
 
+The checker mirrors the current helper-surface contract from
+`scripts/linux/restore_saved_browser_snapshot.sh`, so this note should stay in
+step with the synced restore route rather than an older static path list.
+
 The required helper surface mirrors the synced helper contract from
 `scripts/linux/restore_saved_browser_snapshot.sh`, including:
 
@@ -58,6 +70,9 @@ The required helper surface mirrors the synced helper contract from
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
@@ -66,8 +81,13 @@ The required helper surface mirrors the synced helper contract from
 - `docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_browser_snapshot_archive_surface.py`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue3_workspace_context.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/check_linux_build_readiness.py`
+- `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `scripts/windows/HeadedValidationHelpers.ps1`
 - `scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
@@ -83,6 +103,8 @@ The required helper surface mirrors the synced helper contract from
 - `scripts/linux/restore_saved_browser_snapshot.sh`
 - `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
 - `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
+- `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
+- `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh`
@@ -99,6 +121,8 @@ The required helper surface mirrors the synced helper contract from
 - `scripts/linux/check_issue3_offline_build_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/prepare_offline_build_inputs.sh`
+- `scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh`
+- `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
 
 ## Working Rules
 
