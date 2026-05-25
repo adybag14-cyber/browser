@@ -20,6 +20,7 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+RESTORE_HELPER_PATH="scripts/linux/restore_saved_browser_snapshot.sh"
 JSON=0
 
 while [[ $# -gt 0 ]]; do
@@ -93,6 +94,60 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/check_issue3_saved_memory_inputs.py|repo_archives/browser/blocker_intelligence.yaml|The saved-Memory input preflight still checks for blocker intelligence."
     "scripts/check_issue3_saved_memory_inputs.py|Saved Memory input check passed.|The saved-Memory input preflight still reports a clear pass surface."
 )
+
+declare -A REFERENCE_PATH_SET=()
+
+register_reference_path() {
+    local relative_path="$1"
+    local kind="$2"
+    local purpose="$3"
+
+    if [[ -n "${REFERENCE_PATH_SET["${relative_path}"]+x}" ]]; then
+        return
+    fi
+
+    REFERENCE_PATHS+=("${relative_path}|${kind}|${purpose}")
+    REFERENCE_PATH_SET["${relative_path}"]=1
+}
+
+append_restore_helper_surface_paths() {
+    local restore_helper_path="${REPO_ROOT}/${RESTORE_HELPER_PATH}"
+    local in_block=0
+    local line=""
+    local trimmed=""
+
+    if [[ ! -f "${restore_helper_path}" ]]; then
+        return
+    fi
+
+    while IFS= read -r line; do
+        trimmed="${line#"${line%%[![:space:]]*}"}"
+        if [[ "${in_block}" -eq 0 ]]; then
+            if [[ "${trimmed}" == "declare -a HELPER_SURFACE_PATHS=(" ]]; then
+                in_block=1
+            fi
+            continue
+        fi
+
+        if [[ "${trimmed}" == ")" ]]; then
+            break
+        fi
+
+        if [[ "${trimmed}" =~ ^\"([^\"]+)\"$ ]]; then
+            register_reference_path \
+                "${BASH_REMATCH[1]}" \
+                "file" \
+                "Restore helper sync-surface path that should exist on the live branch before a synced saved-snapshot restore is trusted."
+        fi
+    done < "${restore_helper_path}"
+}
+
+for entry in "${REFERENCE_PATHS[@]}"; do
+    IFS="|" read -r relative_path _ <<<"${entry}"
+    REFERENCE_PATH_SET["${relative_path}"]=1
+done
+
+append_restore_helper_surface_paths
 
 json_escape() {
     python3 - "$1" <<'PY'
@@ -202,4 +257,3 @@ fi
 
 echo
 echo "All saved-browser-snapshot route surfaces are present."
-EOF
