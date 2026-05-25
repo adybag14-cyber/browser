@@ -16,6 +16,7 @@ helpers:
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md`
 - `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1`
 - `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
@@ -28,13 +29,16 @@ helpers:
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/check_issue3_offline_build_inputs_route_surface.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
+- `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_offline_build_inputs_route.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+- `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
 
 ## Goal
 
@@ -53,6 +57,8 @@ Give the next writable checkout one branch-local route for:
   builder-attached Zig `0.17` dev bundle is available
 - surfacing staged Zig candidates under `../toolchains` before the fallback Zig
   `0.17` path is blamed for branch behavior
+- surfacing saved Zig archive candidates under the saved archive area before a
+  hand-built restore path is guessed
 - failing fast when no staged Zig candidate matches the branch's expected
   `0.15.x` line before the broader readiness rerun is trusted again
 - replaying the offline build-inputs restore route, including its saved-archive
@@ -155,6 +161,28 @@ than the default `../agent_files/` location beside the repo workspace.
 Use `--require-fallback-zig` only when the route needs the fallback Zig archive
 itself to be present and fingerprint-matched before later recovery steps can
 trust it.
+
+## Surface Saved Zig Archive Candidates Before A Hand-Built Restore
+
+If no staged Zig candidate under `../toolchains` matches the branch's expected
+`0.15.x` line and the exact saved archive path is not already known, reopen the
+saved-Zig candidate route before hand-picking an archive argument:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
+```
+
+When the route wants the surfaced archive list or restore commands directly,
+run the candidate helper itself:
+
+```bash
+python scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
+```
+
+Prefer an exact saved Zig `0.15.2` archive when one exists. Otherwise prefer
+the newest saved archive on the same `0.15.x` line before the attached Zig
+`0.17` fallback is treated as the only visible option.
 
 ## Reopen The Zig Line Before Trusting Fallback Zig
 
@@ -280,25 +308,31 @@ The Linux route now stays short and ordered:
     `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 11. A dedicated Zig matching-line gate using
     `scripts/linux/check_issue3_zig_toolchain_match.sh`
-12. A Zig archive-restore surface check using
+12. A saved Zig archive candidate surface check using
+    `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
+13. A saved Zig archive candidate route using
+    `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+14. A saved Zig archive discovery helper using
+    `scripts/check_issue3_saved_zig_archive_candidates.py`
+15. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-13. A saved Rust route surface check using
+16. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-14. A saved Rust restore route using
+17. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-15. A dedicated offline build-inputs route using
+18. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-16. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-17. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+19. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+20. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-18. A saved Rust `1.79.0` restore command
-19. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-20. The attached fallback Zig archive location when it is present beside the
+21. A saved Rust `1.79.0` restore command
+22. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+23. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as branch-compatible
     validation evidence
-21. A full readiness command that expects the saved archives, offline deps, and
+24. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-22. A direct handoff back to the smaller Windows runtime revalidation route once
+25. A direct handoff back to the smaller Windows runtime revalidation route once
     the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
