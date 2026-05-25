@@ -22,6 +22,14 @@ DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
 REQUIRED_SURFACE_FILES: tuple[tuple[str, str], ...] = (
     ("build.zig.zon", "restored checkout build manifest"),
     (
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+        "issue #11 progress-tracker handoff note",
+    ),
+    (
+        "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+        "saved-memory route note",
+    ),
+    (
         "scripts/check_issue3_saved_memory_inputs.py",
         "saved-memory preflight helper",
     ),
@@ -32,6 +40,14 @@ REQUIRED_SURFACE_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/check_linux_build_readiness.py",
         "Linux build-readiness helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+        "saved-memory route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+        "saved-memory route printer",
     ),
     (
         "scripts/linux/restore_saved_browser_snapshot.sh",
@@ -183,6 +199,48 @@ class RestoredCheckoutHelperSurfaceTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["status"], "ready")
             self.assertEqual(result["missing_paths"], [])
+
+    def test_missing_saved_memory_route_files_fail_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            restored = Path(tmpdir) / DEFAULT_RESTORED_CHECKOUT_NAME
+            repo_root.mkdir()
+            restored.mkdir()
+            for relative_path, _label in REQUIRED_SURFACE_FILES:
+                if relative_path in {
+                    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+                    "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+                    "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+                }:
+                    continue
+                target = restored / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                restored_checkout_root=restored,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "incomplete-helper-surface")
+            self.assertIn(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                result["missing_paths"],
+            )
+            self.assertIn(
+                "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+                result["missing_paths"],
+            )
+            self.assertIn(
+                "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+                result["missing_paths"],
+            )
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+                result["missing_paths"],
+            )
 
     def test_missing_restore_scripts_fail_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
