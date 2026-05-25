@@ -32,6 +32,30 @@ normalize_saved_archives_root() {
     printf '%s\n' "${raw_root}"
 }
 
+resolve_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+locate_first_existing() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+start = pathlib.Path(sys.argv[1]).resolve()
+relative = pathlib.Path(sys.argv[2])
+for ancestor in (start, *start.parents):
+    candidate = ancestor / relative
+    if candidate.exists():
+        print(candidate.resolve())
+        break
+PY
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
@@ -71,12 +95,23 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    DISCOVERED_SAVED_ARCHIVES_ROOT="$(locate_first_existing "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -n "${DISCOVERED_SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="${DISCOVERED_SAVED_ARCHIVES_ROOT}"
+    else
+        SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    DISCOVERED_TOOLCHAINS_ROOT="$(locate_first_existing "${REPO_ROOT}" "toolchains" || true)"
+    if [[ -n "${DISCOVERED_TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="${DISCOVERED_TOOLCHAINS_ROOT}"
+    else
+        TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    fi
 fi
+TOOLCHAINS_ROOT="$(resolve_path "${TOOLCHAINS_ROOT}")"
 
 python3 - "${REPO_ROOT}" "${SAVED_ARCHIVES_ROOT}" "${TOOLCHAINS_ROOT}" "${JSON}" <<'PY'
 from __future__ import annotations
