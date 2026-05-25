@@ -161,7 +161,7 @@ class Issue3SavedBrowserSnapshotArchiveSurfaceTest(unittest.TestCase):
             cls.repo_root / "scripts/check_issue3_saved_browser_snapshot_archive_surface.py"
         )
         cls.snapshot_route_helper = read_text(
-            cls.repo_root / "scripts/linux/show_issue3_saved_BROWSER_SNAPSHOT_ROUTE.sh"
+            cls.repo_root / "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
         )
 
     def test_archive_surface_note_keeps_helper_contract_and_followups_visible(self) -> None:
