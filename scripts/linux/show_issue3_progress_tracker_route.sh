@@ -7,6 +7,7 @@ usage() {
 Usage:
   bash scripts/linux/show_issue3_progress_tracker_route.sh \
     [--repo-root /path/to/browser-repo] \
+    [--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz] \
     [--json]
 
 Print the issue #11 progress-tracker route for the blocked issue #3 Linux or
@@ -27,12 +28,17 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
+FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --repo-root)
             REPO_ROOT="$2"
+            shift 2
+            ;;
+        --fallback-zig-archive)
+            FALLBACK_ZIG_ARCHIVE="$2"
             shift 2
             ;;
         --json)
@@ -52,6 +58,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
+    fi
+fi
+
 ISSUE_NUMBER=11
 ISSUE_URL="https://github.com/adybag14-cyber/browser/issues/11"
 ROUTE_NOTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
@@ -61,6 +74,13 @@ SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/
 SAVED_ZIG_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 ZIG_RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    SAVED_MEMORY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    SAVED_ZIG_ARCHIVE_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    BUILD_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    ZIG_RECOVERY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+fi
 
 START_COMMENT_TEMPLATE=$'Goal: <state the exact Linux/WSL re-entry helper or environment gate work>\nStarted: <UTC timestamp>\nNext: <state the first concrete helper, validation check, or branch-safe change you are about to make>'
 COMPLETION_COMMENT_TEMPLATE=$'Achieved: <state what route, helper, or branch-safe re-entry improvement landed>\nCompleted: <UTC timestamp>\nCommit: <commit sha>\nValidation: <state the focused helper check, self-test, or follow-up route that now applies>'
@@ -75,6 +95,7 @@ print(json.dumps({
     "issue_number": ${ISSUE_NUMBER},
     "issue_url": ${ISSUE_URL@Q},
     "route_note_path": ${ROUTE_NOTE_PATH@Q},
+    "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "saved_memory_inputs_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
@@ -88,6 +109,7 @@ print(json.dumps({
         "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.",
         "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.",
         "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.",
+        "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-input, saved-Zig, build-readiness, and Zig recovery helpers all inspect the same surfaced path.",
         "Keep the start comment compact with Goal, Started, and Next.",
         "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.",
         "When the next step is still environment-gated, follow the saved-memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch."
@@ -100,10 +122,11 @@ fi
 cat <<EOF
 Google issue #3 issue #11 progress-tracker route
 
-Repo root:   ${REPO_ROOT}
-Issue:       #${ISSUE_NUMBER}
-Issue URL:   ${ISSUE_URL}
-Route note:  ${ROUTE_NOTE_PATH}
+Repo root:             ${REPO_ROOT}
+Issue:                 #${ISSUE_NUMBER}
+Issue URL:             ${ISSUE_URL}
+Route note:            ${ROUTE_NOTE_PATH}
+Fallback Zig archive:  ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 
 Read first
 ==========
@@ -149,6 +172,7 @@ Working rules
   - Run the route surface check first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
   - When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.
+  - Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-input, saved-Zig, build-readiness, and Zig recovery helpers all inspect the same surfaced path.
   - Keep the start comment compact with Goal, Started, and Next.
   - Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.
   - When the next step is still environment-gated, follow the saved-Memory, saved-Zig, build-readiness, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
