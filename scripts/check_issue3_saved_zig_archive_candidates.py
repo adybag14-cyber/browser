@@ -115,10 +115,15 @@ def choose_preferred_archive(expected: str, archive_reports: list[dict[str, str]
     if exact_match is not None:
         return exact_match
 
-    return next(
-        (archive for archive in archive_reports if archive["status"] == "matches-expected-line"),
-        None,
-    )
+    matching_archives = [
+        archive
+        for archive in archive_reports
+        if archive["status"] == "matches-expected-line" and archive["version"]
+    ]
+    if not matching_archives:
+        return None
+
+    return max(matching_archives, key=lambda archive: parse_semver(archive["version"]))
 
 
 def format_command(parts: list[str]) -> str:
@@ -247,6 +252,17 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
         self.assertIsNotNone(preferred)
         assert preferred is not None
         self.assertEqual(preferred["version"], "0.15.2")
+
+    def test_choose_preferred_archive_prefers_highest_matching_patch_when_exact_missing(self) -> None:
+        reports = [
+            {"path": "/tmp/zig-0.15.3.tar.xz", "version": "0.15.3", "status": "matches-expected-line"},
+            {"path": "/tmp/zig-0.15.11.tar.xz", "version": "0.15.11", "status": "matches-expected-line"},
+            {"path": "/tmp/zig-0.15.7.tar.xz", "version": "0.15.7", "status": "matches-expected-line"},
+        ]
+        preferred = choose_preferred_archive("0.15.2", reports)
+        self.assertIsNotNone(preferred)
+        assert preferred is not None
+        self.assertEqual(preferred["version"], "0.15.11")
 
     def test_build_restore_command_includes_check_only_when_requested(self) -> None:
         command = build_restore_command(
