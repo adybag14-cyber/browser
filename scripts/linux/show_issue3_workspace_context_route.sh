@@ -83,6 +83,10 @@ progress_tracker_route_surface_script = repo_root / "scripts" / "linux" / "check
 progress_tracker_route_script = repo_root / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh"
 saved_snapshot_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_saved_browser_snapshot_route_surface.sh"
 saved_snapshot_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_browser_snapshot_route.sh"
+saved_rust_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_saved_rust_toolchain_route_surface.sh"
+saved_rust_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_rust_toolchain_route.sh"
+saved_rust_archive_candidates_script = repo_root / "scripts" / "check_issue3_saved_rust_archive_candidates.py"
+staged_rust_toolchain_candidates_script = repo_root / "scripts" / "check_issue3_staged_rust_toolchain_candidates.py"
 linux_build_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_linux_build_readiness_route_surface.sh"
 linux_build_route_script = repo_root / "scripts" / "linux" / "show_issue3_linux_build_readiness_route.sh"
 zig_recovery_route_script = repo_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"
@@ -133,6 +137,21 @@ saved_snapshot_command = format_command(
     ["bash", str(saved_snapshot_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
 )
+saved_rust_surface_command = format_command(
+    ["bash", str(saved_rust_route_surface_script), "--repo-root", str(repo_root)]
+)
+saved_rust_command = format_command(
+    helper_report.get("suggested_saved_rust_route_command")
+    or ["bash", str(saved_rust_route_script), "--browser-root", str(repo_root)]
+)
+saved_rust_archive_candidates_command = format_command(
+    helper_report.get("suggested_saved_rust_archive_candidates_command")
+    or [sys.executable, str(saved_rust_archive_candidates_script), "--repo-root", str(repo_root)]
+)
+staged_rust_toolchain_candidates_command = format_command(
+    helper_report.get("suggested_staged_rust_toolchain_candidates_command")
+    or [sys.executable, str(staged_rust_toolchain_candidates_script), "--repo-root", str(repo_root)]
+)
 linux_build_surface_command = format_command(
     ["bash", str(linux_build_route_surface_script), "--repo-root", str(repo_root)]
 )
@@ -171,6 +190,10 @@ result = {
         "issue11_progress_tracker_route": progress_tracker_command,
         "saved_browser_snapshot_route_surface": saved_snapshot_surface_command,
         "saved_browser_snapshot_route": saved_snapshot_command,
+        "saved_rust_toolchain_route_surface": saved_rust_surface_command,
+        "saved_rust_toolchain_route": saved_rust_command,
+        "saved_rust_archive_candidates": saved_rust_archive_candidates_command,
+        "staged_rust_toolchain_candidates": staged_rust_toolchain_candidates_command,
         "linux_build_readiness_route_surface": linux_build_surface_command,
         "linux_build_readiness_route": linux_build_command,
         "zig_toolchain_recovery_route": zig_recovery_command,
@@ -184,6 +207,8 @@ result = {
         "Use the helper command first when a restored checkout sits deeper than the default sibling layout and the next route would otherwise guess the wrong shared roots.",
         "Run the printed issue #11 surface check before the tracker route when the next rerun is still environment-gated after the shared roots are surfaced.",
         "Run the printed saved-browser-snapshot surface check before the saved-browser-snapshot route when no reusable checkout exists yet after workspace discovery.",
+        "Run the printed saved Rust route surface check before the saved Rust route when the next rerun still needs to restore or reuse Rust before broader readiness is trusted.",
+        "Run the printed saved and staged Rust candidate commands before unpacking the archive again so a nested checkout can reuse the surfaced helper roots consistently.",
         "Run the printed Linux build-readiness surface check before the Linux build-readiness route when the shared roots are known and the next rerun can move straight into those gates.",
         "Use the printed Zig toolchain recovery route when the next rerun already has the practical roots but still lacks a branch-compatible 0.15.x toolchain.",
         "Run the printed saved Zig archive candidates surface check before the saved Zig archive candidates route when the next rerun needs to pick or restage a branch-compatible 0.15.x archive before broader recovery is trusted.",
@@ -216,6 +241,7 @@ print("==========")
 print("  docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md")
 print("  docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md")
 print("  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")
+print("  docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md")
 print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
 print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
 print("  docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md")
@@ -239,6 +265,18 @@ print(f"    {saved_snapshot_surface_command}")
 print()
 print("  Saved-browser-snapshot route:")
 print(f"    {saved_snapshot_command}")
+print()
+print("  Saved Rust route surface check:")
+print(f"    {saved_rust_surface_command}")
+print()
+print("  Saved Rust route:")
+print(f"    {saved_rust_command}")
+print()
+print("  Saved Rust archive candidates:")
+print(f"    {saved_rust_archive_candidates_command}")
+print()
+print("  Staged Rust toolchain candidates:")
+print(f"    {staged_rust_toolchain_candidates_command}")
 print()
 print("  Linux build-readiness surface check:")
 print(f"    {linux_build_surface_command}")
