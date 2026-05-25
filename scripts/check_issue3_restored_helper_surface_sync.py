@@ -26,6 +26,10 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
         "saved Zig archive candidates route",
     ),
     (
+        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+        "saved Rust toolchain route",
+    ),
+    (
         "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
         "saved-memory route surface checker",
     ),
@@ -44,6 +48,22 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/check_issue3_saved_zig_archive_candidates.py",
         "saved Zig archive candidates helper",
+    ),
+    (
+        "scripts/check_issue3_saved_rust_archive_candidates.py",
+        "saved Rust archive candidates helper",
+    ),
+    (
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        "staged Rust toolchain candidates helper",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
+        "saved Rust toolchain route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+        "saved Rust toolchain route helper",
     ),
     (
         "scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh",
