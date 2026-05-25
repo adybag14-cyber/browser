@@ -40,6 +40,25 @@ def same_version_line(expected_version: str, actual_version: str) -> bool:
     return actual_parts[:2] == expected_parts[:2]
 
 
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def load_minimum_zig(repo_root: Path) -> str:
     text = (repo_root / "build.zig.zon").read_text(encoding="utf-8")
     match = MINIMUM_ZIG_RE.search(text)
@@ -49,22 +68,35 @@ def load_minimum_zig(repo_root: Path) -> str:
 
 
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
 def resolve_default_saved_archives_root(repo_root: Path) -> Path:
-    root = (repo_root.parent / "memory" / "repo_archives" / "browser").resolve()
+    located = locate_first_existing(repo_root, "memory/repo_archives/browser")
+    if located is not None and located.is_dir():
+        root = located
+    else:
+        root = (repo_root.parent / "memory" / "repo_archives" / "browser").resolve()
     dependencies_root = root / "dependencies"
     return dependencies_root if dependencies_root.is_dir() else root
 
 
 def resolve_default_offline_deps_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "offline-deps")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "offline-deps").resolve()
 
 
 def resolve_fallback_zig_archive(repo_root: Path, explicit_archive: Path | None) -> Path | None:
     if explicit_archive is not None:
         return explicit_archive.resolve()
+    located = locate_first_existing(repo_root, f"agent_files/{DEFAULT_FALLBACK_ZIG_ARCHIVE}")
+    if located is not None and located.is_file():
+        return located
     candidate = (repo_root.parent / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE).resolve()
     return candidate if candidate.exists() else None
 
@@ -241,7 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--saved-archives-root",
         default=None,
-        help="Path to the saved archive root (default: ../memory/repo_archives/browser or its dependencies dir)",
+        help="Path to the saved archive root (default: nearest ancestor memory/repo_archives/browser or its dependencies dir)",
     )
     parser.add_argument("--offline-deps-root", default=None, help="Path to the offline dependency root")
     parser.add_argument("--fallback-zig-archive", default=None, help="Optional explicit path to the fallback Zig archive")
@@ -312,6 +344,32 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 report["suggested_recovery_route_command"],
             )
+
+    def test_default_roots_discover_ancestor_workspace_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
+
+            toolchains_root = workspace_root / "toolchains"
+            toolchains_root.mkdir()
+            saved_archives_root = workspace_root / "memory" / "repo_archives" / "browser"
+            (saved_archives_root / "dependencies").mkdir(parents=True)
+            offline_deps_root = workspace_root / "offline-deps"
+            offline_deps_root.mkdir()
+            agent_files_root = workspace_root / "agent_files"
+            agent_files_root.mkdir()
+            fallback_archive = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
+            fallback_archive.write_text("zig", encoding="utf-8")
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+            self.assertEqual(
+                resolve_default_saved_archives_root(repo_root),
+                (saved_archives_root / "dependencies").resolve(),
+            )
+            self.assertEqual(resolve_default_offline_deps_root(repo_root), offline_deps_root.resolve())
+            self.assertEqual(resolve_fallback_zig_archive(repo_root, None), fallback_archive.resolve())
 
 
 def main() -> int:
