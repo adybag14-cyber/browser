@@ -3,10 +3,10 @@
 """Summarize the current Linux/WSL re-entry status for issue #11.
 
 This helper keeps the low-volume issue #11 lane on one compact command by
-running the saved-Memory preflight, the Zig matching-line gate, and the broader
-Linux build-readiness helper in sequence. It does not replace the richer route
-notes; it gives future runs one quick status probe that also surfaces the next
-command they should run.
+running the workspace-context helper, the saved-Memory preflight, the Zig
+matching-line gate, and the broader Linux build-readiness helper in sequence.
+It does not replace the richer route notes; it gives future runs one quick
+status probe that also surfaces the next command they should run.
 """
 
 from __future__ import annotations
@@ -57,33 +57,101 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def build_component_commands(repo_root: pathlib.Path, python_executable: str) -> dict[str, list[str]]:
-    return {
-        "saved_memory": [
+def extract_workspace_overrides(workspace_context: dict[str, object] | None) -> dict[str, str]:
+    if not isinstance(workspace_context, dict):
+        return {}
+
+    overrides: dict[str, str] = {}
+    for key in (
+        "memory_root",
+        "agent_files_root",
+        "restored_checkout_root",
+        "saved_archives_root",
+        "toolchains_root",
+        "offline_deps_root",
+    ):
+        value = workspace_context.get(key)
+        if isinstance(value, str) and value:
+            overrides[key] = value
+
+    fallback_archive = workspace_context.get("fallback_zig_archive")
+    fallback_found = workspace_context.get("fallback_zig_archive_found")
+    if isinstance(fallback_archive, str) and fallback_archive and fallback_found is True:
+        overrides["fallback_zig_archive"] = fallback_archive
+
+    return overrides
+
+
+def build_component_commands(
+    repo_root: pathlib.Path,
+    python_executable: str,
+    workspace_context: dict[str, object] | None = None,
+) -> dict[str, list[str]]:
+    overrides = extract_workspace_overrides(workspace_context)
+
+    commands = {
+        "workspace_context": [
             python_executable,
-            str(repo_root / "scripts" / "check_issue3_saved_memory_inputs.py"),
+            str(repo_root / "scripts" / "check_issue3_workspace_context.py"),
             "--repo-root",
             str(repo_root),
             "--json",
-        ],
-        "zig_match": [
-            "bash",
-            str(repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_match.sh"),
-            "--repo-root",
-            str(repo_root),
-            "--json",
-        ],
-        "build_readiness": [
-            python_executable,
-            str(repo_root / "scripts" / "check_linux_build_readiness.py"),
-            "--repo-root",
-            str(repo_root),
-            "--expect-saved-archives",
-            "--expect-offline-deps",
-            "--require-prebuilt-v8",
-            "--json",
-        ],
+        ]
     }
+
+    saved_memory = [
+        python_executable,
+        str(repo_root / "scripts" / "check_issue3_saved_memory_inputs.py"),
+        "--repo-root",
+        str(repo_root),
+        "--json",
+    ]
+    if "memory_root" in overrides:
+        saved_memory.extend(("--memory-root", overrides["memory_root"]))
+    if "agent_files_root" in overrides:
+        saved_memory.extend(("--agent-files-root", overrides["agent_files_root"]))
+    if "restored_checkout_root" in overrides:
+        saved_memory.extend(("--restored-checkout-root", overrides["restored_checkout_root"]))
+    if "fallback_zig_archive" in overrides:
+        saved_memory.extend(("--fallback-zig-archive", overrides["fallback_zig_archive"]))
+    commands["saved_memory"] = saved_memory
+
+    zig_match = [
+        "bash",
+        str(repo_root / "scripts" / "linux" / "check_issue3_zig_toolchain_match.sh"),
+        "--repo-root",
+        str(repo_root),
+        "--json",
+    ]
+    if "toolchains_root" in overrides:
+        zig_match.extend(("--toolchains-root", overrides["toolchains_root"]))
+    if "saved_archives_root" in overrides:
+        zig_match.extend(("--saved-archives-root", overrides["saved_archives_root"]))
+    if "fallback_zig_archive" in overrides:
+        zig_match.extend(("--fallback-zig-archive", overrides["fallback_zig_archive"]))
+    commands["zig_match"] = zig_match
+
+    build_readiness = [
+        python_executable,
+        str(repo_root / "scripts" / "check_linux_build_readiness.py"),
+        "--repo-root",
+        str(repo_root),
+        "--expect-saved-archives",
+        "--expect-offline-deps",
+        "--require-prebuilt-v8",
+        "--json",
+    ]
+    if "toolchains_root" in overrides:
+        build_readiness.extend(("--toolchains-root", overrides["toolchains_root"]))
+    if "saved_archives_root" in overrides:
+        build_readiness.extend(("--saved-archives-root", overrides["saved_archives_root"]))
+    if "offline_deps_root" in overrides:
+        build_readiness.extend(("--offline-deps-root", overrides["offline_deps_root"]))
+    if "fallback_zig_archive" in overrides:
+        build_readiness.extend(("--fallback-zig-archive", overrides["fallback_zig_archive"]))
+    commands["build_readiness"] = build_readiness
+
+    return commands
 
 
 def run_json_helper(command: list[str]) -> dict[str, object]:
@@ -146,11 +214,28 @@ def run_json_helper(command: list[str]) -> dict[str, object]:
     }
 
 
+def skipped_result(command: list[str], summary: str) -> dict[str, object]:
+    return {
+        "status": "skipped",
+        "ok": False,
+        "command": format_command(command),
+        "exit_code": None,
+        "stdout": "",
+        "stderr": "",
+        "json": None,
+        "summary": summary,
+    }
+
+
 def route_command(repo_root: pathlib.Path, relative_path: str) -> str:
     return format_command(["bash", str(repo_root / relative_path), "--repo-root", str(repo_root)])
 
 
 def choose_next_step(results: dict[str, dict[str, object]], repo_root: pathlib.Path) -> str:
+    workspace_context = results["workspace_context"]
+    if not workspace_context["ok"]:
+        return route_command(repo_root, "scripts/linux/show_issue3_workspace_context_route.sh")
+
     saved_memory = results["saved_memory"]
     if not saved_memory["ok"]:
         return route_command(repo_root, "scripts/linux/show_issue3_saved_memory_inputs_route.sh")
@@ -207,13 +292,14 @@ def emit_text(report: dict[str, object]) -> None:
     components = report["components"]
     assert isinstance(components, dict)
     for key, label in (
+        ("workspace_context", "Workspace context"),
         ("saved_memory", "Saved Memory preflight"),
         ("zig_match", "Zig matching-line gate"),
         ("build_readiness", "Linux build-readiness"),
     ):
         result = components[key]
         assert isinstance(result, dict)
-        state = "passed" if result["ok"] else "failed"
+        state = "passed" if result["ok"] else result["status"]
         print(f"  - {label}: {state}")
         print(f"    Command: {result['command']}")
         if result.get("summary"):
@@ -227,9 +313,67 @@ def emit_text(report: dict[str, object]) -> None:
 
 
 class ReentryStatusTests(unittest.TestCase):
-    def test_choose_next_step_prefers_saved_memory_route_first(self) -> None:
+    def test_build_component_commands_threads_workspace_roots_into_child_helpers(self) -> None:
+        repo_root = pathlib.Path("/tmp/browser")
+        commands = build_component_commands(
+            repo_root,
+            "/usr/bin/python3",
+            {
+                "memory_root": "/tmp/memory",
+                "agent_files_root": "/tmp/agent_files",
+                "restored_checkout_root": "/tmp/browser-memory-snapshot",
+                "saved_archives_root": "/tmp/memory/repo_archives/browser",
+                "toolchains_root": "/tmp/toolchains",
+                "offline_deps_root": "/tmp/offline-deps",
+                "fallback_zig_archive": "/tmp/agent_files/zig.tar.xz",
+                "fallback_zig_archive_found": True,
+            },
+        )
+
+        self.assertIn("--memory-root", commands["saved_memory"])
+        self.assertIn("/tmp/memory", commands["saved_memory"])
+        self.assertIn("--agent-files-root", commands["saved_memory"])
+        self.assertIn("/tmp/agent_files", commands["saved_memory"])
+        self.assertIn("--restored-checkout-root", commands["saved_memory"])
+        self.assertIn("/tmp/browser-memory-snapshot", commands["saved_memory"])
+        self.assertIn("--saved-archives-root", commands["zig_match"])
+        self.assertIn("/tmp/memory/repo_archives/browser", commands["zig_match"])
+        self.assertIn("--toolchains-root", commands["build_readiness"])
+        self.assertIn("/tmp/toolchains", commands["build_readiness"])
+        self.assertIn("--offline-deps-root", commands["build_readiness"])
+        self.assertIn("/tmp/offline-deps", commands["build_readiness"])
+        self.assertIn("--fallback-zig-archive", commands["build_readiness"])
+        self.assertIn("/tmp/agent_files/zig.tar.xz", commands["build_readiness"])
+
+    def test_extract_workspace_overrides_skips_missing_fallback_archive(self) -> None:
+        overrides = extract_workspace_overrides(
+            {
+                "memory_root": "/tmp/memory",
+                "fallback_zig_archive": "/tmp/agent_files/zig.tar.xz",
+                "fallback_zig_archive_found": False,
+            }
+        )
+
+        self.assertEqual(overrides["memory_root"], "/tmp/memory")
+        self.assertNotIn("fallback_zig_archive", overrides)
+
+    def test_choose_next_step_prefers_workspace_context_route_first(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
         results = {
+            "workspace_context": {"ok": False},
+            "saved_memory": {"ok": False},
+            "zig_match": {"ok": False, "json": {}},
+            "build_readiness": {"ok": False, "json": {}},
+        }
+
+        next_step = choose_next_step(results, repo_root)
+
+        self.assertIn("show_issue3_workspace_context_route.sh", next_step)
+
+    def test_choose_next_step_prefers_saved_memory_route_after_workspace_passes(self) -> None:
+        repo_root = pathlib.Path("/tmp/browser")
+        results = {
+            "workspace_context": {"ok": True},
             "saved_memory": {"ok": False},
             "zig_match": {"ok": False, "json": {}},
             "build_readiness": {"ok": False, "json": {}},
@@ -242,6 +386,7 @@ class ReentryStatusTests(unittest.TestCase):
     def test_choose_next_step_uses_preferred_restore_when_zig_match_fails(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
         results = {
+            "workspace_context": {"ok": True},
             "saved_memory": {"ok": True},
             "zig_match": {
                 "ok": False,
@@ -259,6 +404,7 @@ class ReentryStatusTests(unittest.TestCase):
     def test_choose_next_step_falls_back_to_recovery_route_when_restore_missing(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
         results = {
+            "workspace_context": {"ok": True},
             "saved_memory": {"ok": True},
             "zig_match": {"ok": False, "json": {}},
             "build_readiness": {"ok": False, "json": {}},
@@ -271,6 +417,7 @@ class ReentryStatusTests(unittest.TestCase):
     def test_choose_next_step_uses_readiness_suggestion(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
         results = {
+            "workspace_context": {"ok": True},
             "saved_memory": {"ok": True},
             "zig_match": {"ok": True, "json": {}},
             "build_readiness": {
@@ -286,6 +433,7 @@ class ReentryStatusTests(unittest.TestCase):
     def test_choose_next_step_hands_back_to_runtime_route_on_pass(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
         results = {
+            "workspace_context": {"ok": True},
             "saved_memory": {"ok": True},
             "zig_match": {"ok": True, "json": {}},
             "build_readiness": {"ok": True, "json": {}},
@@ -328,31 +476,41 @@ def main() -> int:
         return 0 if result.wasSuccessful() else 1
 
     repo_root = pathlib.Path(args.repo_root).resolve()
-    commands = build_component_commands(repo_root, args.python)
+    initial_commands = build_component_commands(repo_root, args.python)
+    workspace_context = run_json_helper(initial_commands["workspace_context"])
+    commands = build_component_commands(
+        repo_root,
+        args.python,
+        workspace_context.get("json") if workspace_context["ok"] else None,
+    )
 
-    saved_memory = run_json_helper(commands["saved_memory"])
-    zig_match = run_json_helper(commands["zig_match"]) if saved_memory["ok"] else {
-        "status": "skipped",
-        "ok": False,
-        "command": format_command(commands["zig_match"]),
-        "exit_code": None,
-        "stdout": "",
-        "stderr": "",
-        "json": None,
-        "summary": "skipped because the saved-Memory preflight failed",
-    }
-    build_readiness = run_json_helper(commands["build_readiness"]) if saved_memory["ok"] and zig_match["ok"] else {
-        "status": "skipped",
-        "ok": False,
-        "command": format_command(commands["build_readiness"]),
-        "exit_code": None,
-        "stdout": "",
-        "stderr": "",
-        "json": None,
-        "summary": "skipped because an earlier gate is still failing",
-    }
+    saved_memory = (
+        run_json_helper(commands["saved_memory"])
+        if workspace_context["ok"]
+        else skipped_result(
+            commands["saved_memory"],
+            "skipped because the workspace-context helper failed",
+        )
+    )
+    zig_match = (
+        run_json_helper(commands["zig_match"])
+        if workspace_context["ok"] and saved_memory["ok"]
+        else skipped_result(
+            commands["zig_match"],
+            "skipped because an earlier gate is still failing",
+        )
+    )
+    build_readiness = (
+        run_json_helper(commands["build_readiness"])
+        if workspace_context["ok"] and saved_memory["ok"] and zig_match["ok"]
+        else skipped_result(
+            commands["build_readiness"],
+            "skipped because an earlier gate is still failing",
+        )
+    )
 
     results = {
+        "workspace_context": workspace_context,
         "saved_memory": saved_memory,
         "zig_match": zig_match,
         "build_readiness": build_readiness,
