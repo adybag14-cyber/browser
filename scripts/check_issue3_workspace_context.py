@@ -7,8 +7,8 @@ This helper is intentionally small and create-only so scheduled runs can answer:
 - where the saved Memory browser archives live
 - where the attached fallback Zig archive is visible from this checkout
 - where the nearest shared offline dependency root and Memory root live
-- which saved-snapshot, build-readiness, and issue #11 progress-tracker route
-  commands already match those roots
+- which saved-snapshot, saved-Rust, build-readiness, and issue #11 progress-
+  tracker route commands already match those roots
 
 It is useful when a restored checkout sits deeper than the default sibling
 layout assumed by the existing route notes.
@@ -199,6 +199,34 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(restored_checkout_root),
         "--sync-helper-surface",
     ]
+    saved_rust_route_command = [
+        "bash",
+        "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+        "--browser-root",
+        str(repo_root),
+        "--dependencies-root",
+        str(saved_archives_root),
+        "--toolchain-root",
+        str(rust_toolchain_dir),
+    ]
+    saved_rust_archive_candidates_command = [
+        "python",
+        "scripts/check_issue3_saved_rust_archive_candidates.py",
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
+    staged_rust_toolchain_candidates_command = [
+        "python",
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
     zig_recovery_route_command = [
         "bash",
         "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
@@ -281,6 +309,9 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "suggested_progress_tracker_route_command": progress_tracker_route_command,
         "suggested_build_readiness_route_command": build_readiness_route_command,
         "suggested_saved_snapshot_route_command": saved_snapshot_route_command,
+        "suggested_saved_rust_route_command": saved_rust_route_command,
+        "suggested_saved_rust_archive_candidates_command": saved_rust_archive_candidates_command,
+        "suggested_staged_rust_toolchain_candidates_command": staged_rust_toolchain_candidates_command,
         "suggested_zig_recovery_route_command": zig_recovery_route_command,
         "suggested_zig_match_command": zig_match_command,
         "suggested_saved_zig_archive_candidates_command": saved_zig_archive_candidates_command,
@@ -327,6 +358,12 @@ def emit_text(context: dict[str, object]) -> None:
     print("  " + " ".join(context["suggested_build_readiness_route_command"]))
     print("Suggested synced saved-snapshot route command:")
     print("  " + " ".join(context["suggested_saved_snapshot_route_command"]))
+    print("Suggested saved Rust route command:")
+    print("  " + " ".join(context["suggested_saved_rust_route_command"]))
+    print("Suggested saved Rust archive candidates command:")
+    print("  " + " ".join(context["suggested_saved_rust_archive_candidates_command"]))
+    print("Suggested staged Rust toolchain candidates command:")
+    print("  " + " ".join(context["suggested_staged_rust_toolchain_candidates_command"]))
     print("Suggested Zig recovery route command:")
     print("  " + " ".join(context["suggested_zig_recovery_route_command"]))
     print("Suggested Zig matching-line gate command:")
@@ -411,6 +448,26 @@ class WorkspaceContextTests(unittest.TestCase):
                 context["suggested_saved_snapshot_route_command"],
             )
             self.assertIn(
+                "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+                context["suggested_saved_rust_route_command"],
+            )
+            self.assertIn(
+                str(saved_archives_root.resolve()),
+                context["suggested_saved_rust_route_command"],
+            )
+            self.assertIn(
+                str((toolchains_root / "rust-1.79.0").resolve()),
+                context["suggested_saved_rust_route_command"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_rust_archive_candidates.py",
+                context["suggested_saved_rust_archive_candidates_command"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+                context["suggested_staged_rust_toolchain_candidates_command"],
+            )
+            self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 context["suggested_zig_recovery_route_command"],
             )
@@ -453,6 +510,18 @@ class WorkspaceContextTests(unittest.TestCase):
             )
             self.assertIn("--memory-root", context["suggested_progress_tracker_route_command"])
             self.assertIn("--saved-archives-root", context["suggested_progress_tracker_route_command"])
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
+                context["suggested_saved_rust_route_command"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_saved_rust_archive_candidates.py",
+                context["suggested_saved_rust_archive_candidates_command"],
+            )
+            self.assertIn(
+                "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+                context["suggested_staged_rust_toolchain_candidates_command"],
+            )
             self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 context["suggested_zig_recovery_route_command"],
