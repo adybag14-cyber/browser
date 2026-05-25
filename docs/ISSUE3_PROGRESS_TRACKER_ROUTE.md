@@ -26,6 +26,7 @@ that prepares the next honest runtime attempt without reopening the direct
 
 - saved snapshot restore and restored-checkout readiness
 - saved archive integrity checks
+- saved Rust archive candidate discovery and staged-toolchain reuse
 - saved Zig archive candidate discovery and restore selection
 - offline dependency staging
 - saved Rust toolchain reuse
@@ -40,8 +41,13 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
+- `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
@@ -60,6 +66,12 @@ that prepares the next honest runtime attempt without reopening the direct
 If a scheduled run is still blocked on publication safety or a branch-compatible
 Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
+
+If the immediate slice is about reusing or restoring the saved Rust `1.79.0`
+toolchain, keep `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md` visible, surface
+the staged-toolchain candidate helper before unpacking the archive again, and
+reuse its surfaced `PATH`, `CARGO`, and `RUSTC` exports before broader
+build-readiness is trusted.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
@@ -80,6 +92,24 @@ bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 Use `--json` when another helper wants the route-surface result as structured
 output.
 
+## Surface The Saved Rust Route First When Toolchain Reuse Is The Slice
+
+When the immediate issue `#11` work is about restoring or reusing the saved
+Rust `1.79.0` toolchain, fail fast on the saved-Rust route surface before the
+broader Linux build-readiness route is trusted:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh
+```
+
+Keep the staged-toolchain candidate helper visible before unpacking the archive
+again:
+
+```bash
+python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
+```
+
 ## Surface The Saved Zig Route First When Archive Selection Is The Slice
 
 When the immediate issue `#11` work is about choosing or restoring a saved Zig
@@ -93,8 +123,8 @@ bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
 
 Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
 when the attached archive is not sitting beside the repo workspace and the
-saved-Zig route should inspect the same surfaced fallback path as the saved-
-Memory, build-readiness, or Zig recovery follow-up helpers.
+saved-Rust, saved-Zig, saved-Memory, build-readiness, or Zig recovery follow-up
+helpers need to inspect the same surfaced archive path.
 
 After restoring a saved Zig candidate, fail fast on the matching-line gate and
 the archive-restore surface before broader readiness is trusted again:
@@ -114,8 +144,8 @@ bash ./scripts/linux/show_issue3_progress_tracker_route.sh
 
 Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
 when the attached archive is not sitting beside the repo workspace and the
-saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up routes all
-need to inspect the same surfaced archive path.
+saved-Rust, saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up
+routes all need to inspect the same surfaced archive path.
 
 Use `--json` when another helper wants the issue number, issue URL, start
 template, completion template, and follow-up route commands as structured
