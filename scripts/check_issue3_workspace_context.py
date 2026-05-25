@@ -183,7 +183,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(repo_root),
         "--memory-root",
         str(memory_root),
-        "--restored-checkout-root",
+        "--destination",
         str(restored_checkout_root),
         "--sync-helper-surface",
     ]
@@ -372,6 +372,14 @@ class WorkspaceContextTests(unittest.TestCase):
                 context["suggested_saved_snapshot_route_command"],
             )
             self.assertIn(
+                "--destination",
+                context["suggested_saved_snapshot_route_command"],
+            )
+            self.assertNotIn(
+                "--restored-checkout-root",
+                context["suggested_saved_snapshot_route_command"],
+            )
+            self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 context["suggested_zig_recovery_route_command"],
             )
@@ -420,6 +428,10 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/check_issue3_zig_toolchain_match.sh",
                 context["suggested_zig_match_command"],
             )
+            self.assertIn(
+                "--destination",
+                context["suggested_saved_snapshot_route_command"],
+            )
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -435,6 +447,7 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertEqual(context["fallback_zig_archive"], str(explicit_archive.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_snapshot_route_command"])
+            self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_recovery_route_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_match_command"])
             self.assertIn(
