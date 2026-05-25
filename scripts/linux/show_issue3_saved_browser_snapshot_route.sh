@@ -164,6 +164,7 @@ if [[ "${SYNC_ONLY}" -eq 1 ]]; then
 fi
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+ARCHIVE_SURFACE_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_browser_snapshot_archive_surface.py") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}${SYNC_ONLY_FLAG} --check-only"
 RESTORE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${DESTINATION}")${SYNC_FLAG}${SYNC_ONLY_FLAG}"
 RESTORED_CHECKOUT_CHECK_COMMAND="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_checkout.py") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -211,6 +212,7 @@ print(json.dumps({
     "sync_only": ${SYNC_ONLY},
     "read_first": [
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
         "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
         "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
         "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
@@ -218,6 +220,7 @@ print(json.dumps({
     ],
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "archive_surface": ${ARCHIVE_SURFACE_COMMAND@Q},
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "restore": ${RESTORE_COMMAND@Q},
         "restored_checkout_check": ${RESTORED_CHECKOUT_CHECK_COMMAND@Q},
@@ -237,7 +240,8 @@ print(json.dumps({
     },
     "notes": [
         "Run route_surface first so missing branch-local docs or helper drift fails fast before the restore helper is trusted.",
-        "Run surface_check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.",
+        "Run archive_surface next when the saved snapshot may lag the live helper surface and the route needs an explicit answer about whether plain restore or sync-helper-surface is safer.",
+        "Run surface_check after the archive-surface helper so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.",
         "Use restore only when the route really needs a disposable checkout for Linux or WSL helper validation.",
         "Run restored_checkout_check immediately after restore so missing build.zig.zon, missing helper-surface files, or helper drift fail before the archive-focused preflights.",
         "Run saved_memory_preflight against the restored checkout after the restored-checkout check and before trusting broader build-readiness or runtime helper output.",
@@ -270,6 +274,7 @@ Sync only:             $([[ "${SYNC_ONLY}" -eq 1 ]] && echo enabled || echo disa
 Read first
 ==========
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md
   docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md
@@ -279,6 +284,9 @@ Suggested route
 ===============
   Route surface check:
     ${ROUTE_SURFACE_COMMAND}
+
+  Snapshot archive helper-surface check:
+    ${ARCHIVE_SURFACE_COMMAND}
 
   Restore helper surface check:
     ${SURFACE_CHECK_COMMAND}
@@ -324,7 +332,8 @@ Suggested route
 Working rules
 =============
   - Run the route surface check first so missing docs or helper drift fails fast before the restore helper is trusted.
-  - Run the restore helper surface check next so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.
+  - Run the snapshot archive helper-surface check next when the saved archive age is in doubt or the route needs an explicit answer about whether plain restore or sync-helper-surface is safer.
+  - Run the restore helper surface check after the archive-surface helper so the saved archive path, top-level folder, sync mode, and follow-up commands are confirmed before extraction.
   - Use the restore step when the route needs a disposable checkout for helper validation without relying on live GitHub file publication.
   - Run the restored-checkout readiness check right after restore so missing build.zig.zon, helper-surface omissions, or sync drift fail before the archive-focused preflights.
   - Prefer the recommended synced restore when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
