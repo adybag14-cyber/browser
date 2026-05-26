@@ -231,6 +231,32 @@ That command checks:
 - `repo_archives/browser/dependencies/04-zig-browser-depo.tar.zip`
 - the optional session register and fallback Zig archive surface
 
+## If The Surfaced Memory Root Exists But `repo_archives/browser/` Is Missing
+
+When the surfaced `memory/` root exists but `repo_archives/browser/` is missing,
+or that tree exists without the saved snapshot and dependency bundles, treat
+that as a Memory sync problem first.
+
+Do not jump straight to:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+The restore route still depends on the same saved snapshot and dependency
+archives being present under Memory.
+
+Instead:
+
+- rerun the workspace-context surface if the layout itself may still be wrong
+- sync or refresh the Memory workspace until `repo_archives/browser/` and
+  `repo_archives/browser/dependencies/` are present
+- rerun the saved-memory preflight, preferably with
+  `python ./scripts/check_issue3_saved_memory_inputs.py --repo-root . --skip-archive-integrity-check`
+- only move to the saved-browser-snapshot route or the Linux build-readiness
+  route after the saved-input helper can actually see the expected snapshot,
+  blocker file, notes, and dependency archives
+
 When the current run only needs a fast presence check before choosing another
 lane, use:
 
@@ -381,6 +407,9 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
   when the layout is unusual but the next question is still just whether the
   saved-memory preflight passes once those surfaced roots are threaded through
   honestly.
+- If the surfaced `memory/` root exists but `repo_archives/browser/` is missing
+  or empty, fix Memory sync first; the restore route still depends on the same
+  saved snapshot and dependency bundles.
 - When the current repo root is itself a deeper restored checkout, prefer the
   issue `#11` wrapper or the explicit `--helper-root`, `--memory-root`,
   `--agent-files-root`, and `--restored-checkout-root` override set instead of
