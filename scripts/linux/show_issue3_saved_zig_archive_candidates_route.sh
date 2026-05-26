@@ -128,6 +128,7 @@ PROGRESS_TRACKER_ROUTE_PATH="${REPO_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 CANDIDATE_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_zig_archive_candidates.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 MATCHING_LINE_GATE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_zig_toolchain_match.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
+BUILD_READINESS_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_linux_build_readiness.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --expect-saved-archives"
 RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 ARCHIVE_RESTORE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -136,6 +137,7 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     SURFACE_COMMAND="${SURFACE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     CANDIDATE_COMMAND="${CANDIDATE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     MATCHING_LINE_GATE_COMMAND="${MATCHING_LINE_GATE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    BUILD_READINESS_COMMAND="${BUILD_READINESS_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RECOVERY_ROUTE_COMMAND="${RECOVERY_ROUTE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     PROGRESS_TRACKER_ROUTE_COMMAND="${PROGRESS_TRACKER_ROUTE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
@@ -156,6 +158,7 @@ print(json.dumps({
         "surface_check": ${SURFACE_COMMAND@Q},
         "candidate_discovery": ${CANDIDATE_COMMAND@Q},
         "matching_line_gate": ${MATCHING_LINE_GATE_COMMAND@Q},
+        "linux_build_readiness": ${BUILD_READINESS_COMMAND@Q},
         "archive_restore_surface_check": ${ARCHIVE_RESTORE_SURFACE_COMMAND@Q},
         "progress_tracker_route": ${PROGRESS_TRACKER_ROUTE_COMMAND@Q},
         "zig_recovery_route": ${RECOVERY_ROUTE_COMMAND@Q}
@@ -164,10 +167,11 @@ print(json.dumps({
         "Run the surface check first so route drift fails before the run trusts saved Zig archive discovery output.",
         "Use the candidate discovery helper before hand-picking a saved Zig archive from the dependencies folder.",
         "Run the matching-line gate after any restore so the staged toolchains directory has to prove a real 0.15.x candidate exists before broader readiness is trusted again.",
+        "Use the saved-archive-aware Linux build-readiness helper after the matching-line gate so the broader re-entry lane rechecks staged toolchains, saved bundles, and fallback Zig surfacing together.",
         "Prefer an exact 0.15.2 archive when one exists, otherwise prefer the newest saved archive on the same 0.15.x line.",
         "Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain recovery, or Linux or WSL readiness gates.",
         "Run the archive-restore surface check before staging a chosen saved archive under ../toolchains.",
-        "Return to the broader Zig recovery route after a matching archive is selected or staged.",
+        "Return to the broader Zig recovery route after a matching archive is selected or staged and the build-readiness helper has been rerun.",
         "The saved-archives root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized before discovery runs.",
         "Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory, toolchains, and agent_files roots without hand overrides."
     ]
@@ -205,6 +209,9 @@ Suggested route
   Matching-line gate after any restore:
     ${MATCHING_LINE_GATE_COMMAND}
 
+  Saved-archive-aware Linux build-readiness follow-up:
+    ${BUILD_READINESS_COMMAND}
+
   Archive restore surface check:
     ${ARCHIVE_RESTORE_SURFACE_COMMAND}
 
@@ -219,10 +226,11 @@ Working rules
   - Run the route surface check first so missing docs or helper drift fails before the run trusts saved Zig archive discovery output.
   - Use the candidate discovery helper before hand-picking a saved Zig archive from the dependencies folder.
   - Run the matching-line gate after any restore so the staged toolchains root has to prove a real branch-compatible Zig candidate exists.
+  - Run the saved-archive-aware Linux build-readiness helper after the matching-line gate so broader readiness rechecks staged toolchains, saved bundles, and fallback Zig surfacing together.
   - Prefer an exact 0.15.2 archive when one exists, otherwise prefer the newest saved archive on the same 0.15.x line.
   - Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain recovery, or Linux or WSL readiness gates.
   - Run the archive-restore surface check before staging a chosen saved archive under ../toolchains.
-  - Return to the broader Zig recovery route after a matching archive is selected or staged.
+  - Return to the broader Zig recovery route after a matching archive is selected or staged and the build-readiness helper has been rerun.
   - The saved-archives root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized before discovery runs.
   - Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory, toolchains, and agent_files roots without hand overrides.
 EOF
