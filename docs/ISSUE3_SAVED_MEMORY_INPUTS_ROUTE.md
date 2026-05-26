@@ -26,6 +26,7 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `scripts/check_issue11_saved_memory_helper_contract.py`
 - `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
@@ -113,6 +114,31 @@ still uses simpler sibling defaults unless the run passes explicit overrides.
 Reopen the workspace-context surface first when the layout is unusual so the run
 can confirm those discovered roots before it trusts direct helper invocations.
 
+## Prefer The Nested-Workspace Runner For One-Command Rechecks
+
+When the workspace-context surface already explains the problem and the next step
+is simply rerunning the saved-memory preflight with those surfaced roots wired
+through automatically, prefer the compact issue `#11` wrapper:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
+That wrapper uses `scripts/check_issue3_workspace_context.py` first, then reruns
+`scripts/check_issue3_saved_memory_inputs.py` with the surfaced live helper,
+Memory, agent-files, restored-checkout, and optional fallback-Zig paths already
+threaded through.
+
+Use the quick-presence version when the run only needs a branch decision:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --skip-archive-integrity-check
+```
+
+Use `--json` when another helper or a scheduled run wants the surfaced
+workspace-context plus the rerun preflight command as structured output.
+
 ## When Repo Root Is Already The Restored Checkout
 
 When the current shell is already rooted inside `../browser-memory-snapshot` or
@@ -120,9 +146,9 @@ another deeper restored checkout, do not assume the saved-memory preflight can
 still infer the live helper root, `memory/`, `agent_files/`, or the restored
 checkout path from the immediate parent alone.
 
-In that situation, print the workspace-context route first and then rerun the
-saved-memory preflight with explicit roots so the live helper surface and saved
-artifacts stay anchored to the real workspace paths:
+In that situation, the compact wrapper above is the safest default because it
+surfaces those roots first and then reruns the preflight with explicit
+arguments. If the run needs the equivalent command spelled out directly, use:
 
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py \
@@ -173,8 +199,9 @@ Run the actual saved-input helper after the route surface is green:
 python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
-When the layout is unusual, prefer the route-printer command above or pass the
-explicit roots it surfaced. The bare helper invocation keeps sibling defaults
+When the layout is unusual, prefer the route-printer command above or the issue
+`#11` nested-workspace wrapper so the surfaced workspace roots are threaded into
+the preflight automatically. The bare helper invocation keeps sibling defaults
 for `memory/`, `agent_files/`, and the restored checkout root unless those
 overrides are supplied.
 
@@ -307,10 +334,14 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
   can find before it falls back to sibling guesses. Confirm those discovered
   roots with the workspace-context surface before trusting direct helper
   invocations from an unusual restored layout.
+- Prefer `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+  when the layout is unusual but the next question is still just whether the
+  saved-memory preflight passes once those surfaced roots are threaded through
+  honestly.
 - When the current repo root is itself a deeper restored checkout, prefer the
-  explicit `--helper-root`, `--memory-root`, `--agent-files-root`, and
-  `--restored-checkout-root` override set instead of trusting default sibling
-  inference.
+  issue `#11` wrapper or the explicit `--helper-root`, `--memory-root`,
+  `--agent-files-root`, and `--restored-checkout-root` override set instead of
+  trusting default sibling inference.
 - Treat the saved-memory preflight as a live mirror of the restore-helper
   surface. When `restore_saved_browser_snapshot.sh` widens the copied helper
   set, rerun this route and keep the note aligned instead of assuming the older
