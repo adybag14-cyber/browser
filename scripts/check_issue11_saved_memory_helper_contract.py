@@ -184,6 +184,8 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
 )
 
+MISSING_FILE_SENTINEL = "<required contract file is missing>"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -276,11 +278,17 @@ def is_path_fragment(fragment: str) -> bool:
     return "/" in fragment
 
 
-def read_contract_files(repo_root: Path) -> dict[str, str]:
+def read_contract_files(repo_root: Path) -> tuple[dict[str, str], dict[str, str]]:
     texts: dict[str, str] = {}
+    missing_files: dict[str, str] = {}
     for key, rel_path in FILES.items():
-        texts[key] = (repo_root / rel_path).read_text(encoding="utf-8")
-    return texts
+        path = repo_root / rel_path
+        try:
+            texts[key] = path.read_text(encoding="utf-8")
+        except OSError:
+            texts[key] = ""
+            missing_files[key] = rel_path
+    return texts, missing_files
 
 
 def collect_saved_memory_coverage(texts: dict[str, str]) -> set[str]:
@@ -291,15 +299,21 @@ def collect_saved_memory_coverage(texts: dict[str, str]) -> set[str]:
 
 
 def collect_results(repo_root: Path) -> dict[str, object]:
-    texts = read_contract_files(repo_root)
+    texts, missing_files = read_contract_files(repo_root)
     checks: list[dict[str, object]] = []
     missing_count = 0
+    missing_by_file: dict[str, list[str]] = {
+        FILES[key]: [MISSING_FILE_SENTINEL] for key in missing_files
+    }
 
     for fragment, required_in, purpose in SHARED_FRAGMENTS:
         for key in required_in:
+            if key in missing_files:
+                continue
             exists = fragment in texts[key]
             if not exists:
                 missing_count += 1
+                missing_by_file.setdefault(FILES[key], []).append(fragment)
             checks.append(
                 {
                     "file_key": key,
@@ -327,11 +341,13 @@ def collect_results(repo_root: Path) -> dict[str, object]:
         )
     )
 
-    ok = missing_count == 0 and not underreported_fragments
+    ok = not missing_files and missing_count == 0 and not underreported_fragments
     return {
         "ok": ok,
         "repo_root": str(repo_root),
         "checks": checks,
+        "missing_by_file": missing_by_file,
+        "missing_contract_files": [FILES[key] for key in sorted(missing_files)],
         "underreported_fragments": underreported_fragments,
         "missing_count": missing_count,
     }
@@ -344,6 +360,11 @@ def emit_text(result: dict[str, object]) -> None:
         print(f"[{status}] {check['path']}")
         print(f"  fragment: {check['fragment']}")
         print(f"  {check['purpose']}")
+
+    if result["missing_contract_files"]:
+        print("\nMissing contract files:")
+        for path in result["missing_contract_files"]:
+            print(f"  - {path}")
 
     if result["underreported_fragments"]:
         print("\nUnder-reported restore-side fragments:", flush=True)
@@ -458,6 +479,7 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
         result = collect_results(repo_root)
         self.assertTrue(result["ok"])
         self.assertEqual(result["underreported_fragments"], [])
+        self.assertEqual(result["missing_contract_files"], [])
 
     def test_flags_restore_side_paths_when_saved_memory_helper_lacks_dynamic_mirroring(self) -> None:
         repo_root = build_fixture_repo(mirror_restore_paths=False)
@@ -496,6 +518,19 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
         result = collect_results(repo_root)
         self.assertFalse(result["ok"])
         self.assertGreater(result["missing_count"], 0)
+
+    def test_reports_missing_restore_helper_file_without_crashing(self) -> None:
+        repo_root = build_fixture_repo(
+            mirror_restore_paths=True,
+        )
+        (repo_root / FILES["restore_helper"]).unlink()
+        result = collect_results(repo_root)
+        self.assertFalse(result["ok"])
+        self.assertIn(FILES["restore_helper"], result["missing_contract_files"])
+        self.assertEqual(
+            result["missing_by_file"][FILES["restore_helper"]],
+            [MISSING_FILE_SENTINEL],
+        )
 
 
 def main() -> int:
