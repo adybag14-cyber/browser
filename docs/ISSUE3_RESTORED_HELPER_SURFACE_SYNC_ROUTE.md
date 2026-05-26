@@ -22,6 +22,8 @@ Keep these nearby:
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue11_saved_memory_helper_contract.py`
+- `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 
@@ -93,6 +95,25 @@ python ./scripts/check_issue3_restored_helper_surface_sync.py \
 Use `--json` when another helper wants the missing-file or drift report as
 structured output.
 
+## Keep Issue #11 Helper-Contract Checks In The Sequence
+
+When the restored checkout is supposed to become its own helper root, do not
+jump straight from the narrower sync check to the broader saved-memory preflight.
+
+Re-run the two issue `#11` helper-contract checks while the restored checkout is
+still being compared against the live helper root:
+
+```bash
+python ./scripts/check_issue11_saved_memory_helper_contract.py \
+  --repo-root ../browser-memory-snapshot
+python ./scripts/check_issue11_reentry_inventory_consistency.py \
+  --repo-root ../browser-memory-snapshot
+```
+
+Those checks keep the saved-memory helper inventory and the wider issue `#11`
+re-entry inventory visible before later saved-memory, saved-archive, or Linux
+build-readiness follow-up work is treated as trustworthy.
+
 ## Keep Saved-Memory Preflight In Order
 
 When the next commands will run from the restored checkout itself, do not treat
@@ -115,6 +136,10 @@ python ./scripts/check_issue3_restored_checkout.py \
 python ./scripts/check_issue3_restored_helper_surface_sync.py \
   --helper-root . \
   --restored-root ../browser-memory-snapshot
+python ./scripts/check_issue11_saved_memory_helper_contract.py \
+  --repo-root ../browser-memory-snapshot
+python ./scripts/check_issue11_reentry_inventory_consistency.py \
+  --repo-root ../browser-memory-snapshot
 python ./scripts/check_issue3_saved_memory_inputs.py \
   --repo-root ../browser-memory-snapshot \
   --helper-root . \
@@ -147,8 +172,9 @@ saved-archive, build-readiness, or direct runtime re-entry helpers.
 
 For restored snapshots that are supposed to carry the current issue `#11`
 helper surface, use this narrower sync route after the broader restored-
-checkout readiness check and before trusting the restored checkout as its own
-helper root.
+checkout readiness check, keep the issue `#11` helper-contract checks between
+that sync step and the broader saved-memory preflight, and only then trust the
+restored checkout as its own helper root.
 
 A passing saved-memory preflight is useful follow-up evidence, but it is not the
 replacement for this sync check when the route commands themselves will be
