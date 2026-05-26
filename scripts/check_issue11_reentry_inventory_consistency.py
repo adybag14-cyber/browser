@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-"""Check whether issue #11 re-entry helpers agree on the newer helper surface.
+"""Check whether issue #11 re-entry inventories still point at live helpers.
 
-This helper is intentionally narrow. It lets Linux/WSL headed-mode recovery
-runs answer whether the reusable helper inventories already require the newer
-issue #11 tracker surface and matching-Zig rerun helper, or whether the branch
-still carries stale helper-surface contracts.
+This helper is intentionally narrow. It confirms that the current issue #11
+Linux/WSL re-entry surface still references the real branch-local tracker,
+saved Rust and Zig candidate helpers, the build-readiness rerun helper, and
+the two issue #11 contract checks instead of stale helper names.
 """
 
 from __future__ import annotations
@@ -18,25 +18,77 @@ import tempfile
 import unittest
 
 
-EXPECTED_PATHS: tuple[str, ...] = (
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-    "scripts/check_issue3_helper_surface_source.py",
-    "scripts/check_issue11_progress_tracker_surface.py",
-    "scripts/show_issue11_matching_zig_readiness_command.py",
-)
+FILES = {
+    "saved_memory_helper": "scripts/check_issue3_saved_memory_inputs.py",
+    "restored_checkout_helper": "scripts/check_issue3_restored_checkout.py",
+    "restore_helper": "scripts/linux/restore_saved_browser_snapshot.sh",
+    "restored_helper_sync_route": "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+}
 
-TARGET_FILES: tuple[str, ...] = (
-    "scripts/check_issue3_saved_memory_inputs.py",
-    "scripts/check_issue3_restored_checkout.py",
-    "scripts/check_issue3_helper_surface_source.py",
+REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    (
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+        (
+            "saved_memory_helper",
+            "restored_checkout_helper",
+            "restore_helper",
+            "restored_helper_sync_route",
+        ),
+        "Issue #11 progress-tracker route guidance should stay visible across the re-entry inventory surfaces.",
+    ),
+    (
+        "scripts/check_issue3_saved_rust_archive_candidates.py",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "Saved Rust archive candidate discovery should stay visible across the reusable helper inventories.",
+    ),
+    (
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "Staged Rust toolchain candidate discovery should stay visible across the reusable helper inventories.",
+    ),
+    (
+        "scripts/check_issue3_saved_zig_archive_candidates.py",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "Saved Zig archive candidate discovery should stay visible across the reusable helper inventories.",
+    ),
+    (
+        "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+        ("restored_checkout_helper", "restore_helper"),
+        "Staged Zig toolchain candidate discovery should stay visible across the restore-side helper inventory.",
+    ),
+    (
+        "scripts/check_issue3_build_readiness_rerun.py",
+        ("restored_checkout_helper", "restore_helper"),
+        "The build-readiness rerun helper should stay visible across the restore-side helper inventory.",
+    ),
+    (
+        "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "The issue #11 progress-tracker surface checker should stay visible before broader Linux/WSL reruns.",
+    ),
+    (
+        "scripts/linux/show_issue3_progress_tracker_route.sh",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "The issue #11 progress-tracker route printer should stay visible before broader Linux/WSL reruns.",
+    ),
+    (
+        "scripts/check_issue11_saved_memory_helper_contract.py",
+        ("restore_helper", "restored_helper_sync_route"),
+        "The restored-helper sync route should keep the saved-memory helper contract check visible.",
+    ),
+    (
+        "scripts/check_issue11_reentry_inventory_consistency.py",
+        ("restore_helper", "restored_helper_sync_route"),
+        "The restored-helper sync route should keep this issue #11 re-entry inventory check visible.",
+    ),
 )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Check whether the reusable issue #3 or issue #11 Linux/WSL helper "
-            "inventories include the newer issue #11 surface entries."
+            "Check whether the issue #11 Linux/WSL re-entry inventories still "
+            "point at the current branch-local helper surface."
         )
     )
     parser.add_argument(
@@ -57,138 +109,127 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def read_inventory_texts(repo_root: Path) -> dict[str, str]:
+    return {
+        key: (repo_root / relative_path).read_text(encoding="utf-8")
+        for key, relative_path in FILES.items()
+    }
+
+
 def collect_results(repo_root: Path) -> dict[str, object]:
-    file_results: list[dict[str, object]] = []
+    texts = read_inventory_texts(repo_root)
+    checks: list[dict[str, object]] = []
     missing_by_file: dict[str, list[str]] = {}
 
-    for relative_path in TARGET_FILES:
-        target = repo_root / relative_path
-        exists = target.is_file()
-        missing_paths: list[str] = []
-
-        if exists:
-            text = target.read_text(encoding="utf-8")
-            for expected_path in EXPECTED_PATHS:
-                if expected_path not in text:
-                    missing_paths.append(expected_path)
-        else:
-            missing_paths = list(EXPECTED_PATHS)
-
-        if missing_paths:
-            missing_by_file[relative_path] = missing_paths
-
-        file_results.append(
-            {
-                "path": relative_path,
-                "exists": exists,
-                "missing_expected_paths": missing_paths,
-            }
-        )
+    for fragment, required_in, purpose in REQUIRED_FRAGMENTS:
+        for file_key in required_in:
+            exists = fragment in texts[file_key]
+            if not exists:
+                missing_by_file.setdefault(FILES[file_key], []).append(fragment)
+            checks.append(
+                {
+                    "file_key": file_key,
+                    "path": FILES[file_key],
+                    "fragment": fragment,
+                    "purpose": purpose,
+                    "exists": exists,
+                }
+            )
 
     return {
         "ok": not missing_by_file,
         "repo_root": str(repo_root),
-        "expected_path_count": len(EXPECTED_PATHS),
-        "target_file_count": len(TARGET_FILES),
-        "expected_paths": list(EXPECTED_PATHS),
-        "targets": file_results,
+        "checks": checks,
         "missing_by_file": missing_by_file,
+        "required_fragment_count": len(REQUIRED_FRAGMENTS),
+        "target_file_count": len(FILES),
     }
 
 
 def emit_text(result: dict[str, object]) -> None:
     print(f"Repo root: {result['repo_root']}")
-    print(f"Expected issue #11 surface paths: {result['expected_path_count']}")
-    print(f"Target helper inventories: {result['target_file_count']}")
-    print("Inventory status:")
+    print(f"Required fragment checks: {result['required_fragment_count']}")
+    print(f"Target files: {result['target_file_count']}")
 
-    for entry in result["targets"]:
-        if not entry["exists"]:
-            status = "FAIL"
-        elif entry["missing_expected_paths"]:
-            status = "FAIL"
-        else:
-            status = "PASS"
-        print(f"  [{status}] {entry['path']}")
-        for missing_path in entry["missing_expected_paths"]:
-            print(f"         missing: {missing_path}")
+    for entry in result["checks"]:
+        status = "PASS" if entry["exists"] else "FAIL"
+        print(f"[{status}] {entry['path']}")
+        print(f"  fragment: {entry['fragment']}")
+        print(f"  {entry['purpose']}")
 
     if result["ok"]:
-        print("\nIssue #11 helper inventory consistency check passed.")
+        print("\nIssue #11 re-entry inventory consistency check passed.")
         return
 
-    print("\nIssue #11 helper inventory consistency check failed.", file=sys.stderr)
-    print(
-        "Suggested next step: update the listed helper inventories so restored "
-        "checkouts and helper-surface sync flows require the current issue #11 "
-        "progress-tracker and matching-Zig helper set.",
-        file=sys.stderr,
-    )
+    print("\nIssue #11 re-entry inventory consistency check failed.", file=sys.stderr)
+    for path, fragments in result["missing_by_file"].items():
+        print(f"  {path}", file=sys.stderr)
+        for fragment in fragments:
+            print(f"    missing: {fragment}", file=sys.stderr)
+
+
+def build_fixture_repo(*, missing: dict[str, set[str]] | None = None) -> Path:
+    repo_root = Path(tempfile.mkdtemp(prefix="issue11-reentry-inventory-"))
+    missing = missing or {}
+
+    for file_key, relative_path in FILES.items():
+        target = repo_root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        body_lines = []
+        for fragment, required_in, _purpose in REQUIRED_FRAGMENTS:
+            if file_key not in required_in:
+                continue
+            if fragment in missing.get(file_key, set()):
+                continue
+            body_lines.append(fragment)
+        target.write_text("\n".join(body_lines) + "\n", encoding="utf-8")
+
+    return repo_root
 
 
 class Issue11InventoryConsistencyTests(unittest.TestCase):
-    def test_passes_when_all_expected_paths_are_present(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = Path(tmpdir) / "browser"
-            repo_root.mkdir()
+    def test_passes_when_all_current_fragments_are_present(self) -> None:
+        repo_root = build_fixture_repo()
+        result = collect_results(repo_root)
 
-            for relative_path in TARGET_FILES:
-                target = repo_root / relative_path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                body = "\n".join(EXPECTED_PATHS)
-                target.write_text(body, encoding="utf-8")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["missing_by_file"], {})
 
-            result = collect_results(repo_root)
+    def test_flags_missing_saved_rust_fragment(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={"saved_memory_helper": {"scripts/check_issue3_saved_rust_archive_candidates.py"}}
+        )
+        result = collect_results(repo_root)
 
-            self.assertTrue(result["ok"])
-            self.assertEqual(result["missing_by_file"], {})
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_saved_memory_inputs.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            result["missing_by_file"]["scripts/check_issue3_saved_memory_inputs.py"],
+        )
 
-    def test_flags_missing_expected_path(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = Path(tmpdir) / "browser"
-            repo_root.mkdir()
+    def test_flags_missing_issue11_contract_reference(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_helper_sync_route": {
+                    "scripts/check_issue11_reentry_inventory_consistency.py"
+                }
+            }
+        )
+        result = collect_results(repo_root)
 
-            for index, relative_path in enumerate(TARGET_FILES):
-                target = repo_root / relative_path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                body_lines = list(EXPECTED_PATHS)
-                if index == 1:
-                    body_lines.remove("scripts/check_issue11_progress_tracker_surface.py")
-                target.write_text("\n".join(body_lines), encoding="utf-8")
-
-            result = collect_results(repo_root)
-
-            self.assertFalse(result["ok"])
-            self.assertIn(
-                "scripts/check_issue3_restored_checkout.py",
-                result["missing_by_file"],
-            )
-            self.assertIn(
-                "scripts/check_issue11_progress_tracker_surface.py",
-                result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
-            )
-
-    def test_flags_missing_target_file(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = Path(tmpdir) / "browser"
-            repo_root.mkdir()
-
-            for relative_path in TARGET_FILES[1:]:
-                target = repo_root / relative_path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("\n".join(EXPECTED_PATHS), encoding="utf-8")
-
-            result = collect_results(repo_root)
-
-            self.assertFalse(result["ok"])
-            self.assertIn(
-                "scripts/check_issue3_saved_memory_inputs.py",
-                result["missing_by_file"],
-            )
-            self.assertEqual(
-                result["missing_by_file"]["scripts/check_issue3_saved_memory_inputs.py"],
-                list(EXPECTED_PATHS),
-            )
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/check_issue11_reentry_inventory_consistency.py",
+            result["missing_by_file"]["docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md"],
+        )
 
 
 def main() -> int:
