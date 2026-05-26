@@ -69,6 +69,7 @@ RESTORED_CHECKOUT_ROOT=""
 SAVED_ARCHIVES_ROOT=""
 RUST_TOOLCHAIN_DIR=""
 OFFLINE_DEPS_ROOT=""
+AGENT_FILES_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -153,11 +154,14 @@ if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
         OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
     fi
 fi
-if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz" || true)"
-    if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
-        CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+if [[ -z "${AGENT_FILES_ROOT}" ]]; then
+    AGENT_FILES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files" || true)"
+    if [[ -z "${AGENT_FILES_ROOT}" ]]; then
+        AGENT_FILES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/agent_files"
     fi
+fi
+if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${AGENT_FILES_ROOT}/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
@@ -215,14 +219,14 @@ if [[ -f "${HTML5EVER_ARCHIVE}" ]]; then
 fi
 BORINGSSL_ARCHIVE="${SAVED_ARCHIVES_ROOT}/03-boringssl-zig-main.zip"
 BROWSER_DEPS_ARCHIVE="${SAVED_ARCHIVES_ROOT}/04-zig-browser-depo.tar.zip"
-SAVED_MEMORY_INPUTS_COMMAND="python $(format_shell_arg "${SAVED_MEMORY_INPUTS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_MEMORY_INPUTS_COMMAND="python $(format_shell_arg "${SAVED_MEMORY_INPUTS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_COMMAND="python $(format_shell_arg "${SAVED_ARCHIVE_INTEGRITY_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-PREFLIGHT_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --skip-zig-check --skip-rust-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
+PREFLIGHT_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --skip-zig-check --skip-rust-check --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 PREPARE_COMMAND="bash $(format_shell_arg "${PREPARE_OFFLINE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --browser-deps-archive $(format_shell_arg "${BROWSER_DEPS_ARCHIVE}") --boringssl-archive $(format_shell_arg "${BORINGSSL_ARCHIVE}")${HTML5EVER_ARCHIVE_ARGUMENT} --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --check-only"
 RUST_RESTORE_COMMAND="bash $(format_shell_arg "${RESTORE_SAVED_RUST_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 RUST_RESTORE_CHECK_COMMAND="bash $(format_shell_arg "${RESTORE_SAVED_RUST_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}") --check-only"
 RUST_PATH_COMMAND="export PATH=$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/cargo/bin"):$(format_shell_arg "${RUST_TOOLCHAIN_DIR}/rustc/bin"):\$PATH"
-FULL_READINESS_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --expect-offline-deps --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --require-prebuilt-v8"
+FULL_READINESS_COMMAND="python $(format_shell_arg "${LINUX_BUILD_READINESS_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --expect-saved-archives --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --expect-offline-deps --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}") --require-prebuilt-v8"
 WINDOWS_RUNTIME_SURFACE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1"
 WINDOWS_RUNTIME_ROUTE_COMMAND="powershell -ExecutionPolicy Bypass -File .\\scripts\\windows\\show_google_issue3_enter_submit_runtime_revalidation.ps1"
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
@@ -310,10 +314,11 @@ print(json.dumps({
         "Run the saved_memory_route_surface command and then the saved_memory_route command when the route depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.",
         "Run the progress_tracker_route_surface command and then the progress_tracker_route command when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.",
         "Run the saved_memory_inputs command only after the dedicated saved-Memory route has been surfaced when restore, build-readiness, or runtime follow-up commands should stay on one compact helper path.",
+        "The saved_memory_inputs command now carries the surfaced memory, agent_files, and restored-checkout roots so nested checkouts do not silently fall back to brittle default siblings.",
         "Run the saved_archive_route_surface command and then the saved_archive_route command when the route needs the dedicated checksum route back on one compact helper surface before offline staging starts.",
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
-        "Run the zig_toolchain_match command right after the broader Zig recovery route so the same derived toolchains root has to prove a real 0.15.x candidate exists before the wider readiness rerun is trusted.",
+        "Run the zig_toolchain_match command right after the broader Zig recovery route so the same derived toolchains root has to prove a real 0.15.x candidate exists before the broader readiness rerun is trusted.",
         "Run the saved_zig_archive_candidates command when a real 0.15.x archive may already be present under the saved archives root but the exact archive path is not known yet, so the archive-restore route can reuse the preferred surfaced candidate instead of a hand-built archive argument.",
         "A caller-provided rust_toolchain_dir now also defines the derived toolchains root used by the Zig recovery route and matching-line gate so those follow-up checks stay aligned with the same shared toolchain area.",
         "Run the zig_archive_restore_check command when a real 0.15.x archive exists but has not been staged under ../toolchains yet.",
@@ -321,6 +326,7 @@ print(json.dumps({
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
         "Keep a caller-provided offline_deps_root threaded through the offline-inputs route and the final readiness rerun so both commands point at the same staged dependency layout.",
+        "The saved-archive preflight and the final readiness rerun now keep the same surfaced toolchains root threaded through the route printer, so staged Zig candidates stay aligned with the derived shared toolchain area.",
         "The saved html5ever bundle is optional on this route and is only added to the offline restore surface check when it is actually present under the saved archives root.",
         "Use the saved-archive preflight before treating Linux or WSL Zig output as issue #3 evidence.",
         "Once the saved-archive, offline-inputs, Rust, and Zig-line checks pass, run windows_runtime_surface and then windows_runtime_route before wider replay or direct runtime edits.",
@@ -465,6 +471,7 @@ Working rules
   - Run the saved Memory route surface check and then the saved Memory route when the replay depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.
   - Run the progress-tracker route surface check and then the progress-tracker route when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.
   - Run the saved Memory input preflight after the dedicated saved Memory route has been surfaced when the route should keep restore, build-readiness, or runtime follow-up commands on one compact helper surface.
+  - The saved Memory input preflight now keeps the surfaced memory, agent_files, and restored-checkout roots aligned so nested checkouts do not silently fall back to brittle default siblings.
   - Run the saved archive integrity route surface check and then the saved archive integrity route when the route needs the dedicated checksum helper chain surfaced before offline staging starts.
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged Zig candidates need a quick 0.15.x decision.
@@ -476,6 +483,7 @@ Working rules
   - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
   - Keep a caller-provided offline-deps root aligned across the offline build-inputs route and the final readiness rerun so both commands point at the same staged dependency layout.
+  - The saved-archive preflight and the final readiness rerun now keep the same surfaced toolchains root threaded through the route printer, so staged Zig candidates stay aligned with the derived shared toolchain area.
   - The saved html5ever bundle is optional on this route and is only threaded into the offline restore surface check when it is actually present.
   - The saved-archives-root override accepts either repo_archives/browser or repo_archives/browser/dependencies and is normalized onto the dependencies directory before route commands are printed.
   - Do not treat Zig 403 fetch failures for brotli, zlib, nghttp2, or curl as a source regression before the offline restore route is staged.
