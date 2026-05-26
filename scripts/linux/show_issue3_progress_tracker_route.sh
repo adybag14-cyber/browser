@@ -231,7 +231,7 @@ COMPLETION_COMMENT_TEMPLATE=$'Achieved: <state what route, helper, or branch-saf
 
 if [[ "${JSON}" -eq 1 ]]; then
     printf '{\n'
-    printf '  "issue": %s,\n' "$(json_escape "Google issue #3 issue #11 progress-tracker route")"
+    printf '  "issue": %s,\n' "$(json_escape "Issue #11 progress-tracker route for blocked issue #3 re-entry")"
     printf '  "repo_root": %s,\n' "$(json_escape "${REPO_ROOT}")"
     printf '  "helper_root": %s,\n' "$(json_escape "${HELPER_ROOT}")"
     printf '  "memory_root": %s,\n' "$(json_escape "${MEMORY_ROOT}")"
@@ -293,7 +293,7 @@ if [[ "${JSON}" -eq 1 ]]; then
 fi
 
 cat <<EOF2
-Google issue #3 issue #11 progress-tracker route
+Issue #11 progress-tracker route for blocked issue #3 re-entry
 
 Repo root:               ${REPO_ROOT}
 Live helper root:        ${HELPER_ROOT}
