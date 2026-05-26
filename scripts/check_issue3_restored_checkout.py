@@ -33,6 +33,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "runtime revalidation note"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
     ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry note"),
+    (
+        "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+        "restored helper-surface sync route note",
+    ),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note"),
     (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
@@ -76,6 +80,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "saved snapshot archive-surface helper",
     ),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
+    (
+        "scripts/check_issue3_restored_helper_surface_sync.py",
+        "restored helper-surface sync helper",
+    ),
     ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     (
@@ -135,6 +143,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
         "restored-checkout re-entry route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+        "restored helper-surface sync route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+        "restored helper-surface sync route printer",
     ),
     ("scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh", "saved-Memory route surface check"),
     ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-Memory route printer"),
@@ -376,7 +392,7 @@ def emit_text(result: dict[str, object]) -> None:
             "Suggested next step: refresh the restored helper surface from the live helper checkout with restore_saved_browser_snapshot.sh --sync-only, then rerun this helper with --helper-root.",
             file=sys.stderr,
         )
-    elif result["expect-helper-surface"]:
+    elif result["expect_helper_surface"]:
         print(
             "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or keep using the live helper root for follow-up commands.",
             file=sys.stderr,
