@@ -14,6 +14,13 @@ Read this together with:
   `src/display/win32_backend.zig`
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md` when the current replay is
   staying on the direct issue `#3` Enter-submit runtime slice
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md` when the current replay is
+  blocked earlier on saved-input trust, nested workspace root discovery, or the
+  issue `#11` helper-contract layer before restore or Linux/WSL build-readiness
+  resumes
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md` when the current replay must
+  prove the saved repo snapshot and dependency bundles are still the expected
+  exact artifacts before restore or offline staging continues
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md` when the current replay is
   blocked on Linux or WSL dependency or toolchain staging for that same direct
   issue `#3` runtime route
@@ -157,16 +164,31 @@ What the branch expects today:
   the checkout is given an already-satisfied offline cache or a temporary local
   path rewrite in a throwaway build tree
 
-Start the current branch-local Linux or WSL re-entry route with:
+Start the current branch-local Linux or WSL re-entry stack with the earliest
+surface that matches the blocker in front of you:
 
 ```bash
+bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
+bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 ```
 
-Use that pair when the run needs the saved-archive restore path, offline-deps
-preflight, or saved Rust `1.79.0` recovery commands printed back on one compact
-surface before focused Zig output is trusted again.
+Use the saved-memory pair first when the run still needs to rediscover
+`memory/`, `agent_files/`, or a reusable restored checkout root before broader
+helpers are trusted. Use the archive-integrity pair next when the saved repo
+snapshot and dependency bundles must be proved exact before restore or offline
+staging continues. Use the Linux build-readiness pair after those earlier gates
+are green so the saved-archive restore path, offline-deps preflight, and Rust
+`1.79.0` recovery commands stay printed back on one compact surface before
+focused Zig output is trusted again.
+
+When the checkout is nested or already rooted inside a restored snapshot and the
+next step is simply rerunning the saved-memory preflight with surfaced workspace
+roots, prefer `bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+over hand-built override strings.
 
 Practical rule:
 1. Keep the browser checkout, `zig-v8-fork`, and `boringssl-zig` under one
@@ -207,8 +229,9 @@ Tasks:
 - ensure the main validation runbook tells future assistants which probe family
   to run for each subsystem change
 - keep the issue `#3` direct runtime re-entry path easy to reopen from the
-  top-level docs by surfacing the current gate note, runtime helper, reduced
-  Google replay path, and Linux or WSL build-readiness recovery route
+  top-level docs by surfacing the current gate note, runtime helper, saved-
+  memory preflight route, saved-archive integrity route, reduced Google replay
+  path, and Linux or WSL build-readiness recovery route
 - keep the issue `#3` attached-localhost route easy to reopen from the top-level
   docs by surfacing the current Google-style helper, guide, and Windows runbook
 
@@ -220,6 +243,19 @@ Issue `#3` direct runtime re-entry route:
   replay should stay on the focused Enter-submit runtime slice
 - start with `powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1`
 - then run `powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1`
+- if the run still needs saved-Memory trust, nested workspace root discovery,
+  or the issue `#11` helper-contract layer before restore or Linux/WSL staging,
+  start with `bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
+- then run `bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh`
+- keep `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md` nearby when the replay is
+  blocked earlier on saved-input trust, issue `#11` helper drift, or deeper
+  restored-checkout layouts
+- if exact saved-archive trust is the blocker before restore or offline staging,
+  start with `bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
+- then run `bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh`
+- keep `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md` nearby when the replay
+  must confirm the exact repo/dependency artifacts before the restore or Linux
+  build-readiness helpers reopen
 - if Linux or WSL dependency or toolchain staging is the blocker, start with
   `bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - then run `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh` so
