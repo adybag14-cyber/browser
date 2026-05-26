@@ -11,13 +11,18 @@ or reopens the narrowed issue #3 runtime lane.
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 import hashlib
+import io
 import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
 
+
+ISSUE_LABEL = "Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry"
+JSON_PROFILE = "issue11-restored-helper-surface-sync"
 
 REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 tracker route"),
@@ -147,8 +152,12 @@ def compare_helper_surfaces(helper_root: Path, restored_root: Path) -> dict[str,
     }
 
 
+def serialize_report(report: dict[str, object]) -> dict[str, object]:
+    return {"profile": JSON_PROFILE, "issue": ISSUE_LABEL, **report}
+
+
 def emit_text(report: dict[str, object]) -> None:
-    print("Issue #3 restored helper surface sync")
+    print(ISSUE_LABEL)
     print()
     print(f"Helper root:   {report['helper_root']}")
     print(f"Restored root: {report['restored_root']}")
@@ -173,12 +182,11 @@ def emit_text(report: dict[str, object]) -> None:
     )
 
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Check whether a restored checkout still carries the newer issue #3 "
-            "Linux/WSL re-entry helper surface."
+            "Check whether a restored checkout still carries the issue #11 "
+            "Linux/WSL helper surface that supports issue #3 runtime re-entry."
         )
     )
     parser.add_argument(
@@ -318,6 +326,41 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
                 report["missing_in_restored"],
             )
 
+    def test_serialize_report_adds_issue11_context(self) -> None:
+        serialized = serialize_report(
+            {
+                "ok": True,
+                "helper_root": "/tmp/helper",
+                "restored_root": "/tmp/restored",
+                "helper_files": [],
+                "restored_files": [],
+                "missing_in_helper": [],
+                "missing_in_restored": [],
+                "drifted_files": [],
+            }
+        )
+
+        self.assertEqual(serialized["profile"], JSON_PROFILE)
+        self.assertEqual(serialized["issue"], ISSUE_LABEL)
+        self.assertTrue(serialized["ok"])
+
+    def test_emit_text_uses_issue11_heading(self) -> None:
+        report = {
+            "ok": True,
+            "helper_root": "/tmp/helper",
+            "restored_root": "/tmp/restored",
+            "missing_in_helper": [],
+            "missing_in_restored": [],
+            "drifted_files": [],
+        }
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            emit_text(report)
+
+        output = buffer.getvalue()
+        self.assertIn(ISSUE_LABEL, output)
+        self.assertIn("Restored helper surface sync passed.", output)
 
 
 def main() -> int:
@@ -334,7 +377,7 @@ def main() -> int:
     report = compare_helper_surfaces(helper_root, restored_root)
 
     if args.json:
-        print(json.dumps(report, indent=2))
+        print(json.dumps(serialize_report(report), indent=2))
     else:
         emit_text(report)
     return 0 if report["ok"] else 1
