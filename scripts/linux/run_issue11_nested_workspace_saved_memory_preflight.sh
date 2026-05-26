@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-    cat <<'EOF'
+    cat <<'EOUSAGE'
 Usage:
   bash scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
     [--repo-root /path/to/browser-repo] \
@@ -14,7 +14,7 @@ Usage:
 Use the branch-local workspace-context helper to resolve the nearest practical
 helper, Memory, agent-files, and restored-checkout roots, then rerun the saved
 Memory preflight with those surfaced paths threaded through explicitly.
-EOF
+EOUSAGE
 }
 
 format_shell_arg() {
@@ -66,6 +66,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
+ROUTE_SURFACE_SCRIPT="${DEFAULT_REPO_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
+ROUTE_SURFACE_CMD=(
+    bash
+    "${ROUTE_SURFACE_SCRIPT}"
+    --repo-root "${REPO_ROOT}"
+)
 WORKSPACE_CONTEXT_SCRIPT="${DEFAULT_REPO_ROOT}/scripts/check_issue3_workspace_context.py"
 WORKSPACE_CONTEXT_CMD=(
     python3
@@ -146,6 +152,20 @@ if sys.argv[1] == "1":
 
 print(json.dumps({
     "profile": "issue11-nested-workspace-saved-memory-preflight",
+    "route_surface_command": [
+        "bash",
+        f"{context['helper_root']}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+        "--repo-root",
+        context["repo_root"],
+    ],
+    "route_surface_command_shell": " ".join(
+        shlex.quote(part) for part in [
+            "bash",
+            f"{context['helper_root']}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+            "--repo-root",
+            context["repo_root"],
+        ]
+    ),
     "workspace_context": context,
     "preflight": preflight,
     "command": command,
@@ -154,6 +174,8 @@ print(json.dumps({
 PY
     exit 0
 fi
+
+"${ROUTE_SURFACE_CMD[@]}"
 
 cat <<EOF
 Issue #11 nested-workspace saved-Memory preflight
@@ -164,6 +186,9 @@ Memory root:            ${MEMORY_ROOT}
 Agent files root:       ${AGENT_FILES_ROOT}
 Restored checkout root: ${RESTORED_CHECKOUT_ROOT}
 Fallback Zig archive:   ${SURFACED_FALLBACK_ZIG:-not surfaced}
+
+Saved-Memory route surface command:
+  $(printf '%q ' "${ROUTE_SURFACE_CMD[@]}")
 
 Workspace-context command:
   $(printf '%q ' "${WORKSPACE_CONTEXT_CMD[@]}")
