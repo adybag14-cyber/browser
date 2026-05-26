@@ -127,7 +127,7 @@ if [[ "${JSON}" -eq 1 ]]; then
 import json
 
 print(json.dumps({
-    "issue": "Google issue #3 saved Rust build-readiness bridge route",
+    "issue": "Issue #11 saved Rust build-readiness bridge route for issue #3 re-entry",
     "repo_root": ${REPO_ROOT@Q},
     "saved_archives_root": ${SAVED_ARCHIVES_ROOT@Q},
     "toolchains_root": ${TOOLCHAINS_ROOT@Q},
@@ -159,7 +159,7 @@ PY
 fi
 
 cat <<EOF
-Google issue #3 saved Rust build-readiness bridge route
+Issue #11 saved Rust build-readiness bridge route for issue #3 re-entry
 
 Repo root:           ${REPO_ROOT}
 Saved archive root:  ${SAVED_ARCHIVES_ROOT}
