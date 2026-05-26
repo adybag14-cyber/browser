@@ -67,11 +67,8 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
-- `scripts/check_issue11_progress_tracker_surface.py`
 - `scripts/check_issue11_saved_memory_helper_contract.py`
 - `scripts/check_issue11_reentry_inventory_consistency.py`
-- `scripts/check_issue11_workspace_readiness.py`
-- `scripts/show_issue11_matching_zig_readiness_command.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -142,18 +139,17 @@ the newer tracker-specific helpers, fail fast on the tracker surface before the
 broader restore, saved-memory, or build-readiness routes are trusted:
 
 ```bash
-python ./scripts/check_issue11_progress_tracker_surface.py --repo-root .
+bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 python ./scripts/check_issue11_saved_memory_helper_contract.py --repo-root .
 python ./scripts/check_issue11_reentry_inventory_consistency.py --repo-root .
-python ./scripts/check_issue11_workspace_readiness.py --repo-root .
 ```
 
-Keep the tracker-specific matching-Zig rerun helper visible when a compatible
-staged candidate should already exist and the next question is the exact honest
+Keep the existing build-readiness rerun helper visible when a compatible staged
+Zig candidate should already exist and the next question is the exact honest
 Linux or WSL readiness command to run:
 
 ```bash
-python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
+python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
 ```
 
 Use the saved-memory helper-contract checker before the broader saved-memory
