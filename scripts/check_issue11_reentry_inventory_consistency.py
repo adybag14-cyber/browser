@@ -71,6 +71,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route note visible before archive restore is retried.",
     ),
     (
+        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness route notes should keep the saved-Rust toolchain route note visible before raw restore exports are retried.",
+    ),
+    (
         "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
         ("progress_tracker_route", "saved_rust_build_readiness_route"),
         "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route surface check visible before archive restore is retried.",
@@ -93,6 +98,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "Saved Zig archive candidate discovery should stay visible across the reusable helper inventories and route notes.",
     ),
     (
+        "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+        ("progress_tracker_route", "linux_build_readiness_route"),
+        "The progress-tracker and Linux build-readiness routes should keep the saved-Zig route note visible before archive restore work widens.",
+    ),
+    (
         "scripts/check_issue3_staged_zig_toolchain_candidates.py",
         (
             "restored_checkout_helper",
@@ -101,6 +111,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
             "linux_build_readiness_route",
         ),
         "Staged Zig toolchain candidate discovery should stay visible across the restore-side helper inventory and Linux build-readiness route.",
+    ),
+    (
+        "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+        ("progress_tracker_route", "linux_build_readiness_route"),
+        "The progress-tracker and Linux build-readiness routes should keep the staged-Zig route note visible before archive restore work widens.",
     ),
     (
         "scripts/check_issue3_build_readiness_rerun.py",
@@ -155,6 +170,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
         ("progress_tracker_route", "linux_build_readiness_route"),
         "The progress-tracker and Linux build-readiness routes should keep the saved Zig route printer visible before archive restore work widens.",
+    ),
+    (
+        "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
+        ("progress_tracker_route", "linux_build_readiness_route", "zig_toolchain_recovery_route"),
+        "The progress-tracker, Linux build-readiness, and Zig recovery routes should keep the Zig archive-restore note visible before a saved archive is staged.",
     ),
     (
         "scripts/linux/check_issue3_zig_toolchain_match.sh",
@@ -336,6 +356,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
             result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
         )
 
+    def test_flags_missing_saved_zig_route_note_in_progress_tracker(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "progress_tracker_route": {
+                    "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+            result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
+        )
+
     def test_flags_missing_staged_rust_route_surface_in_saved_rust_build_doc(self) -> None:
         repo_root = build_fixture_repo(
             missing={
@@ -354,6 +394,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
             result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
+        )
+
+    def test_flags_missing_archive_restore_route_note_in_zig_recovery_doc(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "zig_toolchain_recovery_route": {
+                    "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md",
+            result["missing_by_file"]["docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md"],
         )
 
     def test_flags_missing_staged_zig_route_fragment_in_linux_doc(self) -> None:
