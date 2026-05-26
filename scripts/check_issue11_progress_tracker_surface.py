@@ -3,10 +3,11 @@
 """Check whether a checkout carries the current issue #11 re-entry surface.
 
 This helper is intentionally narrow. It gives Linux/WSL headed-mode recovery
-runs one fast check for the newer low-volume progress-tracker route, the helper-
-surface source checker, the saved-memory helper-contract checker, the helper-
-inventory consistency checker, the workspace-aware readiness helper, and the
-matching-Zig rerun helper that recent issue #11 work depends on.
+runs one fast check for the newer low-volume progress-tracker route, the Linux
+re-entry route index, the helper-surface source checker, the saved-memory
+helper-contract checker, the helper-inventory consistency checker, the
+toolchains-root candidate helper, and the compact runtime re-entry route helper
+that recent issue #11 work depends on.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import unittest
 
 REQUIRED_ISSUE11_SURFACE: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
+    ("docs/ISSUE11_LINUX_REENTRY_ROUTE_INDEX.md", "issue #11 Linux re-entry route index"),
     ("docs/ISSUE3_RUNTIME_REENTRY_GATES.md", "runtime re-entry gate note"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness route note"),
@@ -29,8 +31,8 @@ REQUIRED_ISSUE11_SURFACE: tuple[tuple[str, str], ...] = (
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     ("scripts/check_issue11_saved_memory_helper_contract.py", "saved-memory helper-contract checker"),
     ("scripts/check_issue11_reentry_inventory_consistency.py", "helper-inventory consistency checker"),
-    ("scripts/check_issue11_workspace_readiness.py", "workspace-aware issue #11 readiness helper"),
-    ("scripts/show_issue11_matching_zig_readiness_command.py", "matching-Zig readiness helper"),
+    ("scripts/check_issue11_toolchains_root_candidates.py", "toolchains-root candidate helper"),
+    ("scripts/linux/show_issue11_runtime_reentry_tracker_route.sh", "issue #11 runtime re-entry route helper"),
 )
 
 
@@ -139,6 +141,25 @@ class Issue11ProgressTrackerSurfaceTests(unittest.TestCase):
                 result["missing_paths"],
             )
 
+    def test_flags_missing_route_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            for relative_path, _label in REQUIRED_ISSUE11_SURFACE:
+                if relative_path == "docs/ISSUE11_LINUX_REENTRY_ROUTE_INDEX.md":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(repo_root)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "docs/ISSUE11_LINUX_REENTRY_ROUTE_INDEX.md",
+                result["missing_paths"],
+            )
+
     def test_flags_missing_saved_memory_helper_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
@@ -158,12 +179,12 @@ class Issue11ProgressTrackerSurfaceTests(unittest.TestCase):
                 result["missing_paths"],
             )
 
-    def test_flags_missing_matching_zig_helper(self) -> None:
+    def test_flags_missing_toolchains_root_helper(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "browser"
             repo_root.mkdir()
             for relative_path, _label in REQUIRED_ISSUE11_SURFACE:
-                if relative_path == "scripts/show_issue11_matching_zig_readiness_command.py":
+                if relative_path == "scripts/check_issue11_toolchains_root_candidates.py":
                     continue
                 target = repo_root / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +194,26 @@ class Issue11ProgressTrackerSurfaceTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertIn(
-                "scripts/show_issue11_matching_zig_readiness_command.py",
+                "scripts/check_issue11_toolchains_root_candidates.py",
+                result["missing_paths"],
+            )
+
+    def test_flags_missing_runtime_reentry_route_helper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            for relative_path, _label in REQUIRED_ISSUE11_SURFACE:
+                if relative_path == "scripts/linux/show_issue11_runtime_reentry_tracker_route.sh":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(repo_root)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/linux/show_issue11_runtime_reentry_tracker_route.sh",
                 result["missing_paths"],
             )
 
