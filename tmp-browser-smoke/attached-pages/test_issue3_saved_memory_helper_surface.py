@@ -48,6 +48,8 @@ FIXTURE_FILES = {
     scripts/check_issue3_staged_rust_toolchain_candidates.py
     scripts/check_issue3_staged_zig_toolchain_candidates.py
     scripts/check_issue3_build_readiness_rerun.py
+    scripts/check_issue11_saved_memory_helper_contract.py
+    scripts/check_issue11_reentry_inventory_consistency.py
     scripts/check_linux_build_readiness.py
     scripts/windows/HeadedValidationHelpers.ps1
     scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
@@ -241,6 +243,8 @@ class Issue3SavedMemoryHelperSurfaceTest(unittest.TestCase):
             "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             "scripts/check_issue3_staged_zig_toolchain_candidates.py",
             "scripts/check_issue3_build_readiness_rerun.py",
+            "scripts/check_issue11_saved_memory_helper_contract.py",
+            "scripts/check_issue11_reentry_inventory_consistency.py",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh",
             "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
