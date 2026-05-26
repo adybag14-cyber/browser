@@ -165,11 +165,20 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
-PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
-if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
-    PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
-fi
 SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND} --sync-only"
+PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SAVED_SNAPSHOT_ROUTE_COMMAND}"
+PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON="default-restore-route"
+if [[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]]; then
+    if [[ -d "${RESTORED_CHECKOUT_ROOT}" ]] && [[ -f "${RESTORED_CHECKOUT_ROOT}/build.zig.zon" ]]; then
+        PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNC_ONLY_SAVED_SNAPSHOT_ROUTE_COMMAND}"
+        PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON="existing-restored-checkout-sync-only-refresh"
+    else
+        PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND="${SYNCED_SAVED_SNAPSHOT_ROUTE_COMMAND}"
+        PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON="missing-restored-checkout-synced-restore"
+    fi
+elif [[ -d "${RESTORED_CHECKOUT_ROOT}" ]] && [[ -f "${RESTORED_CHECKOUT_ROOT}/build.zig.zon" ]]; then
+    PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON="existing-restored-checkout-clean-restore-still-available"
+fi
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -184,6 +193,7 @@ print(json.dumps({
     "memory_root": ${MEMORY_ROOT@Q},
     "fallback_zig_archive": ${FALLBACK_ZIG_ARCHIVE@Q},
     "expect_helper_surface": ${EXPECT_HELPER_SURFACE},
+    "preferred_saved_snapshot_route_reason": ${PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON@Q},
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
         "saved_snapshot_route": ${SAVED_SNAPSHOT_ROUTE_COMMAND@Q},
@@ -201,9 +211,10 @@ print(json.dumps({
     },
     "notes": [
         "Run route_surface first so missing route docs or helper drift fails before the restored checkout is trusted.",
-        "Use preferred_saved_snapshot_route when the reusable checkout is still missing or needs to be refreshed from Memory.",
-        "When expect_helper_surface is set, preferred_saved_snapshot_route switches to the synced restore path so the next helper-surface comparison does not immediately fail.",
-        "Use sync_only_saved_snapshot_route when the restored checkout already exists and only the helper surface needs to be refreshed in place.",
+        "Use preferred_saved_snapshot_route when the reusable checkout is still missing or when the route needs the least-destructive restore-or-refresh step from Memory.",
+        "When expect_helper_surface is set and the restored checkout already exists, preferred_saved_snapshot_route switches to the sync-only refresh path instead of re-extracting the archive.",
+        "When expect_helper_surface is set and the restored checkout is still missing, preferred_saved_snapshot_route switches to the synced restore path so the next helper-surface comparison does not immediately fail.",
+        "Use sync_only_saved_snapshot_route directly when another helper wants the explicit refresh-only command even if preferred_saved_snapshot_route is already pointing there.",
         "Run restored_checkout_check immediately after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.",
         "Run synced_restored_checkout_check when the restored checkout was rebuilt with --sync-helper-surface and should be compared against the live helper root for drift.",
         "Run restored_helper_surface_sync_check after the synced restored-checkout check when the restored checkout is supposed to carry the newer issue #11 Linux/WSL helper surface too.",
@@ -228,6 +239,7 @@ Restored checkout root:  ${RESTORED_CHECKOUT_ROOT}
 Memory root:             ${MEMORY_ROOT}
 Fallback Zig archive:    ${FALLBACK_ZIG_ARCHIVE:-not found beside the repo workspace}
 Expect helper surface:   $([[ "${EXPECT_HELPER_SURFACE}" -eq 1 ]] && echo yes || echo no)
+Preferred route reason:  ${PREFERRED_SAVED_SNAPSHOT_ROUTE_REASON}
 
 Read first
 ==========
@@ -240,7 +252,7 @@ Suggested route
   Route surface check:
     ${ROUTE_SURFACE_COMMAND}
 
-  Preferred saved-browser-snapshot restore route:
+  Preferred saved-browser-snapshot restore or refresh route:
     ${PREFERRED_SAVED_SNAPSHOT_ROUTE_COMMAND}
 
   Saved-browser-snapshot restore route:
@@ -279,9 +291,10 @@ Suggested route
 Working rules
 =============
   - Run the route surface check first so missing docs or helper drift fails fast before the restored checkout is trusted.
-  - Use the preferred saved-browser-snapshot restore route when the reusable checkout is still missing or needs to be refreshed from Memory.
-  - When --expect-helper-surface is set, prefer the synced saved-browser-snapshot restore route so the restored checkout actually carries the helper surface that the next comparison expects.
-  - Use the helper-surface refresh-only route when the restored checkout already exists and only the synced issue #3 helper surface needs to be refreshed in place.
+  - Use the preferred saved-browser-snapshot restore or refresh route when the reusable checkout is still missing or when the route needs the least-destructive Memory-backed next step.
+  - When --expect-helper-surface is set and the restored checkout already exists, prefer the helper-surface refresh-only route so the next comparison stays in place instead of re-extracting the archive.
+  - When --expect-helper-surface is set and the restored checkout is still missing, prefer the synced saved-browser-snapshot restore route so the restored checkout actually carries the helper surface that the next comparison expects.
+  - Use the helper-surface refresh-only route when another helper or operator wants the explicit sync-only command even if the preferred route is already pointing there.
   - When repo_root already points at browser-memory-snapshot, the route auto-prefers the current working tree as helper_root if it still looks like the live helper checkout.
   - Run the restored-checkout readiness check right after restore when the restored checkout should stay a clean historical snapshot and the live helper root remains the command source.
   - Use the synced helper-surface restored-checkout check when the restored checkout was rebuilt with --sync-helper-surface.
