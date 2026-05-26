@@ -44,7 +44,16 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
     ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note"),
+    ("docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md", "saved-Memory inputs route note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
+    (
+        "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+        "saved Rust build-readiness bridge note",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
+        "saved Rust archive candidates route note",
+    ),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
     (
@@ -85,6 +94,7 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "restored helper-surface sync helper",
     ),
     ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
+    ("scripts/check_issue3_build_readiness_rerun.py", "build-readiness rerun helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     (
         "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
@@ -93,6 +103,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
         "issue #11 progress-tracker route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_workspace_context_route_surface.sh",
+        "workspace-context route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_workspace_context_route.sh",
+        "workspace-context route printer",
     ),
     (
         "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
@@ -154,6 +172,22 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh", "saved-Memory route surface check"),
     ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-Memory route printer"),
+    (
+        "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+        "saved Rust build-readiness bridge surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+        "saved Rust build-readiness bridge route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+        "saved Rust archive candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
+        "saved Rust archive candidates route printer",
+    ),
     ("scripts/linux/check_issue3_linux_build_readiness_route_surface.sh", "Linux build-readiness surface check"),
     ("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer"),
     ("scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh", "runtime revalidation surface check"),
