@@ -67,6 +67,10 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
+- `scripts/check_issue11_progress_tracker_surface.py`
+- `scripts/check_issue11_reentry_inventory_consistency.py`
+- `scripts/check_issue11_workspace_readiness.py`
+- `scripts/show_issue11_matching_zig_readiness_command.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -129,6 +133,30 @@ candidate helper before unpacking the archive again, and reuse the surfaced
 `PATH`, `CARGO`, and `RUSTC` exports from
 `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md` when the exact restore or export
 surface is still needed.
+
+## Check The Tracker-Specific Helper Surface Before Trusting The Wider Ladder
+
+When the immediate issue `#11` slice is about whether a checkout still carries
+the newer tracker-specific helpers, fail fast on the tracker surface before the
+broader restore, saved-memory, or build-readiness routes are trusted:
+
+```bash
+python ./scripts/check_issue11_progress_tracker_surface.py --repo-root .
+python ./scripts/check_issue11_reentry_inventory_consistency.py --repo-root .
+python ./scripts/check_issue11_workspace_readiness.py --repo-root .
+```
+
+Keep the tracker-specific matching-Zig rerun helper visible when a compatible
+staged candidate should already exist and the next question is the exact honest
+Linux or WSL readiness command to run:
+
+```bash
+python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
+```
+
+Use that helper after the saved-Zig candidate discovery route or a successful
+workspace-aware readiness check so the next rerun command stays anchored to the
+same shared `memory`, `toolchains`, `agent_files`, and `offline-deps` roots.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
