@@ -258,6 +258,9 @@ OFFLINE_DEPS_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "offlin
 PROGRESS_TRACKER_ROUTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_workspace_context_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+WORKSPACE_CONTEXT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_workspace_context_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_workspace_context.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_INPUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 QUICK_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --skip-archive-integrity-check"
 RESTORED_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
@@ -272,6 +275,7 @@ BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_
 RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    WORKSPACE_CONTEXT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     QUICK_SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RESTORED_SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -308,6 +312,9 @@ print(json.dumps({
     "skip_archive_integrity_check": ${SKIP_ARCHIVE_INTEGRITY_CHECK},
     "commands": {
         "route_surface": ${ROUTE_SURFACE_COMMAND@Q},
+        "workspace_context_route_surface": ${WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND@Q},
+        "workspace_context_route": ${WORKSPACE_CONTEXT_ROUTE_COMMAND@Q},
+        "workspace_context": ${WORKSPACE_CONTEXT_COMMAND@Q},
         "saved_input_preflight": ${SAVED_INPUT_COMMAND@Q},
         "quick_saved_input_preflight": ${QUICK_SAVED_INPUT_COMMAND@Q},
         "restored_checkout_saved_input_preflight": ${RESTORED_SAVED_INPUT_COMMAND@Q},
@@ -323,6 +330,7 @@ print(json.dumps({
     },
     "notes": [
         "Run route_surface first so helper drift fails fast before the saved archive inputs are blamed.",
+        "When the checkout sits deeper than the default sibling layout, run workspace_context_route_surface, workspace_context_route, and workspace_context before trusting saved_input_preflight defaults.",
         "Use saved_input_preflight for the normal archive readability and presence check.",
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
@@ -374,6 +382,15 @@ Suggested route
   Surface check:
     ${ROUTE_SURFACE_COMMAND}
 
+  Workspace-context surface check:
+    ${WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND}
+
+  Workspace-context route:
+    ${WORKSPACE_CONTEXT_ROUTE_COMMAND}
+
+  Workspace-context helper:
+    ${WORKSPACE_CONTEXT_COMMAND}
+
   Saved-Memory preflight:
     ${SAVED_INPUT_COMMAND}
 
@@ -413,12 +430,13 @@ Suggested route
 Working rules
 =============
   - Run the surface check first so helper drift fails fast before the run blames missing Memory inputs.
+  - Run the workspace-context surface, route, and helper before the saved-Memory preflight when the checkout sits deeper than the default sibling layout or the next helper would otherwise guess the wrong roots.
   - Run the saved-Memory preflight before restore, build-readiness, or runtime helpers when the route depends on the saved repo snapshot and dependency bundles.
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
   - Use the restored-helper-surface sync route when the extracted snapshot may lag behind the live helper surface or the restored tree is missing the newer issue #11 helper-sync files.
   - Run the issue #11 saved-memory helper-contract and re-entry inventory checks against the restored checkout before treating the live-helper restored-checkout preflight as trustworthy from that restored tree.
-  - Use the live-helper restored-checkout preflight when the extracted snapshot may lag behind the live helper surface and the run needs that drift to fail before it starts calling newer route commands from the restored tree.
+  - Use the live-helper restored-checkout preflight when the extracted snapshot may lag behind the live helper surface and the run needs that drift to fail before it starts calling route commands from the restored tree.
   - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
   - Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane and needs a safe issue #11 progress-update handoff before wider follow-up work.
   - Use the saved-archive integrity route when the saved-Memory preflight passes but the next question is still whether the exact saved bundles and snapshot helper surface are trustworthy enough for restore or staging.
