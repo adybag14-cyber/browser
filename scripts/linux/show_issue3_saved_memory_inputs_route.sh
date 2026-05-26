@@ -140,6 +140,26 @@ resolve_discovered_or_default_root() {
     printf '%s\n' "${fallback_root}"
 }
 
+resolve_toolchains_root() {
+    local start="$1"
+    local fallback_root="$2"
+    local discovered_root
+
+    discovered_root="$(find_first_existing_ancestor_dir "${start}" "toolchains" || true)"
+    if [[ -n "${discovered_root}" ]]; then
+        printf '%s\n' "${discovered_root}"
+        return 0
+    fi
+
+    discovered_root="$(find_first_existing_ancestor_dir "${start}" ".toolchains" || true)"
+    if [[ -n "${discovered_root}" ]]; then
+        printf '%s\n' "${discovered_root}"
+        return 0
+    fi
+
+    printf '%s\n' "${fallback_root}"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -232,7 +252,7 @@ REPO_SNAPSHOT_PATH="${MEMORY_ROOT}/repo_archives/browser/01-browser-fork-headed-
 BLOCKER_INTELLIGENCE_PATH="${MEMORY_ROOT}/repo_archives/browser/blocker_intelligence.yaml"
 DEPENDENCIES_ROOT="${MEMORY_ROOT}/repo_archives/browser/dependencies"
 SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
-TOOLCHAINS_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "toolchains" "${HELPER_WORKSPACE_ROOT}/toolchains")"
+TOOLCHAINS_ROOT="$(resolve_toolchains_root "${HELPER_ROOT}" "${HELPER_WORKSPACE_ROOT}/toolchains")"
 RUST_TOOLCHAIN_DIR="${TOOLCHAINS_ROOT}/rust-1.79.0"
 OFFLINE_DEPS_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "offline-deps" "${HELPER_WORKSPACE_ROOT}/offline-deps")"
 PROGRESS_TRACKER_ROUTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
@@ -313,7 +333,7 @@ print(json.dumps({
         "Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane so issue #11 remains the practical progress-update target.",
         "Use saved_archive_integrity_route when the saved-input preflight passes but the next question is still whether the exact saved bundles and snapshot helper surface are trustworthy enough for restore or staging.",
         "Use saved_zig_archive_candidates_route when the next question is which saved 0.15.x archive should be staged before broader Zig recovery or Linux build-readiness work resumes.",
-        "Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots threaded into the nested Linux build-readiness route so restored follow-up runs do not fall back to guessed sibling paths.",
+        "Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots threaded into the nested Linux build-readiness route so restored follow-up runs do not fall back to guessed sibling paths; toolchain discovery now accepts either a visible toolchains root or a hidden .toolchains root.",
         "Use saved_browser_snapshot_route when the saved inputs are green but there is still no restored checkout.",
         "Use linux_build_readiness_route when the next blocker is still Zig-line selection, Rust restore, or offline dependency staging.",
         "Use runtime_reentry_route only after the saved inputs are green and the direct Page.zig plus win32_backend.zig lane is truly ready to reopen."
@@ -403,7 +423,7 @@ Working rules
   - Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane and needs a safe issue #11 progress-update handoff before wider follow-up work.
   - Use the saved-archive integrity route when the saved-Memory preflight passes but the next question is still whether the exact saved bundles and snapshot helper surface are trustworthy enough for restore or staging.
   - Use the saved Zig archive candidates route when the next question is which saved 0.15.x archive should be staged before wider Zig recovery or Linux build-readiness work resumes.
-  - Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots aligned when handing off to the Linux or WSL build-readiness route.
+  - Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots aligned when handing off to the Linux or WSL build-readiness route, and accept either a visible toolchains root or a hidden .toolchains root when discovering staged toolchains.
   - Use the restore route when the saved archive exists but there is still no reusable checkout for Linux or WSL follow-up.
   - Use the Linux or WSL build-readiness route after the saved-Memory preflight passes and the next blocker is still Rust, Zig, offline dependency staging, or prebuilt V8 readiness.
   - Use the direct runtime re-entry route only after the saved checkout exists and the environment gates are no longer the blocker.
