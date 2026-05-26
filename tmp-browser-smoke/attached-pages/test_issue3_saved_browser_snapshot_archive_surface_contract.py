@@ -20,12 +20,22 @@ FIXTURE_FILES = {
     - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
     - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
     - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
+    - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
+    - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
     - `scripts/check_issue3_workspace_context.py`
+    - `scripts/check_issue3_saved_rust_archive_candidates.py`
+    - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
     - `scripts/check_issue3_saved_zig_archive_candidates.py`
+    - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
+    - `scripts/check_issue3_build_readiness_rerun.py`
     - `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
     - `scripts/linux/show_issue3_progress_tracker_route.sh`
     - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
     - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
+    - `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
+    - `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
+    - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+    - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
     - `scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh`
     - `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
     """,
@@ -35,32 +45,54 @@ FIXTURE_FILES = {
         (\"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md\", \"progress tracker note\"),
         (\"docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md\", \"workspace context note\"),
         (\"docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md\", \"saved-memory inputs note\"),
+        (\"docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md\", \"saved Rust build-readiness note\"),
+        (\"docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md\", \"saved Rust archive candidates note\"),
         (\"scripts/check_issue3_workspace_context.py\", \"workspace context helper\"),
+        (\"scripts/check_issue3_saved_rust_archive_candidates.py\", \"saved Rust archive candidates helper\"),
+        (\"scripts/check_issue3_staged_rust_toolchain_candidates.py\", \"staged Rust toolchain candidates helper\"),
         (\"scripts/check_issue3_saved_zig_archive_candidates.py\", \"saved Zig archive candidates helper\"),
+        (\"scripts/check_issue3_staged_zig_toolchain_candidates.py\", \"staged Zig toolchain candidates helper\"),
+        (\"scripts/check_issue3_build_readiness_rerun.py\", \"build-readiness rerun helper\"),
         (\"scripts/linux/check_issue3_progress_tracker_route_surface.sh\", \"progress tracker surface\"),
         (\"scripts/linux/show_issue3_progress_tracker_route.sh\", \"progress tracker route\"),
         (\"scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh\", \"saved-memory inputs surface\"),
         (\"scripts/linux/show_issue3_saved_memory_inputs_route.sh\", \"saved-memory inputs route\"),
+        (\"scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh\", \"saved Rust build-readiness surface\"),
+        (\"scripts/linux/show_issue3_saved_rust_build_readiness_route.sh\", \"saved Rust build-readiness route\"),
+        (\"scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh\", \"saved Rust archive candidates surface\"),
+        (\"scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh\", \"saved Rust archive candidates route\"),
         (\"scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh\", \"Windows runtime handoff surface\"),
         (\"scripts/linux/show_issue3_windows_runtime_handoff_route.sh\", \"Windows runtime handoff route\"),
     ]
 
     def load_required_paths(repo_root: Path) -> list[tuple[str, str]]:
-        return KNOWN_REQUIRED_PATHS
+        required_paths = list(KNOWN_REQUIRED_PATHS)
+        return required_paths
 
-    payload = {\"required_path_count\": len(KNOWN_REQUIRED_PATHS)}
+    required_paths = load_required_paths(Path("."))
+    payload = {\"required_path_count\": len(required_paths)}
     """,
     "scripts/check_issue3_restored_checkout.py": """
     HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         (\"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md\", \"tracker\"),
         (\"docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md\", \"workspace context\"),
         (\"docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md\", \"saved-memory inputs\"),
+        (\"docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md\", \"saved Rust build-readiness\"),
+        (\"docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md\", \"saved Rust archive candidates\"),
         (\"scripts/check_issue3_workspace_context.py\", \"workspace helper\"),
+        (\"scripts/check_issue3_saved_rust_archive_candidates.py\", \"saved Rust archive candidates\"),
+        (\"scripts/check_issue3_staged_rust_toolchain_candidates.py\", \"staged Rust candidates\"),
         (\"scripts/check_issue3_saved_zig_archive_candidates.py\", \"saved Zig candidates\"),
+        (\"scripts/check_issue3_staged_zig_toolchain_candidates.py\", \"staged Zig candidates\"),
+        (\"scripts/check_issue3_build_readiness_rerun.py\", \"build-readiness rerun\"),
         (\"scripts/linux/check_issue3_progress_tracker_route_surface.sh\", \"progress tracker surface\"),
         (\"scripts/linux/show_issue3_progress_tracker_route.sh\", \"progress tracker route\"),
         (\"scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh\", \"saved-memory surface\"),
         (\"scripts/linux/show_issue3_saved_memory_inputs_route.sh\", \"saved-memory route\"),
+        (\"scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh\", \"saved Rust build-readiness surface\"),
+        (\"scripts/linux/show_issue3_saved_rust_build_readiness_route.sh\", \"saved Rust build-readiness route\"),
+        (\"scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh\", \"saved Rust archive candidates surface\"),
+        (\"scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh\", \"saved Rust archive candidates route\"),
         (\"scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh\", \"Windows handoff surface\"),
         (\"scripts/linux/show_issue3_windows_runtime_handoff_route.sh\", \"Windows handoff route\"),
     )
@@ -70,12 +102,22 @@ FIXTURE_FILES = {
         \"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md\"
         \"docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md\"
         \"docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md\"
+        \"docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md\"
+        \"docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md\"
         \"scripts/check_issue3_workspace_context.py\"
+        \"scripts/check_issue3_saved_rust_archive_candidates.py\"
+        \"scripts/check_issue3_staged_rust_toolchain_candidates.py\"
         \"scripts/check_issue3_saved_zig_archive_candidates.py\"
+        \"scripts/check_issue3_staged_zig_toolchain_candidates.py\"
+        \"scripts/check_issue3_build_readiness_rerun.py\"
         \"scripts/linux/check_issue3_progress_tracker_route_surface.sh\"
         \"scripts/linux/show_issue3_progress_tracker_route.sh\"
         \"scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh\"
         \"scripts/linux/show_issue3_saved_memory_inputs_route.sh\"
+        \"scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh\"
+        \"scripts/linux/show_issue3_saved_rust_build_readiness_route.sh\"
+        \"scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh\"
+        \"scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh\"
         \"scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh\"
         \"scripts/linux/show_issue3_windows_runtime_handoff_route.sh\"
     )
@@ -124,12 +166,22 @@ class Issue3SavedBrowserSnapshotArchiveSurfaceContractTest(unittest.TestCase):
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
             "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
             "scripts/check_issue3_workspace_context.py",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             "scripts/check_issue3_saved_zig_archive_candidates.py",
+            "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+            "scripts/check_issue3_build_readiness_rerun.py",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh",
             "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
             "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+            "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+            "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
             "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
             "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
         ):
@@ -139,7 +191,18 @@ class Issue3SavedBrowserSnapshotArchiveSurfaceContractTest(unittest.TestCase):
         for fragment in (
             'RESTORE_HELPER_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"',
             "KNOWN_REQUIRED_PATHS = [",
+            '("docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md", "saved Rust build-readiness note"),',
+            '("docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md", "saved Rust archive candidates note"),',
+            '("scripts/check_issue3_saved_rust_archive_candidates.py", "saved Rust archive candidates helper"),',
+            '("scripts/check_issue3_staged_rust_toolchain_candidates.py", "staged Rust toolchain candidates helper"),',
+            '("scripts/check_issue3_staged_zig_toolchain_candidates.py", "staged Zig toolchain candidates helper"),',
+            '("scripts/check_issue3_build_readiness_rerun.py", "build-readiness rerun helper"),',
+            '("scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh", "saved Rust build-readiness surface"),',
+            '("scripts/linux/show_issue3_saved_rust_build_readiness_route.sh", "saved Rust build-readiness route"),',
+            '("scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh", "saved Rust archive candidates surface"),',
+            '("scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh", "saved Rust archive candidates route"),',
             "def load_required_paths(repo_root: Path) -> list[tuple[str, str]]:",
+            'required_paths = list(KNOWN_REQUIRED_PATHS)',
             '"required_path_count": len(required_paths)',
         ):
             self.assertIn(fragment, self.archive_helper)
@@ -149,12 +212,22 @@ class Issue3SavedBrowserSnapshotArchiveSurfaceContractTest(unittest.TestCase):
             "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
             "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
             "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
             "scripts/check_issue3_workspace_context.py",
+            "scripts/check_issue3_saved_rust_archive_candidates.py",
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             "scripts/check_issue3_saved_zig_archive_candidates.py",
+            "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+            "scripts/check_issue3_build_readiness_rerun.py",
             "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
             "scripts/linux/show_issue3_progress_tracker_route.sh",
             "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
             "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
+            "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+            "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
             "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
             "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
         ):
