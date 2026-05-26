@@ -26,6 +26,7 @@ Keep these nearby:
 - `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 
 ## When To Use It
 
@@ -149,6 +150,22 @@ python ./scripts/check_issue3_saved_memory_inputs.py \
 That ordering keeps stale helper-surface drift from being hidden behind a later
 saved-memory pass.
 
+## Surface Nested Workspace Roots When Needed
+
+When the live helper root or restored checkout sits deeper than the default
+sibling layout, rerun the nested-workspace saved-memory wrapper against the
+restored checkout before wider saved-memory, saved-archive, build-readiness, or
+runtime follow-up trusts inferred roots:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --repo-root ../browser-memory-snapshot
+```
+
+That wrapper keeps workspace-context discovery, the saved-memory preflight, and
+both issue `#11` contract checks aligned to the same surfaced helper root
+before broader reruns continue.
+
 ## If The Check Fails
 
 Do not trust the restored checkout as the follow-up helper root yet.
@@ -173,8 +190,9 @@ saved-archive, build-readiness, or direct runtime re-entry helpers.
 For restored snapshots that are supposed to carry the current issue `#11`
 helper surface, use this narrower sync route after the broader restored-
 checkout readiness check, keep the issue `#11` helper-contract checks between
-that sync step and the broader saved-memory preflight, and only then trust the
-restored checkout as its own helper root.
+that sync step and the broader saved-memory preflight, use the nested-workspace
+saved-memory wrapper when inferred roots are not the default sibling layout,
+and only then trust the restored checkout as its own helper root.
 
 A passing saved-memory preflight is useful follow-up evidence, but it is not the
 replacement for this sync check when the route commands themselves will be
