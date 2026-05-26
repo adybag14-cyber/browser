@@ -193,6 +193,8 @@ ISSUE_URL="https://github.com/adybag14-cyber/browser/issues/11"
 ROUTE_NOTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_workspace_context_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+WORKSPACE_CONTEXT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_workspace_context_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 SAVED_RUST_BRIDGE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
@@ -213,6 +215,7 @@ BUILD_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_
 ZIG_RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    WORKSPACE_CONTEXT_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_MEMORY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_ZIG_ARCHIVE_ROUTE_SURFACE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -242,6 +245,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "fallback_zig_archive": %s,\n' "$(json_escape "${FALLBACK_ZIG_ARCHIVE}")"
     printf '  "commands": {\n'
     printf '    "route_surface": %s,\n' "$(json_escape "${ROUTE_SURFACE_COMMAND}")"
+    printf '    "workspace_context_route_surface": %s,\n' "$(json_escape "${WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND}")"
+    printf '    "workspace_context_route": %s,\n' "$(json_escape "${WORKSPACE_CONTEXT_ROUTE_COMMAND}")"
     printf '    "saved_memory_inputs_route": %s,\n' "$(json_escape "${SAVED_MEMORY_ROUTE_COMMAND}")"
     printf '    "saved_archive_integrity_route": %s,\n' "$(json_escape "${SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND}")"
     printf '    "saved_rust_build_readiness_route_surface": %s,\n' "$(json_escape "${SAVED_RUST_BRIDGE_ROUTE_SURFACE_COMMAND}")"
@@ -265,6 +270,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '  "completion_comment_template": %s,\n' "$(json_escape "${COMPLETION_COMMENT_TEMPLATE}")"
     printf '  "notes": [\n'
     printf '    %s,\n' "$(json_escape "Run route_surface first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.")"
+    printf '    %s,\n' "$(json_escape "When the immediate slice is about nested or restored checkout layout, surface the workspace-context route before saved-memory, saved-Rust, saved-Zig, build-readiness, or Zig recovery helpers are trusted with guessed roots.")"
     printf '    %s,\n' "$(json_escape "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.")"
     printf '    %s,\n' "$(json_escape "Surface the saved-archive integrity route before saved Rust, saved Zig, build-readiness, or Zig recovery reruns whenever the run needs to prove the mounted repo and dependency bundles still match the expected exact artifacts.")"
     printf '    %s,\n' "$(json_escape "When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the saved-Rust build-readiness bridge before the raw saved-Rust restore route so the shorter issue #11 handoff stays visible.")"
@@ -275,12 +281,12 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "Surface staged Zig candidates before unpacking a saved archive so the route can reuse an already-matching toolchain when one is present.")"
     printf '    %s,\n' "$(json_escape "When a matching staged Zig candidate already exists, surface the exact build-readiness rerun helper before broader Linux or WSL readiness is retried.")"
     printf '    %s,\n' "$(json_escape "Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.")"
-    printf '    %s,\n' "$(json_escape "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-memory, saved-archive-integrity, saved-Zig, build-readiness-rerun, matching-line, and Zig recovery helpers all inspect the same surfaced path.")"
+    printf '    %s,\n' "$(json_escape "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested workspace-context, saved-memory, saved-archive-integrity, saved-Zig, build-readiness-rerun, matching-line, and Zig recovery helpers all inspect the same surfaced path.")"
     printf '    %s,\n' "$(json_escape "Run the matching-line gate after any saved Zig restore so the staged toolchains root proves a branch-compatible 0.15.x executable exists before broader readiness is trusted again.")"
     printf '    %s,\n' "$(json_escape "Run the archive-restore surface check before staging a chosen saved Zig archive under ../toolchains.")"
     printf '    %s,\n' "$(json_escape "Keep the start comment compact with Goal, Started, and Next.")"
     printf '    %s,\n' "$(json_escape "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.")"
-    printf '    %s\n' "$(json_escape "When the next step is still environment-gated, follow the saved-memory, saved-archive-integrity, saved-Rust, saved-Zig, staged-Zig, build-readiness-rerun, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.")"
+    printf '    %s\n' "$(json_escape "When the next step is still environment-gated, follow the workspace-context, saved-memory, saved-archive-integrity, saved-Rust, saved-Zig, staged-Zig, build-readiness-rerun, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.")"
     printf '  ]\n'
     printf '}\n'
     exit 0
@@ -305,6 +311,7 @@ Read first
 ==========
   docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_RUNTIME_REENTRY_GATES.md
+  docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
   docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md
@@ -318,6 +325,12 @@ Suggested route
 ===============
   Route surface check:
     ${ROUTE_SURFACE_COMMAND}
+
+  Workspace-context route surface check:
+    ${WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND}
+
+  Workspace-context route:
+    ${WORKSPACE_CONTEXT_ROUTE_COMMAND}
 
   Saved-Memory follow-up route:
     ${SAVED_MEMORY_ROUTE_COMMAND}
@@ -389,6 +402,7 @@ Validation: <state the focused helper check, self-test, or follow-up route that 
 Working rules
 =============
   - Run the route surface check first so note drift or helper drift fails fast before a scheduled run trusts issue #11 as its progress target.
+  - When the immediate slice is about nested or restored checkout layout, surface the workspace-context route before saved-memory, saved-Rust, saved-Zig, build-readiness, or Zig recovery helpers are trusted with guessed roots.
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
   - Surface the saved-archive integrity route before saved Rust, saved Zig, build-readiness, or Zig recovery reruns whenever the run needs to prove the mounted repo and dependency bundles still match the expected exact artifacts.
   - When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the saved-Rust build-readiness bridge before the raw saved-Rust restore route so the shorter issue #11 handoff stays visible.
@@ -399,10 +413,10 @@ Working rules
   - Surface staged Zig candidates before unpacking a saved archive so the route can reuse an already-matching toolchain when one is present.
   - When a matching staged Zig candidate already exists, surface the exact build-readiness rerun helper before broader Linux or WSL readiness is retried.
   - Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.
-  - Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested saved-memory, saved-archive-integrity, saved-Zig, build-readiness-rerun, matching-line, and Zig recovery helpers all inspect the same surfaced path.
+  - Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested workspace-context, saved-memory, saved-archive-integrity, saved-Zig, build-readiness-rerun, matching-line, and Zig recovery helpers all inspect the same surfaced path.
   - Run the matching-line gate after any saved Zig restore so the staged toolchains root has to prove a real branch-compatible Zig candidate exists.
   - Run the archive-restore surface check before staging a chosen saved Zig archive under ../toolchains.
   - Keep the start comment compact with Goal, Started, and Next.
   - Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.
-  - When the next step is still environment-gated, follow the saved-memory, saved-archive-integrity, saved-Rust, saved-Zig, staged-Zig, build-readiness-rerun, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
+  - When the next step is still environment-gated, follow the workspace-context, saved-memory, saved-archive-integrity, saved-Rust, saved-Zig, staged-Zig, build-readiness-rerun, build-readiness, matching-line, or Zig recovery routes instead of reopening the direct Page.zig plus win32_backend.zig patch.
 EOF2
