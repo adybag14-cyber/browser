@@ -6,6 +6,8 @@ param(
     [string]$PreferredInitialPage,
     [string]$RepoRoot,
     [string]$PythonExe = "python",
+    [string]$Bind = "127.0.0.1",
+    [int]$Port = 8235,
     [switch]$GoogleStyle,
     [switch]$Json,
     [switch]$AllowMissingSidecars,
@@ -52,7 +54,7 @@ if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
 
 $resolvedPython = (Get-Command $PythonExe -ErrorAction Stop).Source
 
-$reportArgs = @($reportPath, "--repo-root", $resolvedRepoRoot)
+$reportArgs = @($reportPath, "--repo-root", $resolvedRepoRoot, "--bind", $Bind, "--port", "$Port")
 
 if ($UseWorkspaceAgentFiles) {
     $workspaceAgentFilesPath = Resolve-WorkspaceAgentFilesPath -RepoRoot $resolvedRepoRoot
@@ -64,7 +66,7 @@ if ($UseWorkspaceAgentFiles) {
         }
         $reportArgs += @("--input", $path)
     }
-    if ($reportArgs.Count -le 3) {
+    if ($reportArgs.Count -le 7) {
         throw "No attached HTML inputs were provided for the preflight report helper."
     }
 }
