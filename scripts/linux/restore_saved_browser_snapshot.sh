@@ -142,6 +142,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/check_issue3_saved_zig_archive_candidates.py"
     "scripts/check_issue3_staged_zig_toolchain_candidates.py"
     "scripts/check_issue3_build_readiness_rerun.py"
+    "scripts/check_issue11_saved_memory_helper_contract.py"
+    "scripts/check_issue11_reentry_inventory_consistency.py"
     "scripts/check_linux_build_readiness.py"
     "scripts/linux/check_issue3_progress_tracker_route_surface.sh"
     "scripts/linux/show_issue3_progress_tracker_route.sh"
