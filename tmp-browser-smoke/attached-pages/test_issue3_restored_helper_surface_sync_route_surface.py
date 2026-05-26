@@ -98,7 +98,7 @@ FIXTURE_FILES = {
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
     "Run the route surface first"
     "Use the sync-only refresh when the restored checkout already exists"
-    "Google issue #3 restored helper-surface sync route"
+    "Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry"
     "Narrower helper-surface sync check:"
     "In-place helper-surface refresh when the restored checkout is stale:"
     """,
@@ -253,7 +253,7 @@ class Issue3RestoredHelperSurfaceSyncRouteSurfaceTest(unittest.TestCase):
             '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md"',
             '"Run the route surface first',
             '"Use the sync-only refresh when the restored checkout already exists',
-            "Google issue #3 restored helper-surface sync route",
+            "Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry",
             "Narrower helper-surface sync check:",
             "In-place helper-surface refresh when the restored checkout is stale:",
         ):
