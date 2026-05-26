@@ -31,9 +31,24 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "Issue #11 progress-tracker handoff should stay visible across the live helper contract.",
     ),
     (
+        "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the narrower restored-helper surface sync route visible.",
+    ),
+    (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
         ("restored_checkout_helper",),
         "The restored-checkout helper still expects the saved snapshot archive-surface note.",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust build-readiness bridge visible.",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust archive-candidate route visible.",
     ),
     (
         "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
@@ -41,9 +56,34 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "The restored-checkout helper still expects the saved snapshot archive-surface helper.",
     ),
     (
+        "scripts/check_issue3_saved_rust_archive_candidates.py",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust archive-candidate helper visible.",
+    ),
+    (
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the staged Rust toolchain candidate helper visible.",
+    ),
+    (
         "scripts/check_issue3_saved_zig_archive_candidates.py",
         ("saved_memory_helper", "restored_checkout_helper"),
         "Saved Zig archive candidate discovery should stay visible in both helper contracts.",
+    ),
+    (
+        "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the staged Zig toolchain candidate helper visible.",
+    ),
+    (
+        "scripts/check_issue3_restored_helper_surface_sync.py",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the restored-helper surface sync checker visible.",
+    ),
+    (
+        "scripts/check_issue3_build_readiness_rerun.py",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the build-readiness rerun helper visible.",
     ),
     (
         "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
@@ -56,6 +96,16 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "The restored-checkout helper still expects the issue #11 progress-tracker route printer.",
     ),
     (
+        "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the restored-helper surface sync route checker visible.",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the restored-helper surface sync route printer visible.",
+    ),
+    (
         "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
         ("saved_memory_route",),
         "The saved-memory route should keep its own fail-fast surface checker visible.",
@@ -64,6 +114,26 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
         ("saved_memory_route",),
         "The saved-memory route should keep its own route printer visible.",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust build-readiness route checker visible.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust build-readiness route printer visible.",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust archive-candidates route checker visible.",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
+        ("restored_checkout_helper",),
+        "The restored-checkout helper should keep the saved Rust archive-candidates route printer visible.",
     ),
     (
         "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
@@ -242,6 +312,14 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn(
             "scripts/check_issue3_saved_zig_archive_candidates.py",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             result["underreported_fragments"],
         )
 
