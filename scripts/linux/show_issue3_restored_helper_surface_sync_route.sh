@@ -26,6 +26,36 @@ print(shlex.quote(sys.argv[1]))
 PY
 }
 
+find_workspace_anchor() {
+    local root="$1"
+    local current="$1"
+
+    while true; do
+        if [[ -d "${current}/memory" || -d "${current}/agent_files" || "$(basename "${current}")" == "workspace" ]]; then
+            printf '%s\n' "${current}"
+            return
+        fi
+
+        local parent
+        parent="$(dirname "${current}")"
+        if [[ "${parent}" == "${current}" ]]; then
+            break
+        fi
+        current="${parent}"
+    done
+
+    printf '%s\n' "$(cd "${root}/.." && pwd)"
+}
+
+resolve_workspace_companion_path() {
+    local root="$1"
+    local name="$2"
+    local anchor
+
+    anchor="$(find_workspace_anchor "${root}")"
+    printf '%s\n' "${anchor}/${name}"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_HELPER_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -71,10 +101,10 @@ done
 
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 if [[ -z "${RESTORED_ROOT}" ]]; then
-    RESTORED_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/browser-memory-snapshot"
+    RESTORED_ROOT="$(resolve_workspace_companion_path "${HELPER_ROOT}" "browser-memory-snapshot")"
 fi
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(resolve_workspace_companion_path "${HELPER_ROOT}" "memory")"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${MEMORY_ROOT}/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip"
