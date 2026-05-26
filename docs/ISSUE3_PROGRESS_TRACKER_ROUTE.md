@@ -51,6 +51,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
 - `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
@@ -62,6 +63,8 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
 - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
@@ -119,6 +122,15 @@ surface `scripts/check_issue3_build_readiness_rerun.py` after a matching staged
 toolchain appears so it can print the exact Linux or WSL rerun command, run the
 matching-line gate after any staged restore, and surface the archive-restore
 checker before broader readiness is trusted again.
+
+If the immediate slice is about reusing a staged Zig candidate before archive
+restore, fail fast on the narrower staged-Zig route first and print its compact
+handoff before the broader saved-Zig or recovery routes are trusted:
+
+```bash
+bash ./scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
+```
 
 Only move back to issue `#3`-specific runtime commits after the environment
 gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
@@ -225,6 +237,14 @@ archive-selection route output:
 ```bash
 bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
+```
+
+Keep the narrower staged-toolchain route visible when the immediate slice is
+staged candidate reuse rather than saved-archive selection:
+
+```bash
+bash ./scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
 ```
 
 Keep the staged-toolchain candidate helper visible before unpacking the archive
