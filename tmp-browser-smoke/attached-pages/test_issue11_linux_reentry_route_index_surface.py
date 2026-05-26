@@ -22,8 +22,12 @@ FIXTURE_FILES = {
     - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
     - `scripts/linux/show_issue3_workspace_context_route.sh`
     - `scripts/check_issue3_workspace_context.py --repo-root .`
+    - `scripts/check_issue11_reentry_inventory_consistency.py --repo-root .`
     - `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
     - `scripts/linux/show_issue3_progress_tracker_route.sh`
+    - `scripts/check_issue11_progress_tracker_surface.py --repo-root .`
+    - `scripts/check_issue11_toolchains_root_candidates.py --repo-root .`
+    - `scripts/linux/show_issue11_runtime_reentry_tracker_route.sh --repo-root .`
     Goal:
     Started:
     Next:
@@ -131,6 +135,22 @@ class Issue11LinuxReentryRouteIndexSurfaceTest(unittest.TestCase):
             "Validation:",
         ):
             self.assertIn(fragment, self.route_index)
+
+    def test_route_index_keeps_live_issue11_helpers_and_excludes_stale_missing_ones(self) -> None:
+        for fragment in (
+            "scripts/check_issue11_progress_tracker_surface.py --repo-root .",
+            "scripts/check_issue11_reentry_inventory_consistency.py --repo-root .",
+            "scripts/check_issue11_toolchains_root_candidates.py --repo-root .",
+            "scripts/linux/show_issue11_runtime_reentry_tracker_route.sh --repo-root .",
+            "scripts/check_issue3_build_readiness_rerun.py --repo-root .",
+        ):
+            self.assertIn(fragment, self.route_index)
+
+        for fragment in (
+            "scripts/check_issue11_workspace_readiness.py --repo-root .",
+            "scripts/linux/show_issue11_matching_zig_readiness_command.sh --repo-root .",
+        ):
+            self.assertNotIn(fragment, self.route_index)
 
     def test_route_index_keeps_saved_input_rust_zig_and_runtime_handoffs_visible(self) -> None:
         for fragment in (
