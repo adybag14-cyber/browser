@@ -22,8 +22,11 @@ Read this together with:
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/WINDOWS_FULL_USE.md`
@@ -34,6 +37,7 @@ Read this together with:
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
@@ -42,6 +46,12 @@ Read this together with:
 - `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
 - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
+- `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
@@ -60,6 +70,8 @@ Read this together with:
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
+- `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/check_linux_build_readiness.py`
 
@@ -202,6 +214,15 @@ bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 python scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
+When the repo root already points at a deeper restored checkout or the workspace
+layout is nested enough that sibling-root guesses are no longer trustworthy,
+prefer the compact wrapper before wider saved-memory, archive, or build-readiness
+follow-up:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
 11. If the run still depends on the saved Memory repo snapshot or dependency
     bundles after the presence preflight, verify the saved-archive route surface
     and checksum path before trusting Linux or WSL follow-up work:
@@ -214,13 +235,15 @@ python scripts/check_issue3_saved_archive_integrity.py --repo-root .
 
 12. If the next blocker has already narrowed to saved Rust archive choice,
     staged Rust reuse, or the Rust-to-build-readiness bridge, run the saved Rust
-    archive-candidates surface first and then print the saved Rust archive and
-    build-readiness routes before widening back to the broader Linux or WSL
-    ladder:
+    archive-candidates surface first, keep the staged-Rust route surface visible,
+    and then print the saved Rust archive, staged-Rust, and build-readiness
+    routes before widening back to the broader Linux or WSL ladder:
 
 ```bash
 bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
 bash ./scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
 python scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
@@ -237,12 +260,17 @@ bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh
 ```
 
 14. When the route still only sees the attached Zig `0.17` fallback or needs a
-    branch-compatible `0.15.x` decision, run the Zig recovery surface first and
-    then print the toolchain recovery route before trusting focused Zig output:
+    branch-compatible `0.15.x` decision, run the Zig recovery surface first,
+    keep the staged-Zig route surface visible, and then print the toolchain
+    recovery and staged-Zig routes before trusting focused Zig output:
 
 ```bash
 bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
 bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
+bash ./scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
+python scripts/check_issue3_saved_zig_archive_candidates.py --repo-root .
+python scripts/check_issue3_staged_zig_toolchain_candidates.py --repo-root .
 ```
 
 15. If a real Zig `0.15.x` archive is available but not staged yet, fail fast
@@ -329,7 +357,8 @@ If the publication gate is still closed:
 - when the restored checkout should become its own helper root, keep the
   restored-helper sync route and the issue `#11` helper-contract checks between
   the restored-checkout route and the broader saved-memory preflight so late-added
-  saved-Rust, staged-toolchain, and rerun-route expectations fail fast
+  saved-Rust, staged-toolchain, rerun-route, and nested-workspace expectations
+  fail fast
 - prefer `show_issue3_saved_browser_snapshot_route.sh --sync-helper-surface`
   when the restored checkout should become its own follow-up root because the
   saved archive can lag the current branch-local helper surface
@@ -339,14 +368,16 @@ If the toolchain gate is still closed:
 - keep working in build/dependency readiness, docs, or validation routing
 - do not treat untouched-source compile failure as a signal that the issue `#3`
   runtime patch regressed
-- keep using the saved-memory route, the saved-archive integrity route, the
-  saved Rust route, the saved Rust archive-candidates route, the saved Rust
-  build-readiness route, the staged-Rust candidate helpers, the Zig recovery
-  route, the Zig archive-restore surface, the offline build-inputs route, the
-  Linux or WSL direct runtime surface check, the compact direct runtime route,
-  the build-readiness surface, the saved-archive Linux route, the readiness
-  helper, and the build-readiness rerun helper as the fast preflight set before
-  widening back out to larger replay plans
+- keep using the saved-memory route, the nested-workspace saved-memory wrapper,
+  the saved-archive integrity route, the saved Rust route, the saved Rust
+  archive-candidates route, the staged-Rust route, the saved Rust
+  build-readiness route, the staged-Rust candidate helpers, the saved Zig
+  archive-candidates route, the staged-Zig route, the Zig recovery route, the
+  Zig archive-restore surface, the offline build-inputs route, the Linux or WSL
+  direct runtime surface check, the compact direct runtime route, the
+  build-readiness surface, the saved-archive Linux route, the readiness helper,
+  and the build-readiness rerun helper as the fast preflight set before widening
+  back out to larger replay plans
 
 ## Working Rule
 
@@ -364,10 +395,12 @@ restored-checkout route when the saved snapshot already exists but the follow-up
 root still needs a quick readiness answer, use the restored-helper sync route
 and the issue `#11` helper-contract checks before the broader saved-memory
 preflight whenever the restored checkout should become its own helper root, use
-the saved-memory route before raw presence checks when the helper chain itself
-may have drifted, use the saved Rust route, the saved Rust archive-candidates
-route, and the saved Rust build-readiness bridge before trusting host toolchains
-or widening back to the broader Linux build-readiness ladder, use the Zig
+the saved-memory route and the nested-workspace wrapper before raw presence
+checks when the helper chain itself may have drifted or the layout is no longer
+flat, use the saved Rust route, the saved Rust archive-candidates route, the
+staged-Rust route, and the saved Rust build-readiness bridge before trusting
+host toolchains or widening back to the broader Linux build-readiness ladder,
+use the saved Zig archive-candidates route, the staged-Zig route, and the Zig
 recovery route before trusting fallback Zig output, use the offline build-inputs
 route before rebuilding archive-restore commands by hand, prefer the synced
 helper-surface restore when the restored checkout should become its own
