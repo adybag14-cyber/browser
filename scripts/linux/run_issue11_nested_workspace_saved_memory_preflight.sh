@@ -66,12 +66,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
-ROUTE_SURFACE_SCRIPT="${DEFAULT_REPO_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
-ROUTE_SURFACE_CMD=(
-    bash
-    "${ROUTE_SURFACE_SCRIPT}"
-    --repo-root "${REPO_ROOT}"
-)
 WORKSPACE_CONTEXT_SCRIPT="${DEFAULT_REPO_ROOT}/scripts/check_issue3_workspace_context.py"
 WORKSPACE_CONTEXT_CMD=(
     python3
@@ -105,6 +99,13 @@ MEMORY_ROOT="${SURFACED_VALUES[1]}"
 AGENT_FILES_ROOT="${SURFACED_VALUES[2]}"
 RESTORED_CHECKOUT_ROOT="${SURFACED_VALUES[3]}"
 SURFACED_FALLBACK_ZIG="${SURFACED_VALUES[4]}"
+
+ROUTE_SURFACE_SCRIPT="${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
+ROUTE_SURFACE_CMD=(
+    bash
+    "${ROUTE_SURFACE_SCRIPT}"
+    --repo-root "${REPO_ROOT}"
+)
 
 PREFLIGHT_CMD=(
     python3
