@@ -261,6 +261,7 @@ ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/che
 WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_workspace_context_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_workspace_context_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_workspace_context.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+NESTED_WORKSPACE_RUNNER_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_INPUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 QUICK_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --skip-archive-integrity-check"
 RESTORED_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
@@ -276,6 +277,7 @@ RUNTIME_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/sho
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     WORKSPACE_CONTEXT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
+    NESTED_WORKSPACE_RUNNER_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     QUICK_SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
     RESTORED_SAVED_INPUT_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -287,7 +289,10 @@ if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     RUNTIME_ROUTE_COMMAND+=" --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
+NESTED_WORKSPACE_RUNNER_QUICK_COMMAND="${NESTED_WORKSPACE_RUNNER_COMMAND} --skip-archive-integrity-check"
+
 if [[ "${SKIP_ARCHIVE_INTEGRITY_CHECK}" -eq 1 ]]; then
+    NESTED_WORKSPACE_RUNNER_COMMAND+=" --skip-archive-integrity-check"
     SAVED_INPUT_COMMAND+=" --skip-archive-integrity-check"
     RESTORED_SAVED_INPUT_COMMAND+=" --skip-archive-integrity-check"
     LIVE_HELPER_RESTORED_CHECKOUT_COMMAND+=" --skip-archive-integrity-check"
@@ -315,6 +320,8 @@ print(json.dumps({
         "workspace_context_route_surface": ${WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND@Q},
         "workspace_context_route": ${WORKSPACE_CONTEXT_ROUTE_COMMAND@Q},
         "workspace_context": ${WORKSPACE_CONTEXT_COMMAND@Q},
+        "nested_workspace_saved_memory_preflight": ${NESTED_WORKSPACE_RUNNER_COMMAND@Q},
+        "quick_nested_workspace_saved_memory_preflight": ${NESTED_WORKSPACE_RUNNER_QUICK_COMMAND@Q},
         "saved_input_preflight": ${SAVED_INPUT_COMMAND@Q},
         "quick_saved_input_preflight": ${QUICK_SAVED_INPUT_COMMAND@Q},
         "restored_checkout_saved_input_preflight": ${RESTORED_SAVED_INPUT_COMMAND@Q},
@@ -331,6 +338,8 @@ print(json.dumps({
     "notes": [
         "Run route_surface first so helper drift fails fast before the saved archive inputs are blamed.",
         "When the checkout sits deeper than the default sibling layout, run workspace_context_route_surface, workspace_context_route, and workspace_context before trusting saved_input_preflight defaults.",
+        "When the workspace-context output already identifies the right shared roots and the next step is just rerunning the saved-memory preflight with those surfaced paths, prefer nested_workspace_saved_memory_preflight instead of rebuilding overrides by hand.",
+        "Use quick_nested_workspace_saved_memory_preflight only for a fast branch decision when archive integrity is not the question but the surfaced roots still need to stay honest.",
         "Use saved_input_preflight for the normal archive readability and presence check.",
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
@@ -391,6 +400,12 @@ Suggested route
   Workspace-context helper:
     ${WORKSPACE_CONTEXT_COMMAND}
 
+  Issue #11 nested-workspace saved-Memory preflight:
+    ${NESTED_WORKSPACE_RUNNER_COMMAND}
+
+  Quick nested-workspace saved-Memory presence check:
+    ${NESTED_WORKSPACE_RUNNER_QUICK_COMMAND}
+
   Saved-Memory preflight:
     ${SAVED_INPUT_COMMAND}
 
@@ -431,6 +446,7 @@ Working rules
 =============
   - Run the surface check first so helper drift fails fast before the run blames missing Memory inputs.
   - Run the workspace-context surface, route, and helper before the saved-Memory preflight when the checkout sits deeper than the default sibling layout or the next helper would otherwise guess the wrong roots.
+  - Prefer the issue #11 nested-workspace runner when the workspace-context output already surfaced the right roots and the next question is simply whether the saved-memory preflight passes once those surfaced paths are threaded through honestly.
   - Run the saved-Memory preflight before restore, build-readiness, or runtime helpers when the route depends on the saved repo snapshot and dependency bundles.
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
