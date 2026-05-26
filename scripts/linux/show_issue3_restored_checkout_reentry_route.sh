@@ -41,9 +41,12 @@ path_has_live_helper_surface() {
         "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md"
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
         "docs/ISSUE3_RUNTIME_REENTRY_GATES.md"
+        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
         "scripts/check_issue3_restored_checkout.py"
+        "scripts/check_issue3_restored_helper_surface_sync.py"
         "scripts/check_issue3_saved_memory_inputs.py"
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+        "scripts/linux/show_issue3_progress_tracker_route.sh"
         "scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
     )
     local relative_path
