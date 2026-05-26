@@ -38,6 +38,8 @@ helpers:
 - `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
+- `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/check_issue3_saved_zig_archive_candidates.py`
 
 ## Goal
@@ -51,6 +53,10 @@ Give the next writable checkout one branch-local route for:
 - surfacing the practical workspace roots for nested or restored checkouts
   before the next readiness rerun or explicit route override is rebuilt by hand
 - checking that the Linux build-readiness note and helper surfaces still line up
+- surfacing saved Rust archive candidates under the saved archive area before a
+  hand-built restore path is guessed
+- surfacing staged Rust toolchain candidates under `../toolchains` before host
+  Rust or a restore step is blamed for the next readiness rerun
 - staging the offline sibling dependencies expected by `build.zig.zon`
 - restoring the saved Rust `1.79.0` toolchain through one compact helper route
 - surfacing the attached fallback Zig archive location when only the
@@ -224,6 +230,24 @@ Then use `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` and
 `restore_zig_toolchain_archive.sh` to stage that matching line under
 `../toolchains` before rerunning recovery.
 
+## Surface Saved Rust Candidates Before Rebuilding The Restore Path
+
+If the exact saved Rust archive path is not already known or a restored Rust
+`1.79.x` toolchain may already be staged under `../toolchains`, surface those
+helpers before rebuilding the restore command or blaming host Rust:
+
+```bash
+python scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
+python scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
+```
+
+Use `--json` when another helper needs the surfaced archive choice or staged
+candidate result as structured output.
+
+Prefer an exact saved Rust `1.79.0` archive when one exists. Otherwise prefer
+the newest saved archive on the same `1.79.x` line, and reuse a surfaced staged
+`1.79.x` toolchain before rebuilding the restore path by hand.
+
 ## Restore The Saved Rust Toolchain Before Broader Readiness
 
 When the route is reusing the saved archives, run the saved Rust surface check
@@ -316,24 +340,28 @@ The Linux route now stays short and ordered:
     `scripts/check_issue3_saved_zig_archive_candidates.py`
 15. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-16. A saved Rust route surface check using
+16. A saved Rust archive discovery helper using
+    `scripts/check_issue3_saved_rust_archive_candidates.py`
+17. A staged Rust toolchain candidate helper using
+    `scripts/check_issue3_staged_rust_toolchain_candidates.py`
+18. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-17. A saved Rust restore route using
+19. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-18. A dedicated offline build-inputs route using
+20. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-19. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-20. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+21. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+22. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-21. A saved Rust `1.79.0` restore command
-22. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-23. The attached fallback Zig archive location when it is present beside the
-    repo workspace, so runs can surface it without treating it as branch-compatible
-    validation evidence
-24. A full readiness command that expects the saved archives, offline deps, and
+23. A saved Rust `1.79.0` restore command
+24. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+25. The attached fallback Zig archive location when it is present beside the
+    repo workspace, so runs can surface it without treating it as
+    branch-compatible validation evidence
+26. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-25. A direct handoff back to the smaller Windows runtime revalidation route once
-    the saved-archive and toolchain checks stop being the blocker
+27. A direct handoff back to the smaller Windows runtime revalidation route
+    once the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
 
