@@ -171,6 +171,8 @@ LINUX_BUILD_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_linux_build_
 SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
 RESTORED_CHECKOUT_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh"
 RESTORED_CHECKOUT_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
+RESTORED_HELPER_SYNC_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh"
+RESTORED_HELPER_SYNC_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_restored_helper_surface_sync_route.sh"
 SAVED_MEMORY_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
 SAVED_MEMORY_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh"
 PROGRESS_TRACKER_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh"
@@ -203,6 +205,8 @@ WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg "${WORKSPACE_CONTEXT_SCRIPT
 SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RESTORED_CHECKOUT_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
+RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${RESTORED_HELPER_SYNC_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+RESTORED_HELPER_SYNC_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_HELPER_SYNC_ROUTE_SCRIPT}") --helper-root $(format_shell_arg "${REPO_ROOT}") --restored-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}")"
 SAVED_MEMORY_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_MEMORY_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_MEMORY_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}")"
 PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRACKER_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -281,6 +285,7 @@ print(json.dumps({
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md",
         "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
         "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+        "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
         "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
         "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
         "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
@@ -301,6 +306,8 @@ print(json.dumps({
         "saved_browser_snapshot_route_synced": ${SNAPSHOT_SYNC_ROUTE_COMMAND@Q},
         "restored_checkout_route_surface": ${RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND@Q},
         "restored_checkout_route": ${RESTORED_CHECKOUT_ROUTE_COMMAND@Q},
+        "restored_helper_sync_route_surface": ${RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND@Q},
+        "restored_helper_sync_route": ${RESTORED_HELPER_SYNC_ROUTE_COMMAND@Q},
         "saved_memory_route_surface": ${SAVED_MEMORY_ROUTE_SURFACE_COMMAND@Q},
         "saved_memory_route": ${SAVED_MEMORY_ROUTE_COMMAND@Q},
         "progress_tracker_route_surface": ${PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND@Q},
@@ -338,9 +345,11 @@ print(json.dumps({
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive helper surface may be stale.",
         "Run the restored_checkout_route_surface command and then the restored_checkout_route command when a reusable checkout already exists or immediately after the snapshot restore completes.",
+        "Run the restored_helper_sync_route_surface command and then the restored_helper_sync_route command when the restored checkout should become its own helper root before broader saved-memory, saved-archive, build-readiness, or runtime follow-up helpers are trusted from that restored checkout.",
+        "Keep the narrower restored-helper sync route between the broader restored-checkout route and the saved-memory route so stale issue #11 helper drift is caught before later helpers run from the restored checkout.",
         "Run the saved_memory_route_surface command and then the saved_memory_route command when the route depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.",
         "Run the progress_tracker_route_surface command and then the progress_tracker_route command when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.",
-        "Run the saved_memory_inputs command only after the dedicated saved-Memory route has been surfaced when restore, build-readiness, or runtime follow-up commands should stay on one compact helper path.",
+        "Run the saved_memory_inputs command only after the dedicated saved-Memory route has been surfaced when restore, build-readiness, or runtime follow-up commands should stay on one compact helper surface.",
         "The saved_memory_inputs command now carries the surfaced memory, agent_files, and restored-checkout roots so nested checkouts do not silently fall back to brittle default siblings.",
         "Run the saved_archive_route_surface command and then the saved_archive_route command when the route needs the dedicated checksum route back on one compact helper surface before offline staging starts.",
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
@@ -387,6 +396,7 @@ Read first
   docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
   docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md
   docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
+  docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
   docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
@@ -426,6 +436,12 @@ Suggested route
 
   Restored-checkout re-entry route:
     ${RESTORED_CHECKOUT_ROUTE_COMMAND}
+
+  Restored-helper-surface sync route surface check:
+    ${RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND}
+
+  Restored-helper-surface sync route:
+    ${RESTORED_HELPER_SYNC_ROUTE_COMMAND}
 
   Saved Memory route surface check:
     ${SAVED_MEMORY_ROUTE_SURFACE_COMMAND}
@@ -524,6 +540,8 @@ Working rules
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Prefer the synced saved-browser-snapshot route when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Run the restored-checkout route surface check and then the restored-checkout route when a reusable checkout already exists or immediately after the restore route finishes.
+  - Run the restored-helper-surface sync route surface check and then the restored-helper-surface sync route when the restored checkout is supposed to become its own helper root before later saved-Memory, saved-archive, build-readiness, or runtime follow-up helpers are trusted from that restored checkout.
+  - Keep the narrower restored-helper-surface sync route between the broader restored-checkout route and the saved Memory route so stale issue #11 helper drift is not hidden behind a later saved-Memory pass.
   - Run the saved Memory route surface check and then the saved Memory route when the replay depends on the saved repo snapshot and dependency bundles and the helper chain itself may have drifted.
   - Run the progress-tracker route surface check and then the progress-tracker route when the run is still environment-gated and issue #11 should stay visible as the current status lane before broader build-readiness or Zig follow-up output is treated as the plan.
   - Run the saved Memory input preflight after the dedicated saved Memory route has been surfaced when the route should keep restore, build-readiness, or runtime follow-up commands on one compact helper surface.
