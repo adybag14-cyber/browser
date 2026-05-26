@@ -56,7 +56,11 @@ FIXTURE_FILES = {
     ```
 
     A concrete stale-archive symptom is a restored checkout that still looks like a
-    browser repo but is missing newer helper files.
+    browser repo but is missing newer helper files such as
+    `scripts/check_issue3_saved_memory_inputs.py` or
+    `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`.
+    Treat that as archive age, not restore corruption, and rerun the restore with
+    `--sync-helper-surface` before Linux or WSL follow-up work.
     """,
 }
 
@@ -142,6 +146,19 @@ class Issue3SavedBrowserSnapshotRouteSyncFollowupsTest(unittest.TestCase):
         )
         indices = [sync_only_section.index(fragment) for fragment in ordered_fragments]
         self.assertEqual(indices, sorted(indices))
+
+    def test_stale_archive_symptom_calls_out_missing_saved_memory_and_runtime_helpers(self) -> None:
+        stale_archive_section = self._section_between(
+            "A concrete stale-archive symptom is a restored checkout that still looks like a",
+            "Treat that as archive age, not restore corruption",
+        )
+        for fragment in (
+            "scripts/check_issue3_saved_memory_inputs.py",
+            "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh",
+            "missing newer helper files",
+        ):
+            self.assertIn(fragment, stale_archive_section)
+        self.assertIn("--sync-helper-surface", self.route_note)
 
 
 if __name__ == "__main__":
