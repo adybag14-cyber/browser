@@ -68,6 +68,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/check_issue11_progress_tracker_surface.py`
+- `scripts/check_issue11_saved_memory_helper_contract.py`
 - `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/check_issue11_workspace_readiness.py`
 - `scripts/show_issue11_matching_zig_readiness_command.py`
@@ -142,6 +143,7 @@ broader restore, saved-memory, or build-readiness routes are trusted:
 
 ```bash
 python ./scripts/check_issue11_progress_tracker_surface.py --repo-root .
+python ./scripts/check_issue11_saved_memory_helper_contract.py --repo-root .
 python ./scripts/check_issue11_reentry_inventory_consistency.py --repo-root .
 python ./scripts/check_issue11_workspace_readiness.py --repo-root .
 ```
@@ -152,6 +154,16 @@ Linux or WSL readiness command to run:
 
 ```bash
 python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
+```
+
+Use the saved-memory helper-contract checker before the broader saved-memory
+preflight when the immediate slice is about whether a restored helper surface
+still matches the live restore-helper sync inventory that issue `#11` now
+expects:
+
+```bash
+python ./scripts/check_issue11_saved_memory_helper_contract.py --repo-root .
+python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
 
 Use that helper after the saved-Zig candidate discovery route or a successful
