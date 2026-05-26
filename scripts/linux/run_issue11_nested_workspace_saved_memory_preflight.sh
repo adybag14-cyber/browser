@@ -100,11 +100,22 @@ AGENT_FILES_ROOT="${SURFACED_VALUES[2]}"
 RESTORED_CHECKOUT_ROOT="${SURFACED_VALUES[3]}"
 SURFACED_FALLBACK_ZIG="${SURFACED_VALUES[4]}"
 
+SURFACED_WORKSPACE_CONTEXT_SCRIPT="${HELPER_ROOT}/scripts/check_issue3_workspace_context.py"
+SURFACED_WORKSPACE_CONTEXT_CMD=(
+    python3
+    "${SURFACED_WORKSPACE_CONTEXT_SCRIPT}"
+    --repo-root "${REPO_ROOT}"
+    --json
+)
+if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
+    SURFACED_WORKSPACE_CONTEXT_CMD+=(--fallback-zig-archive "${FALLBACK_ZIG_ARCHIVE}")
+fi
+
 ROUTE_SURFACE_SCRIPT="${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
 ROUTE_SURFACE_CMD=(
     bash
     "${ROUTE_SURFACE_SCRIPT}"
-    --repo-root "${REPO_ROOT}"
+    --repo-root "${HELPER_ROOT}"
 )
 
 PREFLIGHT_CMD=(
@@ -151,21 +162,33 @@ if fallback:
 if sys.argv[1] == "1":
     command.append("--skip-archive-integrity-check")
 
+workspace_context_command = [
+    "python3",
+    f"{context['helper_root']}/scripts/check_issue3_workspace_context.py",
+    "--repo-root",
+    context["repo_root"],
+    "--json",
+]
+surfaced_fallback = context.get("fallback_zig_archive")
+if surfaced_fallback:
+    workspace_context_command.extend(["--fallback-zig-archive", surfaced_fallback])
+
+route_surface_command = [
+    "bash",
+    f"{context['helper_root']}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
+    "--repo-root",
+    context["helper_root"],
+]
+
 print(json.dumps({
     "profile": "issue11-nested-workspace-saved-memory-preflight",
-    "route_surface_command": [
-        "bash",
-        f"{context['helper_root']}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
-        "--repo-root",
-        context["repo_root"],
-    ],
+    "route_surface_command": route_surface_command,
     "route_surface_command_shell": " ".join(
-        shlex.quote(part) for part in [
-            "bash",
-            f"{context['helper_root']}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
-            "--repo-root",
-            context["repo_root"],
-        ]
+        shlex.quote(part) for part in route_surface_command
+    ),
+    "workspace_context_command": workspace_context_command,
+    "workspace_context_command_shell": " ".join(
+        shlex.quote(part) for part in workspace_context_command
     ),
     "workspace_context": context,
     "preflight": preflight,
@@ -192,7 +215,7 @@ Saved-Memory route surface command:
   $(printf '%q ' "${ROUTE_SURFACE_CMD[@]}")
 
 Workspace-context command:
-  $(printf '%q ' "${WORKSPACE_CONTEXT_CMD[@]}")
+  $(printf '%q ' "${SURFACED_WORKSPACE_CONTEXT_CMD[@]}")
 
 Saved-Memory preflight command:
   $(printf '%q ' "${PREFLIGHT_CMD[@]}")
