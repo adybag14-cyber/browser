@@ -24,6 +24,7 @@ FILES = {
     "restored_checkout_helper": "scripts/check_issue3_restored_checkout.py",
     "restore_helper": "scripts/linux/restore_saved_browser_snapshot.sh",
     "progress_tracker_route": "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+    "progress_tracker_route_printer": "scripts/linux/show_issue3_progress_tracker_route.sh",
     "restored_helper_sync_route": "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
     "saved_rust_build_readiness_route": "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
     "linux_build_readiness_route": "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
@@ -188,6 +189,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
         ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
         "The issue #11 progress-tracker route printer should stay visible before broader Linux/WSL reruns.",
+    ),
+    (
+        "scripts/check_issue11_toolchains_root_candidates.py",
+        ("progress_tracker_route", "progress_tracker_route_printer"),
+        "The issue #11 progress-tracker note and route printer should keep the toolchains-root candidate helper visible before nested Linux/WSL reruns trust a guessed staged-toolchains root.",
     ),
     (
         "scripts/check_issue11_saved_memory_helper_contract.py",
@@ -496,6 +502,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
             result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
+        )
+
+    def test_flags_missing_toolchains_root_candidate_helper_in_progress_tracker_route_printer(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "progress_tracker_route_printer": {
+                    "scripts/check_issue11_toolchains_root_candidates.py"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/linux/show_issue3_progress_tracker_route.sh",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/check_issue11_toolchains_root_candidates.py",
+            result["missing_by_file"]["scripts/linux/show_issue3_progress_tracker_route.sh"],
         )
 
     def test_flags_missing_workspace_context_helper_in_saved_rust_build_doc(self) -> None:
