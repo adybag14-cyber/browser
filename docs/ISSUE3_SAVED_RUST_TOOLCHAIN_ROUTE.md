@@ -4,15 +4,20 @@ Use this note when the blocked issue `#3` Linux or WSL recovery path still
 needs the saved Rust `1.79.0` toolchain from Memory before the broader
 build-readiness helper can be trusted.
 
-This route keeps the staged-toolchain discovery step, the saved Rust archive
-check, the restore command, and the shell handoff on one branch-local surface
-so future reruns do not need to rebuild the Rust staging path by hand. It now
-defaults to the same restored location used by the broader Linux build-readiness
-helper: `../toolchains/rust-1.79.0` beside the repo workspace.
+This route keeps the lower-volume issue `#11` status lane, the staged-toolchain
+discovery step, the saved Rust archive check, the restore command, and the
+shell handoff on one branch-local surface so future reruns do not need to
+rebuild the Rust staging path by hand. It now defaults to the same restored
+location used by the broader Linux build-readiness helper:
+`../toolchains/rust-1.79.0` beside the repo workspace.
 
 Companion helpers:
 
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
+- `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
@@ -35,6 +40,8 @@ Use this route when any of these are true:
   branch companion expected by the offline issue `#3` route
 - a run wants the exact staged-toolchain discovery, restore, and shell setup
   commands on one compact helper surface before reopening `zig build`
+- issue `#11` should stay visible as the active Linux or WSL re-entry status
+  lane while the saved Rust toolchain is still the blocker
 
 ## Run The Surface Check First
 
@@ -46,6 +53,20 @@ bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
 
 Use `--json` when another helper wants the surface-check result as structured
 output.
+
+## Keep Issue #11 Visible Before Wider Restore
+
+Before treating the saved Rust archive or staged Rust discovery output as the
+current lane, reopen the lower-volume tracker surface:
+
+```bash
+bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
+bash ./scripts/linux/show_issue3_progress_tracker_route.sh
+```
+
+That keeps issue `#11`, the saved-memory follow-up, and the broader Linux or
+WSL build-readiness handoff visible while the saved Rust toolchain remains the
+main blocker.
 
 ## Surface Saved Archive Candidates Before Restore
 
@@ -112,25 +133,34 @@ The helper prints:
 
 1. a fail-fast surface check command for
    `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-2. a saved-archive candidate discovery command for
+2. the issue `#11` tracker surface commands that should reopen the lower-volume
+   re-entry lane before wider Rust or Linux follow-up work is treated as the
+   active slice
+3. a saved-archive candidate discovery command for
    `scripts/check_issue3_saved_rust_archive_candidates.py`
-3. a staged-toolchain candidate discovery command for
+4. a staged-toolchain candidate discovery command for
    `scripts/check_issue3_staged_rust_toolchain_candidates.py`
-4. a `--check-only` surface check for `restore_saved_rust_toolchain.sh`
-5. the restore command for the saved Rust `1.79.0` archive
-6. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore or from
+5. a `--check-only` surface check for `restore_saved_rust_toolchain.sh`
+6. the restore command for the saved Rust `1.79.0` archive
+7. the exact `PATH`, `CARGO`, and `RUSTC` exports to reuse after restore or from
    a matching staged toolchain
-7. the matching `check_linux_build_readiness.py` preflight to rerun after the
+8. the matching `check_linux_build_readiness.py` preflight to rerun after the
    toolchain is restored or reused
-8. the aligned default restore destination under `../toolchains/rust-1.79.0`
+9. the aligned default restore destination under `../toolchains/rust-1.79.0`
    so the saved-Rust route and the broader build-readiness route point at the
    same toolchain tree
+10. the saved-Rust build-readiness bridge that should carry the run back into
+    the broader Linux or WSL helper surface once the Rust toolchain stops being
+    the blocker
 
 ## Working Rules
 
 - Run `bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
   first so missing route docs or helper drift fails before the saved archive is
   blamed.
+- Reopen `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md` and its route surface before
+  wider Linux or WSL follow-up work is treated as the active status lane while
+  the saved Rust toolchain is still the blocker.
 - Run `bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
   and `bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
   when the immediate slice is choosing the saved archive or proving that archive
@@ -149,6 +179,9 @@ The helper prints:
   tar extraction command by hand.
 - Reuse the restored or surfaced `PATH`, `CARGO`, and `RUSTC` values when
   rerunning the Linux or WSL build-readiness helper.
-- Pair this route with `show_issue3_linux_build_readiness_route.sh` when the run
-  still needs the saved archive, offline dependency, and Zig line surfaces in
-  one ordered path.
+- Pair this route with `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` when
+  the run should keep the issue `#11` tracker, saved-memory, staged-Rust, and
+  Linux build-readiness handoff visible on one ordered branch-local surface.
+- Pair this route with `show_issue3_linux_build_readiness_route.sh` when the
+  run still needs the saved archive, offline dependency, and Zig line surfaces
+  in one ordered path.
