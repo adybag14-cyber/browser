@@ -243,15 +243,43 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_memory_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "memory")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "memory").resolve()
 
 
 def resolve_default_agent_files_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "agent_files")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "agent_files").resolve()
 
 
 def resolve_default_restored_checkout_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, DEFAULT_RESTORED_CHECKOUT_NAME)
+    if located is not None and located.is_dir():
+        return located
     if (repo_root / REQUIRED_REPO_ROOT_FILE).is_file():
         return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
     return (repo_root / DEFAULT_RESTORED_CHECKOUT_NAME).resolve()
@@ -314,9 +342,13 @@ def path_has_live_helper_surface(path: Path) -> bool:
 
 def resolve_default_helper_root(repo_root: Path) -> Path:
     repo_root = repo_root.resolve()
+    restored_checkout_root = resolve_default_restored_checkout_root(repo_root)
     cwd = Path.cwd().resolve()
-    if repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME and cwd != repo_root and path_has_live_helper_surface(cwd):
-        return cwd
+    if cwd != repo_root and path_has_live_helper_surface(cwd):
+        if repo_root == restored_checkout_root or restored_checkout_root in repo_root.parents:
+            return cwd
+    if path_has_live_helper_surface(repo_root):
+        return repo_root
     return repo_root
 
 
@@ -976,6 +1008,24 @@ class SavedMemoryInputsTests(unittest.TestCase):
                 self.assertEqual(resolve_default_helper_root(restored_checkout_root), restored_checkout_root.resolve())
             finally:
                 os.chdir(original_cwd)
+
+    def test_default_roots_rediscover_nested_workspace_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir) / "workspace"
+            repo_root = workspace_root / "runs" / "current" / "browser"
+            memory_root = workspace_root / "memory"
+            agent_files_root = workspace_root / "agent_files"
+            restored_checkout_root = workspace_root / DEFAULT_RESTORED_CHECKOUT_NAME
+
+            repo_root.mkdir(parents=True)
+            memory_root.mkdir()
+            agent_files_root.mkdir()
+            restored_checkout_root.mkdir()
+            (repo_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+
+            self.assertEqual(resolve_default_memory_root(repo_root), memory_root.resolve())
+            self.assertEqual(resolve_default_agent_files_root(repo_root), agent_files_root.resolve())
+            self.assertEqual(resolve_default_restored_checkout_root(repo_root), restored_checkout_root.resolve())
 
     def test_default_roots_follow_workspace_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
