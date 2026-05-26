@@ -112,6 +112,8 @@ fi
 
 ROUTE_SURFACE="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SYNC_CHECK="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_restored_helper_surface_sync.py") --helper-root $(format_shell_arg "${HELPER_ROOT}") --restored-root $(format_shell_arg "${RESTORED_ROOT}")"
+ISSUE11_SAVED_MEMORY_CONTRACT="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py") --repo-root $(format_shell_arg "${RESTORED_ROOT}")"
+ISSUE11_REENTRY_INVENTORY="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py") --repo-root $(format_shell_arg "${RESTORED_ROOT}")"
 SYNC_REFRESH="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/restore_saved_browser_snapshot.sh") --browser-root $(format_shell_arg "${HELPER_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --destination $(format_shell_arg "${RESTORED_ROOT}") --sync-only"
 
 if [[ "${JSON}" -eq 1 ]]; then
@@ -134,11 +136,14 @@ print(json.dumps({
     "commands": {
         "route_surface": ${ROUTE_SURFACE@Q},
         "sync_check": ${SYNC_CHECK@Q},
+        "issue11_saved_memory_contract": ${ISSUE11_SAVED_MEMORY_CONTRACT@Q},
+        "issue11_reentry_inventory": ${ISSUE11_REENTRY_INVENTORY@Q},
         "sync_refresh": ${SYNC_REFRESH@Q}
     },
     "notes": [
         "Run the route surface first so missing route files fail before the restored checkout is trusted as its own helper root.",
         "Run the narrower sync check after the broader restored-checkout readiness check and before saved-memory, saved-archive, build-readiness, or runtime follow-up helpers are trusted from the restored checkout.",
+        "Run the two issue #11 contract checks immediately after the narrower sync check so the restored checkout keeps the current helper contract visible before broader follow-up helpers run.",
         "Use the sync-only refresh when the restored checkout already exists and only the helper surface needs to be repaired in place."
     ]
 }, indent=2))
@@ -170,6 +175,12 @@ Suggested route
   Narrower helper-surface sync check:
     ${SYNC_CHECK}
 
+  Issue #11 saved-memory helper contract check:
+    ${ISSUE11_SAVED_MEMORY_CONTRACT}
+
+  Issue #11 re-entry inventory consistency check:
+    ${ISSUE11_REENTRY_INVENTORY}
+
   In-place helper-surface refresh when the restored checkout is stale:
     ${SYNC_REFRESH}
 
@@ -177,5 +188,6 @@ Working rules
 =============
   - Run the route surface first so missing route files fail before the restored checkout is trusted as its own helper root.
   - Use the narrower sync check after the broader restored-checkout readiness check and before saved-memory, saved-archive, build-readiness, or runtime follow-up helpers are trusted from the restored checkout.
+  - Run the two issue #11 contract checks immediately after the narrower sync check so the restored checkout keeps the current helper contract visible before broader follow-up helpers run.
   - Use the sync-only refresh when the restored checkout already exists and only the helper surface needs to be repaired in place.
 EOF
