@@ -198,6 +198,8 @@ SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/s
 SAVED_RUST_BRIDGE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_RUST_BRIDGE_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --rust-toolchain-dir $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 SAVED_RUST_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_RUST_ARCHIVE_CANDIDATES_COMMAND="python3 $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_rust_archive_candidates.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 STAGED_RUST_TOOLCHAIN_CANDIDATES_COMMAND="python3 $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_staged_rust_toolchain_candidates.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-parent $(format_shell_arg "${TOOLCHAINS_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
@@ -244,6 +246,8 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    "saved_archive_integrity_route": %s,\n' "$(json_escape "${SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND}")"
     printf '    "saved_rust_build_readiness_route_surface": %s,\n' "$(json_escape "${SAVED_RUST_BRIDGE_ROUTE_SURFACE_COMMAND}")"
     printf '    "saved_rust_build_readiness_route": %s,\n' "$(json_escape "${SAVED_RUST_BRIDGE_ROUTE_COMMAND}")"
+    printf '    "saved_rust_archive_route_surface": %s,\n' "$(json_escape "${SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND}")"
+    printf '    "saved_rust_archive_candidates_route": %s,\n' "$(json_escape "${SAVED_RUST_ARCHIVE_ROUTE_COMMAND}")"
     printf '    "saved_rust_toolchain_route_surface": %s,\n' "$(json_escape "${SAVED_RUST_ROUTE_SURFACE_COMMAND}")"
     printf '    "saved_rust_archive_candidates": %s,\n' "$(json_escape "${SAVED_RUST_ARCHIVE_CANDIDATES_COMMAND}")"
     printf '    "staged_rust_toolchain_candidates": %s,\n' "$(json_escape "${STAGED_RUST_TOOLCHAIN_CANDIDATES_COMMAND}")"
@@ -264,6 +268,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.")"
     printf '    %s,\n' "$(json_escape "Surface the saved-archive integrity route before saved Rust, saved Zig, build-readiness, or Zig recovery reruns whenever the run needs to prove the mounted repo and dependency bundles still match the expected exact artifacts.")"
     printf '    %s,\n' "$(json_escape "When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the saved-Rust build-readiness bridge before the raw saved-Rust restore route so the shorter issue #11 handoff stays visible.")"
+    printf '    %s,\n' "$(json_escape "When the immediate slice is about choosing the saved Rust archive itself, surface the dedicated saved-Rust archive route before the raw candidate helpers so the narrower branch-local handoff stays visible.")"
     printf '    %s,\n' "$(json_escape "Use the raw saved-Rust restore route after the bridge only when the exact PATH, CARGO, and RUSTC export surface is still needed.")"
     printf '    %s,\n' "$(json_escape "Surface saved Rust archive candidates and staged Rust toolchain candidates before unpacking the archive again so the route can reuse a matching 1.79.0 toolchain when one is already staged.")"
     printf '    %s,\n' "$(json_escape "When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.")"
@@ -326,6 +331,12 @@ Suggested route
   Saved Rust build-readiness bridge route:
     ${SAVED_RUST_BRIDGE_ROUTE_COMMAND}
 
+  Saved Rust archive route surface check:
+    ${SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND}
+
+  Saved Rust archive candidates route:
+    ${SAVED_RUST_ARCHIVE_ROUTE_COMMAND}
+
   Saved Rust route surface check:
     ${SAVED_RUST_ROUTE_SURFACE_COMMAND}
 
@@ -381,6 +392,7 @@ Working rules
   - Use issue #11 while the Linux or WSL re-entry lane is still blocked on saved-input, toolchain, or offline dependency gates.
   - Surface the saved-archive integrity route before saved Rust, saved Zig, build-readiness, or Zig recovery reruns whenever the run needs to prove the mounted repo and dependency bundles still match the expected exact artifacts.
   - When the immediate slice is about restoring or reusing the saved Rust toolchain, surface the saved-Rust build-readiness bridge before the raw saved-Rust restore route so the shorter issue #11 handoff stays visible.
+  - When the immediate slice is about choosing the saved Rust archive itself, surface the dedicated saved-Rust archive route before the raw candidate helpers so the narrower branch-local handoff stays visible.
   - Use the raw saved-Rust restore route after the bridge only when the exact PATH, CARGO, and RUSTC export surface is still needed.
   - Surface saved Rust archive candidates and staged Rust toolchain candidates before unpacking the archive again so the route can reuse a matching 1.79.0 toolchain when one is already staged.
   - When the immediate slice is about choosing or restoring a saved Zig 0.15.x archive, surface the dedicated saved-Zig route before falling back to the broader Zig recovery note.
