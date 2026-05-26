@@ -92,8 +92,9 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
             "restored_checkout_helper",
             "progress_tracker_route",
             "saved_rust_build_readiness_route",
+            "linux_build_readiness_route",
         ),
-        "The progress-tracker and saved-Rust build-readiness route notes should keep the nested-workspace saved-Memory preflight helper visible before Rust archive selection or restore work widens.",
+        "The progress-tracker, saved-Rust build-readiness, and Linux build-readiness route notes should keep the nested-workspace saved-Memory preflight helper visible before saved-memory preflight, Rust archive selection, or restore work widens.",
     ),
     (
         "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
@@ -535,6 +536,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
             result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
+        )
+
+    def test_flags_missing_nested_workspace_helper_in_linux_build_readiness_doc(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "linux_build_readiness_route": {
+                    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+            result["missing_by_file"]["docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"],
         )
 
     def test_flags_missing_staged_rust_route_surface_in_saved_rust_build_doc(self) -> None:
