@@ -131,7 +131,7 @@ MATCHING_LINE_GATE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/
 BUILD_RERUN_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_build_readiness_rerun.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 SAVED_ZIG_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 RECOVERY_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_zig_toolchain_recovery_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
-PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 
 if [[ -n "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     MATCHING_LINE_GATE_COMMAND="${MATCHING_LINE_GATE_COMMAND} --fallback-zig-archive $(format_shell_arg "${FALLBACK_ZIG_ARCHIVE}")"
@@ -169,6 +169,7 @@ print(json.dumps({
         "When a matching staged candidate exists, print the exact build-readiness rerun command before the broader helper is retried.",
         "If no matching staged candidate exists, hand off to the saved-Zig archive route or the broader Zig recovery route instead of rebuilding restore commands by hand.",
         "Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain recovery, or Linux or WSL readiness gates.",
+        "Thread the surfaced saved-archives and toolchains roots through the issue #11 handoff so nested or restored follow-up runs keep the same practical workspace layout.",
         "Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory, toolchains, and agent_files roots without hand overrides."
     ]
 }, indent=2))
@@ -225,5 +226,6 @@ Working rules
   - When a matching staged candidate exists, print the exact build-readiness rerun command before the broader helper is retried.
   - If no matching staged candidate exists, hand off to the saved-Zig archive route or the broader Zig recovery route instead of rebuilding restore commands by hand.
   - Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain recovery, or Linux or WSL readiness gates.
+  - Thread the surfaced saved-archives and toolchains roots through the issue #11 handoff so nested or restored follow-up runs keep the same practical workspace layout.
   - Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory, toolchains, and agent_files roots without hand overrides.
 EOF
