@@ -170,6 +170,16 @@ Use that helper after the saved-Zig candidate discovery route or a successful
 workspace-aware readiness check so the next rerun command stays anchored to the
 same shared `memory`, `toolchains`, `agent_files`, and `offline-deps` roots.
 
+If the immediate slice has already narrowed to the saved-memory preflight, the
+broader Linux or WSL build-readiness ladder, or the Zig-line recovery follow-up,
+keep their compact route printers visible on the same issue `#11` handoff:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
+```
+
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
 surface the staged Zig candidate helper before unpacking the archive again,
