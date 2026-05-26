@@ -162,6 +162,9 @@ SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
     TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "toolchains" || true)"
     if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" ".toolchains" || true)"
+    fi
+    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
         TOOLCHAINS_ROOT="${HELPER_WORKSPACE_ROOT}/toolchains"
     fi
 fi
