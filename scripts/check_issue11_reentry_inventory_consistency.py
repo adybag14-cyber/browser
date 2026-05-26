@@ -66,6 +66,11 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "Staged Rust toolchain candidate discovery should stay visible across the reusable helper inventories and route notes.",
     ),
     (
+        "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness route notes should keep the nested-workspace saved-Memory preflight helper visible before Rust archive selection or restore work widens.",
+    ),
+    (
         "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
         ("progress_tracker_route", "saved_rust_build_readiness_route"),
         "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route note visible before archive restore is retried.",
@@ -314,6 +319,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "scripts/check_issue3_saved_rust_archive_candidates.py",
             result["missing_by_file"]["scripts/check_issue3_saved_memory_inputs.py"],
+        )
+
+    def test_flags_missing_nested_workspace_preflight_in_progress_tracker(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "progress_tracker_route": {
+                    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+            result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
         )
 
     def test_flags_missing_issue11_contract_reference(self) -> None:
