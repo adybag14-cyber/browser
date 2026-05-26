@@ -44,6 +44,22 @@ normalize_saved_archives_root() {
     printf '%s\n' "${raw_root}"
 }
 
+resolve_first_existing_path() {
+    local start="$1"
+    local relative_path="$2"
+    local current="$start"
+    while true; do
+        if [[ -e "${current}/${relative_path}" ]]; then
+            printf '%s\n' "${current}/${relative_path}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            return 1
+        fi
+        current="$(dirname "${current}")"
+    done
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -104,24 +120,44 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory" || true)"
+    if [[ -z "${MEMORY_ROOT}" ]]; then
+        MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
+    fi
 fi
 if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
-    RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
+    RESTORED_CHECKOUT_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "browser-memory-snapshot" || true)"
+    if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
+        RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
+    fi
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+    SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${RUST_TOOLCHAIN_DIR}" ]]; then
-    RUST_TOOLCHAIN_DIR="$(cd "${REPO_ROOT}/.." && pwd)/toolchains/rust-1.79.0"
+    CANDIDATE_TOOLCHAINS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "toolchains" || true)"
+    if [[ -n "${CANDIDATE_TOOLCHAINS_ROOT}" ]]; then
+        RUST_TOOLCHAIN_DIR="${CANDIDATE_TOOLCHAINS_ROOT}/rust-1.79.0"
+    else
+        RUST_TOOLCHAIN_DIR="$(cd "${REPO_ROOT}/.." && pwd)/toolchains/rust-1.79.0"
+    fi
 fi
 TOOLCHAINS_ROOT="$(dirname "${RUST_TOOLCHAIN_DIR}")"
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
-    OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
+    OFFLINE_DEPS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "offline-deps" || true)"
+    if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+        OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
+    fi
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz" || true)"
+    if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    fi
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
