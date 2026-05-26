@@ -25,9 +25,10 @@ Keep the next run on one honest ladder from:
 7. the narrower Windows runtime re-entry route once the environment gates turn green
 
 That ladder should also surface the newer issue `#11`-specific helper checks so
-a run can verify the tracker surface, the reusable helper inventories, print a
-workspace-aware readiness command, and print the exact matching-Zig rerun
-command without rebuilding those steps by hand.
+a run can verify the tracker surface, the reusable helper inventories, surface
+toolchains-root candidates, print the compact runtime re-entry command ladder,
+and print the exact matching-Zig rerun command without rebuilding those steps by
+hand.
 
 ## Expected Shared Roots
 
@@ -46,6 +47,7 @@ practical roots first:
 bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
 bash ./scripts/linux/show_issue3_workspace_context_route.sh
 python ./scripts/check_issue3_workspace_context.py --repo-root .
+python ./scripts/check_issue11_toolchains_root_candidates.py --repo-root .
 ```
 
 Before trusting helper inventories copied into restored or nested checkouts,
@@ -64,7 +66,7 @@ the shared roots into the saved-archive preflight, saved-Zig route, and broader
 readiness rerun, print it before rebuilding those commands by hand:
 
 ```bash
-python ./scripts/check_issue11_workspace_readiness.py --repo-root .
+bash ./scripts/linux/show_issue11_runtime_reentry_tracker_route.sh --repo-root .
 ```
 
 Use `--json` when another helper needs the surfaced command set as structured
@@ -157,7 +159,7 @@ Then reopen the broader recovery route and the dedicated matching-line gate:
 bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
 bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
 bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
-python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
+python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
 ```
 
 Treat the attached Zig `0.17` dev archive as a surfaced fallback only. Do not
@@ -183,8 +185,8 @@ If the route already has a matching staged Zig candidate and wants the exact
 rerun command surfaced first, use:
 
 ```bash
+python ./scripts/check_issue11_toolchains_root_candidates.py --repo-root .
 python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
-python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
 ```
 
 ## Hand Control Back To The Runtime Route Only When Ready
