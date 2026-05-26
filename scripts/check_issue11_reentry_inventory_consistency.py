@@ -87,13 +87,21 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
-        ("progress_tracker_route", "saved_rust_build_readiness_route"),
-        "The progress-tracker and saved-Rust build-readiness route notes should keep the nested-workspace saved-Memory preflight helper visible before Rust archive selection or restore work widens.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "saved_rust_build_readiness_route",
+        ),
+        "The progress-tracker, restored-checkout helper, and saved-Rust build-readiness route notes should keep the nested-workspace saved-Memory preflight helper visible before Rust archive selection or restore work widens.",
     ),
     (
         "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
-        ("progress_tracker_route", "saved_rust_build_readiness_route"),
-        "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route note visible before archive restore is retried.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "saved_rust_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and saved-Rust build-readiness route notes should keep the staged-Rust route note visible before archive restore is retried.",
     ),
     (
         "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
@@ -102,13 +110,21 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
-        ("progress_tracker_route", "saved_rust_build_readiness_route"),
-        "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route surface check visible before archive restore is retried.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "saved_rust_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and saved-Rust build-readiness route notes should keep the staged-Rust route surface check visible before archive restore is retried.",
     ),
     (
         "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
-        ("progress_tracker_route", "saved_rust_build_readiness_route"),
-        "The progress-tracker and saved-Rust build-readiness route notes should keep the staged-Rust route printer visible before archive restore is retried.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "saved_rust_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and saved-Rust build-readiness route notes should keep the staged-Rust route printer visible before archive restore is retried.",
     ),
     (
         "scripts/check_issue3_saved_zig_archive_candidates.py",
@@ -139,8 +155,12 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
-        ("progress_tracker_route", "linux_build_readiness_route"),
-        "The progress-tracker and Linux build-readiness routes should keep the staged-Zig route note visible before archive restore work widens.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "linux_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and Linux build-readiness routes should keep the staged-Zig route note visible before archive restore work widens.",
     ),
     (
         "scripts/check_issue3_build_readiness_rerun.py",
@@ -164,23 +184,39 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "scripts/check_issue11_saved_memory_helper_contract.py",
-        ("restore_helper", "restored_helper_sync_route"),
-        "The restored-helper sync route should keep the saved-memory helper contract check visible.",
+        (
+            "restored_checkout_helper",
+            "restore_helper",
+            "restored_helper_sync_route",
+        ),
+        "The restored-checkout helper and restored-helper sync route should keep the saved-memory helper contract check visible.",
     ),
     (
         "scripts/check_issue11_reentry_inventory_consistency.py",
-        ("restore_helper", "restored_helper_sync_route"),
-        "The restored-helper sync route should keep this issue #11 re-entry inventory check visible.",
+        (
+            "restored_checkout_helper",
+            "restore_helper",
+            "restored_helper_sync_route",
+        ),
+        "The restored-checkout helper and restored-helper sync route should keep this issue #11 re-entry inventory check visible.",
     ),
     (
         "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
-        ("progress_tracker_route", "linux_build_readiness_route"),
-        "The progress-tracker and Linux build-readiness routes should keep the staged Zig route surface check visible before restore work widens.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "linux_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and Linux build-readiness routes should keep the staged Zig route surface check visible before restore work widens.",
     ),
     (
         "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
-        ("progress_tracker_route", "linux_build_readiness_route"),
-        "The progress-tracker and Linux build-readiness routes should keep the staged Zig route printer visible before restore work widens.",
+        (
+            "restored_checkout_helper",
+            "progress_tracker_route",
+            "linux_build_readiness_route",
+        ),
+        "The restored-checkout helper, progress-tracker, and Linux build-readiness routes should keep the staged Zig route printer visible before restore work widens.",
     ),
     (
         "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
@@ -361,6 +397,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
             result["missing_by_file"]["docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md"],
         )
 
+    def test_flags_missing_issue11_contract_checker_in_restored_checkout_helper(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_checkout_helper": {
+                    "scripts/check_issue11_saved_memory_helper_contract.py"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_restored_checkout.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/check_issue11_saved_memory_helper_contract.py",
+            result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
+        )
+
     def test_flags_missing_staged_rust_route_note_in_progress_tracker(self) -> None:
         repo_root = build_fixture_repo(
             missing={
@@ -379,6 +435,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
             result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
+        )
+
+    def test_flags_missing_staged_rust_route_note_in_restored_checkout_helper(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_checkout_helper": {
+                    "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_restored_checkout.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
         )
 
     def test_flags_missing_saved_zig_route_note_in_progress_tracker(self) -> None:
@@ -461,6 +537,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
             result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
         )
 
+    def test_flags_missing_nested_workspace_helper_in_restored_checkout_helper(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_checkout_helper": {
+                    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_restored_checkout.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+            result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
+        )
+
     def test_flags_missing_staged_rust_route_surface_in_saved_rust_build_doc(self) -> None:
         repo_root = build_fixture_repo(
             missing={
@@ -479,6 +575,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
             result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
+        )
+
+    def test_flags_missing_staged_rust_route_surface_in_restored_checkout_helper(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_checkout_helper": {
+                    "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_restored_checkout.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+            result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
         )
 
     def test_flags_missing_archive_restore_route_note_in_zig_recovery_doc(self) -> None:
@@ -519,6 +635,26 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
             result["missing_by_file"]["docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"],
+        )
+
+    def test_flags_missing_staged_zig_route_fragment_in_restored_checkout_helper(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "restored_checkout_helper": {
+                    "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "scripts/check_issue3_restored_checkout.py",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+            result["missing_by_file"]["scripts/check_issue3_restored_checkout.py"],
         )
 
 
