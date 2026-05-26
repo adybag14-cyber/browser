@@ -98,6 +98,7 @@ emit_json = sys.argv[3] == "1"
 
 doc_path = repo_root / "docs" / "ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md"
 helper_path = repo_root / "scripts" / "check_issue3_staged_rust_toolchain_candidates.py"
+route_printer_path = repo_root / "scripts" / "linux" / "show_issue3_staged_rust_toolchain_candidates_route.sh"
 saved_archive_route_path = repo_root / "scripts" / "linux" / "show_issue3_saved_rust_archive_candidates_route.sh"
 saved_toolchain_route_path = repo_root / "scripts" / "linux" / "show_issue3_saved_rust_toolchain_route.sh"
 build_bridge_route_path = repo_root / "scripts" / "linux" / "show_issue3_saved_rust_build_readiness_route.sh"
@@ -107,6 +108,7 @@ failures: list[str] = []
 for label, path in (
     ("staged Rust candidate route note", doc_path),
     ("staged Rust candidate helper", helper_path),
+    ("staged Rust candidate route printer", route_printer_path),
     ("saved Rust archive route", saved_archive_route_path),
     ("saved Rust toolchain route", saved_toolchain_route_path),
     ("saved Rust build-readiness bridge", build_bridge_route_path),
@@ -116,6 +118,7 @@ for label, path in (
         failures.append(f"missing {label}: expected {path}")
 
 helper_report: dict[str, object] | None = None
+route_report: dict[str, object] | None = None
 if not failures:
     command = [
         sys.executable,
@@ -143,6 +146,32 @@ if not failures:
         except json.JSONDecodeError as exc:
             failures.append(f"staged Rust candidate helper returned invalid JSON: {exc}")
 
+    route_command = [
+        "bash",
+        str(route_printer_path),
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(toolchains_root),
+        "--json",
+    ]
+    route_completed = subprocess.run(
+        route_command,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if not route_completed.stdout.strip():
+        detail = route_completed.stderr.strip()
+        if detail:
+            detail = f"; stderr: {detail}"
+        failures.append("staged Rust candidate route printer produced no JSON output" + detail)
+    else:
+        try:
+            route_report = json.loads(route_completed.stdout)
+        except json.JSONDecodeError as exc:
+            failures.append(f"staged Rust candidate route printer returned invalid JSON: {exc}")
+
     if helper_report is not None:
         required_keys = (
             "status",
@@ -165,12 +194,36 @@ if not failures:
                         f"staged Rust candidate helper preferred candidate is missing `{key}`"
                     )
 
+    if route_report is not None:
+        commands = route_report.get("commands")
+        if not isinstance(commands, dict):
+            failures.append("staged Rust candidate route printer JSON is missing `commands`")
+        else:
+            progress_tracker_command = commands.get("progress_tracker_route")
+            if not isinstance(progress_tracker_command, str):
+                failures.append(
+                    "staged Rust candidate route printer JSON is missing `commands.progress_tracker_route`"
+                )
+            else:
+                for fragment in (
+                    "--saved-archives-root",
+                    str(route_report.get("saved_archives_root")),
+                    "--toolchains-root",
+                    str(route_report.get("toolchains_root")),
+                ):
+                    if fragment not in progress_tracker_command:
+                        failures.append(
+                            "staged Rust candidate progress-tracker handoff is missing "
+                            f"`{fragment}`"
+                        )
+
 result = {
     "status": "passed" if not failures else "failed",
     "repo_root": str(repo_root),
     "toolchains_root": str(toolchains_root),
     "doc_path": str(doc_path),
     "helper_path": str(helper_path),
+    "route_printer_path": str(route_printer_path),
     "saved_archive_route_path": str(saved_archive_route_path),
     "saved_toolchain_route_path": str(saved_toolchain_route_path),
     "build_bridge_route_path": str(build_bridge_route_path),
@@ -178,6 +231,8 @@ result = {
     "helper_status": helper_report.get("status") if isinstance(helper_report, dict) else "",
     "expected_rust_version": helper_report.get("expected_rust_version") if isinstance(helper_report, dict) else "",
     "expected_rust_line": helper_report.get("expected_rust_line") if isinstance(helper_report, dict) else "",
+    "route_saved_archives_root": route_report.get("saved_archives_root") if isinstance(route_report, dict) else "",
+    "route_toolchains_root": route_report.get("toolchains_root") if isinstance(route_report, dict) else "",
     "failures": failures,
 }
 
@@ -191,6 +246,7 @@ print(f"Repo root:               {repo_root}")
 print(f"Toolchains root:         {toolchains_root}")
 print(f"Route note:              {doc_path}")
 print(f"Candidate helper:        {helper_path}")
+print(f"Route printer:           {route_printer_path}")
 print(f"Saved archive route:     {saved_archive_route_path}")
 print(f"Saved Rust route:        {saved_toolchain_route_path}")
 print(f"Build-readiness bridge:  {build_bridge_route_path}")
@@ -201,6 +257,10 @@ if result["expected_rust_line"]:
     print(f"Expected Rust line:      {result['expected_rust_line']}")
 if result["helper_status"]:
     print(f"Helper status:           {result['helper_status']}")
+if result["route_saved_archives_root"]:
+    print(f"Route saved archives:    {result['route_saved_archives_root']}")
+if result["route_toolchains_root"]:
+    print(f"Route toolchains root:   {result['route_toolchains_root']}")
 
 if failures:
     print("\nStaged Rust candidates route surface check failed:", file=sys.stderr)
