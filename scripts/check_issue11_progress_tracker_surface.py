@@ -4,6 +4,7 @@
 
 This helper is intentionally narrow. It gives Linux/WSL headed-mode recovery
 runs one fast check for the newer low-volume progress-tracker route, the helper-
+surface source checker, the saved-memory helper-contract checker, the helper-
 inventory consistency checker, the workspace-aware readiness helper, and the
 matching-Zig rerun helper that recent issue #11 work depends on.
 """
@@ -26,6 +27,7 @@ REQUIRED_ISSUE11_SURFACE: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_helper_surface_source.py", "helper-surface source checker"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/check_issue11_saved_memory_helper_contract.py", "saved-memory helper-contract checker"),
     ("scripts/check_issue11_reentry_inventory_consistency.py", "helper-inventory consistency checker"),
     ("scripts/check_issue11_workspace_readiness.py", "workspace-aware issue #11 readiness helper"),
     ("scripts/show_issue11_matching_zig_readiness_command.py", "matching-Zig readiness helper"),
@@ -134,6 +136,25 @@ class Issue11ProgressTrackerSurfaceTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertIn(
                 "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                result["missing_paths"],
+            )
+
+    def test_flags_missing_saved_memory_helper_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser"
+            repo_root.mkdir()
+            for relative_path, _label in REQUIRED_ISSUE11_SURFACE:
+                if relative_path == "scripts/check_issue11_saved_memory_helper_contract.py":
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(repo_root)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/check_issue11_saved_memory_helper_contract.py",
                 result["missing_paths"],
             )
 
