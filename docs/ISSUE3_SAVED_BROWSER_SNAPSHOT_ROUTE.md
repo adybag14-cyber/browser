@@ -17,12 +17,24 @@ Companion helpers:
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md`
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_restored_helper_surface_sync.py`
-- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
-- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
+- `scripts/check_issue3_staged_rust_toolchain_candidates.py`
+- `scripts/check_issue3_build_readiness_rerun.py`
+- `scripts/check_issue11_saved_memory_helper_contract.py`
+- `scripts/check_issue11_reentry_inventory_consistency.py`
+- `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
+- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
+- `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+- `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
 
@@ -107,9 +119,15 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface --c
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-helper-surface
 bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh --helper-root . --restored-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_helper_surface_sync.py --helper-root . --restored-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_saved_memory_helper_contract.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_reentry_inventory_consistency.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_rust_archive_candidates.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
@@ -127,9 +145,15 @@ bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-only --check-only
 bash ./scripts/linux/restore_saved_browser_snapshot.sh --sync-only
 bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh --helper-root . --restored-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_helper_surface_sync.py --helper-root . --restored-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_saved_memory_helper_contract.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_reentry_inventory_consistency.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_rust_archive_candidates.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
@@ -155,6 +179,11 @@ sync-only refresh already happened and the next question is whether the
 restored checkout now carries the late-added issue `#11` helper surface closely
 enough to trust it as its own follow-up helper root.
 
+Use `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md` and
+`docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` when the synced restore is
+healthy but the next gate has narrowed to saved Rust archive choice, staged
+Rust reuse, or the bridge back into the broader Linux build-readiness ladder.
+
 ## Immediate Follow-up
 
 After the restore succeeds, choose one of these follow-up modes.
@@ -175,9 +204,15 @@ into the restored checkout itself:
 ```bash
 bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh --helper-root . --restored-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_helper_surface_sync.py --helper-root . --restored-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_saved_memory_helper_contract.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue11_reentry_inventory_consistency.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_restored_checkout.py --repo-root ../browser-memory-snapshot --helper-root . --expect-helper-surface
 python ../browser-memory-snapshot/scripts/check_issue3_saved_memory_inputs.py --repo-root ../browser-memory-snapshot
 python ../browser-memory-snapshot/scripts/check_issue3_saved_archive_integrity.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_saved_rust_archive_candidates.py --repo-root ../browser-memory-snapshot
+python ../browser-memory-snapshot/scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root ../browser-memory-snapshot
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ../browser-memory-snapshot/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_route.sh --repo-root ../browser-memory-snapshot
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
@@ -191,10 +226,20 @@ restored-helper sync route and run the narrower sync check before the broader
 saved-Memory and saved-archive preflights trust the restored checkout as its
 own helper root.
 
+After the narrower sync check passes, use the issue `#11` helper-contract and
+inventory checks before the broader saved-Memory preflight so newer tracker,
+saved-Rust, staged-toolchain, and rerun-route expectations fail fast instead of
+silently narrowing the restored checkout back to an older helper surface.
+
 Run the saved-Memory preflight next so missing archives or helper drift fail
 before deeper staging. Run the saved-archive integrity check immediately after
 that when the route needs to prove the repo snapshot and dependency bundles
 still match the expected exact artifacts before broader Linux or WSL staging.
+
+If the next blocker has already narrowed to saved Rust archive selection,
+staged Rust reuse, or the Rust-to-build-readiness bridge, reopen the saved Rust
+candidate helper and the compact saved Rust build-readiness route before
+jumping straight back to the broad Linux build-readiness ladder.
 
 The saved archive is a stable historical snapshot, so it may not contain the
 newest branch-local recovery helpers. Do not switch into the restored checkout
@@ -209,8 +254,9 @@ The route helper prints those same commands with the resolved archive,
 destination, helper-root, optional helper-surface sync mode, and optional
 fallback Zig archive surface already filled in.
 
-That keeps the restored-helper sync route, the restored-checkout readiness
-check, the saved-Memory preflight, the saved-archive integrity check, the Linux
+That keeps the restored-helper sync route, the issue `#11` helper-contract
+checks, the restored-checkout readiness check, the saved-Memory preflight, the
+saved-archive integrity check, the saved Rust candidate bridge, the Linux
 build-readiness route, and the runtime re-entry route anchored to the restored
 checkout before the direct issue `#3` runtime lane is reopened again.
 
@@ -228,6 +274,10 @@ checkout before the direct issue `#3` runtime lane is reopened again.
 - Run `check_issue3_restored_helper_surface_sync.py` after a synced restore or
   `--sync-only` refresh when the restored checkout should become its own issue
   `#11` helper root.
+- Run `check_issue11_saved_memory_helper_contract.py` and
+  `check_issue11_reentry_inventory_consistency.py` after the narrower sync
+  check when the restored checkout is expected to carry the broader issue `#11`
+  helper surface, including saved-Rust and rerun-route follow-ups.
 - Prefer `--sync-helper-surface` when the restored checkout should be more
   self-contained for the next Linux or WSL route replay.
 - Prefer `--sync-only` when the restored checkout already exists and only the
@@ -239,3 +289,6 @@ checkout before the direct issue `#3` runtime lane is reopened again.
 - When exact saved inputs matter, run `check_issue3_saved_archive_integrity.py`
   right after the saved-Memory preflight instead of assuming the mounted
   archives are still the expected copies.
+- When the restore is green but the next environment gate is Rust-specific, use
+  the saved Rust archive-candidates route and saved Rust build-readiness bridge
+  before widening back out to the full Linux build-readiness route.
