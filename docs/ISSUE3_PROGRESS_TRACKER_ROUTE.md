@@ -42,6 +42,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_workspace_context_route.sh`
 - `scripts/check_issue3_workspace_context.py`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
@@ -132,6 +133,24 @@ candidate helper before unpacking the archive again, and reuse the surfaced
 `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md` when the exact restore or export
 surface is still needed.
 
+When that Rust-first slice is running from a nested or restored checkout and the
+run wants one branch-local command that surfaces the practical helper, Memory,
+agent-files, and restored-checkout roots before the saved-memory preflight
+widens into Rust archive selection or restore work, keep the nested-workspace
+rerun helper visible:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
+Use the quick-presence variant when the run only needs the routed saved-memory
+presence check before the Rust bridge widens:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --skip-archive-integrity-check
+```
+
 ## Check The Tracker-Specific Helper Surface Before Trusting The Wider Ladder
 
 When the immediate issue `#11` slice is about whether a checkout still carries
@@ -165,6 +184,23 @@ python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
 Use that helper after the saved-Zig candidate discovery route or a successful
 workspace-aware readiness check so the next rerun command stays anchored to the
 same shared `memory`, `toolchains`, `agent_files`, and `offline-deps` roots.
+
+If the run wants those surfaced roots threaded into the saved-memory preflight
+through one branch-local command before the tracker widens into saved-Rust,
+saved-Zig, or broader build-readiness follow-ups, keep the nested-workspace
+rerun helper visible on the same issue `#11` handoff:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
+Use the quick-presence variant when the route only needs the surfaced saved-
+Memory presence check before later tracker follow-up helpers widen again:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --skip-archive-integrity-check
+```
 
 If the immediate slice has already narrowed to the saved-memory preflight, the
 broader Linux or WSL build-readiness ladder, or the Zig-line recovery follow-up,
@@ -306,6 +342,14 @@ again:
 
 ```bash
 python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
+```
+
+Keep the nested-workspace rerun helper visible when the route wants the surfaced
+saved-memory preflight already threaded with helper, Memory, agent-files, and
+restored-checkout roots before the saved-Rust bridge widens:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
 ```
 
 ## Surface The Saved Zig Route First When Archive Selection Is The Slice
