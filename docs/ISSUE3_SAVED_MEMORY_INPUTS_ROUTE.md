@@ -83,11 +83,14 @@ route should keep its defaults or whether it should be rerun with explicit
 `--memory-root`, `--agent-files-root`, `--restored-checkout-root`, or
 `--fallback-zig-archive` overrides before broader Linux or WSL follow-up.
 
-The branch-local saved-Memory route already searches the nearest ancestor
-workspace for `memory/`, `agent_files/`, `toolchains/`, and `offline-deps`
-roots before it falls back to sibling defaults. Reopen the workspace-context
-surface first when the layout is unusual so the run can confirm those discovered
-roots before it trusts the default route output.
+The branch-local saved-Memory route printer already searches the nearest
+ancestor workspace for `memory/`, `agent_files/`, `toolchains/`, and
+`offline-deps` roots before it falls back to sibling defaults, and it threads
+those discovered roots into the printed follow-up commands. The bare
+`python ./scripts/check_issue3_saved_memory_inputs.py --repo-root ...` helper
+still uses simpler sibling defaults unless the run passes explicit overrides.
+Reopen the workspace-context surface first when the layout is unusual so the run
+can confirm those discovered roots before it trusts direct helper invocations.
 
 ## When Repo Root Is Already The Restored Checkout
 
@@ -148,6 +151,11 @@ Run the actual saved-input helper after the route surface is green:
 ```bash
 python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .
 ```
+
+When the layout is unusual, prefer the route-printer command above or pass the
+explicit roots it surfaced. The bare helper invocation keeps sibling defaults
+for `memory/`, `agent_files/`, and the restored checkout root unless those
+overrides are supplied.
 
 That command checks:
 
@@ -253,10 +261,10 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Run the workspace-context route first when the checkout sits deeper than the
   default sibling layout or the next helper would otherwise guess the wrong
   `memory`, `agent_files`, `toolchains`, or `offline-deps` roots.
-- The saved-Memory route defaults now reuse the nearest ancestor workspace
-  roots they can find before they fall back to sibling guesses. Confirm those
-  discovered roots with the workspace-context surface before trusting default
-  route output from an unusual restored layout.
+- The saved-Memory route printer reuses the nearest ancestor workspace roots it
+  can find before it falls back to sibling guesses. Confirm those discovered
+  roots with the workspace-context surface before trusting direct helper
+  invocations from an unusual restored layout.
 - When the current repo root is itself a deeper restored checkout, prefer the
   explicit `--helper-root`, `--memory-root`, `--agent-files-root`, and
   `--restored-checkout-root` override set instead of trusting default sibling
