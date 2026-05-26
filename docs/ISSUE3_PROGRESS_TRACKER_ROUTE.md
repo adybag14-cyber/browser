@@ -40,6 +40,10 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
 - `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `scripts/linux/check_issue3_workspace_context_route_surface.sh`
+- `scripts/linux/show_issue3_workspace_context_route.sh`
+- `scripts/check_issue3_workspace_context.py`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
@@ -77,6 +81,13 @@ If a scheduled run is still blocked on publication safety or a branch-compatible
 Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
 
+If the immediate slice is about surfacing the practical shared roots for a
+nested or restored checkout before later helpers trust their defaults, keep
+`docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md` visible, fail fast on its route
+surface, print the compact route, and run `scripts/check_issue3_workspace_context.py`
+before rebuilding `memory`, `toolchains`, `saved-archives`, `offline-deps`, or
+fallback-Zig overrides by hand.
+
 If the immediate slice is about trusting an already-restored checkout as its
 own helper root, keep `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 visible, fail fast on its route surface, run the narrower sync check before
@@ -113,6 +124,29 @@ bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 
 Use `--json` when another helper wants the route-surface result as structured
 output.
+
+## Surface The Workspace-Context Route First When The Layout Is Unusual
+
+When the immediate issue `#11` work is about a nested or restored checkout whose
+next helper would otherwise guess the wrong shared roots, fail fast on the
+workspace-context route first:
+
+```bash
+bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
+bash ./scripts/linux/show_issue3_workspace_context_route.sh
+```
+
+Keep the root-discovery helper visible before later saved-memory, saved-Rust,
+saved-Zig, build-readiness, or Zig recovery routes are trusted:
+
+```bash
+python ./scripts/check_issue3_workspace_context.py --repo-root .
+```
+
+Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
+when the attached archive is not sitting under the nearest discovered
+`agent_files` root and the follow-up routes need to inspect the same surfaced
+path.
 
 ## Surface The Restored Helper-Surface Sync Route When Reusing An Existing Restore
 
