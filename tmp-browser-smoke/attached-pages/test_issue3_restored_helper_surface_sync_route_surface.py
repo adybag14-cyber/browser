@@ -79,6 +79,35 @@ FIXTURE_FILES = {
     "drifted_files"
     "Refresh the restored checkout helper surface from the live branch-local helper root"
     """,
+    "scripts/check_issue3_restored_checkout.py": """
+    HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
+        ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
+        ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note"),
+        ("docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md", "saved-Memory inputs route note"),
+        ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
+        ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
+        ("docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md", "saved Zig archive candidates route note"),
+        ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
+        ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
+        ("scripts/check_issue3_saved_rust_archive_candidates.py", "saved Rust archive candidate helper"),
+        ("scripts/check_issue3_staged_rust_toolchain_candidates.py", "staged Rust toolchain candidate helper"),
+        ("scripts/check_issue3_saved_zig_archive_candidates.py", "saved Zig archive candidate helper"),
+        ("scripts/check_issue3_staged_zig_toolchain_candidates.py", "staged Zig toolchain candidate helper"),
+        ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
+        ("scripts/check_issue3_restored_helper_surface_sync.py", "restored helper-surface sync helper"),
+        ("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check"),
+        ("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer"),
+        ("scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh", "saved Zig archive candidates route surface check"),
+        ("scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh", "saved Zig archive candidates route printer"),
+        ("scripts/linux/check_issue3_zig_toolchain_match.sh", "Zig toolchain matching-line gate"),
+        ("scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh", "Zig toolchain archive-restore surface check"),
+        ("scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh", "Windows runtime handoff surface check"),
+        ("scripts/windows/start_attached_pages_catalog.ps1", "Windows attached-pages catalog launcher"),
+    )
+    "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or keep using the live helper root for follow-up commands."
+    "Suggested next step: refresh the restored helper surface from the live helper checkout with restore_saved_browser_snapshot.sh --sync-only, then rerun this helper with --helper-root."
+    "Restored checkout check passed."
+    """,
     "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh": """
     Usage:
       bash scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh \
@@ -154,6 +183,9 @@ class Issue3RestoredHelperSurfaceSyncRouteSurfaceTest(unittest.TestCase):
         )
         cls.sync_helper = read_text(
             cls.repo_root / "scripts/check_issue3_restored_helper_surface_sync.py"
+        )
+        cls.restored_checkout_helper = read_text(
+            cls.repo_root / "scripts/check_issue3_restored_checkout.py"
         )
         cls.surface_checker = read_text(
             cls.repo_root
@@ -266,6 +298,36 @@ class Issue3RestoredHelperSurfaceSyncRouteSurfaceTest(unittest.TestCase):
             "Refresh the restored checkout helper surface from the live branch-local helper root",
         ):
             self.assertIn(fragment, self.sync_helper)
+
+    def test_restored_checkout_helper_keeps_issue11_surface_catalog_and_sync_guidance_visible(self) -> None:
+        for fragment in (
+            '("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note")',
+            '("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note")',
+            '("docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md", "saved-Memory inputs route note")',
+            '("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note")',
+            '("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note")',
+            '("docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md", "saved Zig archive candidates route note")',
+            '("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper")',
+            '("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper")',
+            '("scripts/check_issue3_saved_rust_archive_candidates.py", "saved Rust archive candidate helper")',
+            '("scripts/check_issue3_staged_rust_toolchain_candidates.py", "staged Rust toolchain candidate helper")',
+            '("scripts/check_issue3_saved_zig_archive_candidates.py", "saved Zig archive candidate helper")',
+            '("scripts/check_issue3_staged_zig_toolchain_candidates.py", "staged Zig toolchain candidate helper")',
+            '("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper")',
+            '("scripts/check_issue3_restored_helper_surface_sync.py", "restored helper-surface sync helper")',
+            '("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check")',
+            '("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer")',
+            '("scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh", "saved Zig archive candidates route surface check")',
+            '("scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh", "saved Zig archive candidates route printer")',
+            '("scripts/linux/check_issue3_zig_toolchain_match.sh", "Zig toolchain matching-line gate")',
+            '("scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh", "Zig toolchain archive-restore surface check")',
+            '("scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh", "Windows runtime handoff surface check")',
+            '("scripts/windows/start_attached_pages_catalog.ps1", "Windows attached-pages catalog launcher")',
+            "Suggested next step: rerun restore_saved_browser_snapshot.sh with --sync-helper-surface or keep using the live helper root for follow-up commands.",
+            "Suggested next step: refresh the restored helper surface from the live helper checkout with restore_saved_browser_snapshot.sh --sync-only, then rerun this helper with --helper-root.",
+            "Restored checkout check passed.",
+        ):
+            self.assertIn(fragment, self.restored_checkout_helper)
 
     def test_surface_checker_and_route_printer_keep_sync_route_contracts_visible(self) -> None:
         for fragment in (
