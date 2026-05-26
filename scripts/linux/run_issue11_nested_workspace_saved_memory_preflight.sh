@@ -128,6 +128,12 @@ PREFLIGHT_CMD=(
     --restored-checkout-root "${RESTORED_CHECKOUT_ROOT}"
 )
 
+REENTRY_INVENTORY_CMD=(
+    python3
+    "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py"
+    --repo-root "${HELPER_ROOT}"
+)
+
 if [[ -n "${SURFACED_FALLBACK_ZIG}" ]]; then
     PREFLIGHT_CMD+=(--fallback-zig-archive "${SURFACED_FALLBACK_ZIG}")
 fi
@@ -180,6 +186,13 @@ route_surface_command = [
     context["helper_root"],
 ]
 
+reentry_inventory_command = [
+    "python3",
+    f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
+    "--repo-root",
+    context["helper_root"],
+]
+
 print(json.dumps({
     "profile": "issue11-nested-workspace-saved-memory-preflight",
     "route_surface_command": route_surface_command,
@@ -189,6 +202,10 @@ print(json.dumps({
     "workspace_context_command": workspace_context_command,
     "workspace_context_command_shell": " ".join(
         shlex.quote(part) for part in workspace_context_command
+    ),
+    "reentry_inventory_command": reentry_inventory_command,
+    "reentry_inventory_command_shell": " ".join(
+        shlex.quote(part) for part in reentry_inventory_command
     ),
     "workspace_context": context,
     "preflight": preflight,
@@ -217,8 +234,12 @@ Saved-Memory route surface command:
 Workspace-context command:
   $(printf '%q ' "${SURFACED_WORKSPACE_CONTEXT_CMD[@]}")
 
+Issue #11 re-entry inventory command:
+  $(printf '%q ' "${REENTRY_INVENTORY_CMD[@]}")
+
 Saved-Memory preflight command:
   $(printf '%q ' "${PREFLIGHT_CMD[@]}")
 EOF
 
 "${PREFLIGHT_CMD[@]}"
+"${REENTRY_INVENTORY_CMD[@]}"
