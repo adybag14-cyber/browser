@@ -132,13 +132,13 @@ PREFLIGHT_CMD=(
 HELPER_CONTRACT_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py"
-    --repo-root "${HELPER_ROOT}"
+    --repo-root "${RESTORED_CHECKOUT_ROOT}"
 )
 
 REENTRY_INVENTORY_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py"
-    --repo-root "${HELPER_ROOT}"
+    --repo-root "${RESTORED_CHECKOUT_ROOT}"
 )
 
 if [[ -n "${SURFACED_FALLBACK_ZIG}" ]]; then
@@ -197,14 +197,14 @@ helper_contract_command = [
     "python3",
     f"{context['helper_root']}/scripts/check_issue11_saved_memory_helper_contract.py",
     "--repo-root",
-    context["helper_root"],
+    context["restored_checkout_root"],
 ]
 
 reentry_inventory_command = [
     "python3",
     f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
     "--repo-root",
-    context["helper_root"],
+    context["restored_checkout_root"],
 ]
 
 print(json.dumps({
