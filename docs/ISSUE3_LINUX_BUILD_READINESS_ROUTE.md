@@ -34,6 +34,7 @@ helpers:
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
 - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
@@ -185,6 +186,26 @@ bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 
 That route prints the same saved-input preflight with the resolved repo,
 Memory, helper, restored-checkout, and fallback Zig paths already filled in.
+
+## Prefer The Nested-Workspace Saved-Memory Preflight For One-Command Reruns
+
+If the checkout sits deeper than the default sibling layout and the route wants
+the surfaced live helper, Memory, agent-files, and restored-checkout roots
+threaded into the saved-memory preflight before the broader Linux or WSL ladder
+widens again, prefer the compact issue `#11` wrapper:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
+Use the quick-presence variant when the next question is only whether the
+surfaced roots line up honestly before the route widens into Rust, Zig, or
+restore follow-up work:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --skip-archive-integrity-check
+```
 
 ## Keep The Progress Tracker Route Visible
 
@@ -424,62 +445,64 @@ The Linux route now stays short and ordered:
    `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 9. A saved-Memory route printer using
    `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
-10. An issue `#11` progress-tracker route surface check using
+10. An issue `#11` nested-workspace saved-Memory preflight helper using
+    `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+11. An issue `#11` progress-tracker route surface check using
     `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
-11. An issue `#11` progress-tracker route printer using
+12. An issue `#11` progress-tracker route printer using
     `scripts/linux/show_issue3_progress_tracker_route.sh`
-12. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-13. A saved-archive integrity preflight using
+13. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+14. A saved-archive integrity preflight using
     `scripts/check_issue3_saved_archive_integrity.py`
-14. A staged Zig route surface check using
+15. A staged Zig route surface check using
     `scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh`
-15. A staged Zig route printer using
+16. A staged Zig route printer using
     `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
-16. A staged Zig candidate helper using
+17. A staged Zig candidate helper using
     `scripts/check_issue3_staged_zig_toolchain_candidates.py`
-17. A build-readiness rerun helper using
+18. A build-readiness rerun helper using
     `scripts/check_issue3_build_readiness_rerun.py`
-18. A Zig-line recovery helper using
+19. A Zig-line recovery helper using
     `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-19. A dedicated Zig matching-line gate using
+20. A dedicated Zig matching-line gate using
     `scripts/linux/check_issue3_zig_toolchain_match.sh`
-20. A saved Zig archive candidate surface check using
+21. A saved Zig archive candidate surface check using
     `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
-21. A saved Zig archive candidate route using
+22. A saved Zig archive candidate route using
     `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
-22. A saved Zig archive discovery helper using
+23. A saved Zig archive discovery helper using
     `scripts/check_issue3_saved_zig_archive_candidates.py`
-23. A Zig archive-restore surface check using
+24. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-24. A saved Rust archive route surface check using
+25. A saved Rust archive route surface check using
     `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
-25. A saved Rust archive route using
+26. A saved Rust archive route using
     `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
-26. A staged Rust route surface check using
+27. A staged Rust route surface check using
     `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
-27. A staged Rust route using
+28. A staged Rust route using
     `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
-28. A saved Rust archive discovery helper using
+29. A saved Rust archive discovery helper using
     `scripts/check_issue3_saved_rust_archive_candidates.py`
-29. A staged Rust toolchain candidate helper using
+30. A staged Rust toolchain candidate helper using
     `scripts/check_issue3_staged_rust_toolchain_candidates.py`
-30. A saved Rust route surface check using
+31. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-31. A saved Rust restore route using
+32. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-32. A dedicated offline build-inputs route using
+33. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-33. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-34. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+34. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+35. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-35. A saved Rust `1.79.0` restore command
-36. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-37. The attached fallback Zig archive location when it is present beside the
+36. A saved Rust `1.79.0` restore command
+37. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+38. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as
     branch-compatible validation evidence
-38. A full readiness command that expects the saved archives, offline deps, and
+39. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-39. A direct handoff back to the smaller Windows runtime revalidation route
+40. A direct handoff back to the smaller Windows runtime revalidation route
     once the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
