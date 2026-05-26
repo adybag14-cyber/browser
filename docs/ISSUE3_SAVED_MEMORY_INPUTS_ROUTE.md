@@ -9,7 +9,8 @@ archives, optional fallback Zig bundle, the low-volume progress-tracker handoff,
 the dedicated saved-archive integrity handoff, the saved Zig archive candidate
 handoff, the saved Rust toolchain, saved Rust build-readiness, and saved Rust
 archive-candidate handoffs, the workspace-context handoff, the restored-helper
-surface sync handoff, and the immediate next helper routes on one compact
+surface sync handoff, the issue `#11` saved-memory helper-contract and re-entry
+inventory checks, and the immediate next helper routes on one compact
 branch-local surface.
 
 Companion helpers:
@@ -25,6 +26,8 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
+- `scripts/check_issue11_saved_memory_helper_contract.py`
+- `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`
 - `scripts/linux/show_issue3_saved_archive_integrity_route.sh`
 - `scripts/check_issue3_saved_archive_integrity.py`
@@ -68,10 +71,10 @@ Use this route when any of these are true:
   wrong workspace roots
 - the direct issue `#3` runtime patch is still blocked and the run needs the
   progress-tracker handoff, the dedicated saved-archive integrity handoff, the
-  saved Zig archive candidate handoff, the saved Rust follow-up helpers, and
-  the workspace-context plus restored-helper-surface sync routes back on one
-  compact helper surface before it widens into restore or build-readiness
-  follow-up
+  saved Zig archive candidate handoff, the saved Rust follow-up helpers, the
+  issue `#11` helper-contract layer, and the workspace-context plus restored-
+  helper-surface sync routes back on one compact helper surface before it
+  widens into restore or build-readiness follow-up
 
 ## Run The Surface Check First
 
@@ -174,6 +177,13 @@ When the layout is unusual, prefer the route-printer command above or pass the
 explicit roots it surfaced. The bare helper invocation keeps sibling defaults
 for `memory/`, `agent_files/`, and the restored checkout root unless those
 overrides are supplied.
+
+The live `scripts/check_issue3_saved_memory_inputs.py` helper now mirrors the
+restore-helper inventory dynamically. When
+`restore_saved_browser_snapshot.sh` starts copying a newer saved-Rust,
+staged-toolchain, rerun, or issue `#11` helper-contract file, the saved-memory
+preflight will start requiring that same surface instead of silently accepting
+an older restored helper set.
 
 That command checks:
 
@@ -301,6 +311,10 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
   explicit `--helper-root`, `--memory-root`, `--agent-files-root`, and
   `--restored-checkout-root` override set instead of trusting default sibling
   inference.
+- Treat the saved-memory preflight as a live mirror of the restore-helper
+  surface. When `restore_saved_browser_snapshot.sh` widens the copied helper
+  set, rerun this route and keep the note aligned instead of assuming the older
+  helper list is still authoritative.
 - Run the saved-input preflight before broader Linux or WSL helper output is
   treated as trustworthy.
 - Use `--skip-archive-integrity-check` only for a quick presence-only branch
