@@ -89,7 +89,7 @@ if [[ "${JSON}" -eq 1 ]]; then
 import json
 
 print(json.dumps({
-    "issue": "Google issue #3 restored helper-surface sync route",
+    "issue": "Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry",
     "helper_root": ${HELPER_ROOT@Q},
     "restored_root": ${RESTORED_ROOT@Q},
     "memory_root": ${MEMORY_ROOT@Q},
@@ -117,7 +117,7 @@ PY
 fi
 
 cat <<EOF
-Google issue #3 restored helper-surface sync route
+Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry
 
 Helper root:   ${HELPER_ROOT}
 Restored root: ${RESTORED_ROOT}
