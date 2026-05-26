@@ -121,6 +121,7 @@ from __future__ import annotations
 import json
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 
@@ -274,6 +275,22 @@ if fallback_zig_archive is not None and fallback_zig_archive.is_file():
             "status": "unknown-version",
         }
 
+saved_archive_discovery_command = None
+if (repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py").is_file():
+    saved_archive_discovery_parts = [
+        "python",
+        str(repo_root / "scripts" / "check_issue3_saved_zig_archive_candidates.py"),
+        "--repo-root",
+        str(repo_root),
+        "--saved-archives-root",
+        str(saved_archives_root),
+        "--toolchains-root",
+        str(toolchains_root),
+    ]
+    if fallback_zig_archive is not None:
+        saved_archive_discovery_parts.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+    saved_archive_discovery_command = " ".join(shlex.quote(part) for part in saved_archive_discovery_parts)
+
 failures: list[str] = []
 if not matching_candidates:
     minimum_parts = parse_semver(minimum_zig)
@@ -319,6 +336,7 @@ report = {
     "preferred_saved_archive": preferred_saved_archive,
     "preferred_saved_archive_restore_check": preferred_restore_check,
     "preferred_saved_archive_restore": preferred_restore,
+    "saved_archive_discovery_command": saved_archive_discovery_command,
     "fallback_zig_archive": fallback_record,
     "saved_archive_helper_warning": saved_archive_helper_warning,
     "failures": failures,
@@ -357,6 +375,10 @@ if preferred_saved_archive is not None and preferred_restore_check is not None a
     print(f"  {preferred_restore_check}")
     print(f"  {preferred_restore}")
 
+if saved_archive_discovery_command is not None:
+    print("Saved archive candidate discovery:")
+    print(f"  {saved_archive_discovery_command}")
+
 if fallback_record is not None:
     print(
         "Fallback Zig archive: "
@@ -370,6 +392,10 @@ if failures:
     print("\nMatching Zig toolchain check failed:", file=sys.stderr)
     for failure in failures:
         print(f"  - {failure}", file=sys.stderr)
+    if saved_archive_discovery_command is not None:
+        print(f"  - saved archive discovery: {saved_archive_discovery_command}", file=sys.stderr)
+    if preferred_restore_check is not None:
+        print(f"  - preferred restore check: {preferred_restore_check}", file=sys.stderr)
     print(f"\nSuggested next step: {suggested_next_step}", file=sys.stderr)
     raise SystemExit(1)
 
