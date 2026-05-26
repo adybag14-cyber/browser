@@ -75,14 +75,49 @@ find_first_live_helper_surface() {
     return 1
 }
 
+find_live_helper_surface_among_siblings() {
+    local start="$1"
+    local current parent child
+
+    current="$(cd "${start}" && pwd)"
+    while true; do
+        parent="$(dirname "${current}")"
+        if [[ "${parent}" == "${current}" ]]; then
+            break
+        fi
+        while IFS= read -r child; do
+            [[ -d "${child}" ]] || continue
+            [[ "${child}" == "${current}" ]] && continue
+            if has_live_helper_surface "${child}"; then
+                printf '%s\n' "${child}"
+                return 0
+            fi
+        done < <(find "${parent}" -mindepth 1 -maxdepth 1 -type d | sort)
+        current="${parent}"
+    done
+    return 1
+}
+
 resolve_default_helper_root() {
     local repo_root="$1"
-    local cwd helper_candidate
+    local cwd helper_candidate script_repo_root
 
     repo_root="$(cd "${repo_root}" && pwd)"
     cwd="$(pwd)"
-    if [[ "$(basename "${repo_root}")" == "${DEFAULT_RESTORED_CHECKOUT_NAME}" && "${cwd}" != "${repo_root}" ]]; then
-        helper_candidate="$(find_first_live_helper_surface "${cwd}" || true)"
+    script_repo_root="$(cd "${DEFAULT_REPO_ROOT}" && pwd)"
+    if [[ "$(basename "${repo_root}")" == "${DEFAULT_RESTORED_CHECKOUT_NAME}" ]]; then
+        if [[ "${script_repo_root}" != "${repo_root}" ]] && has_live_helper_surface "${script_repo_root}"; then
+            printf '%s\n' "${script_repo_root}"
+            return 0
+        fi
+        if [[ "${cwd}" != "${repo_root}" ]]; then
+            helper_candidate="$(find_first_live_helper_surface "${cwd}" || true)"
+            if [[ -n "${helper_candidate}" && "${helper_candidate}" != "${repo_root}" ]]; then
+                printf '%s\n' "${helper_candidate}"
+                return 0
+            fi
+        fi
+        helper_candidate="$(find_live_helper_surface_among_siblings "${repo_root}" || true)"
         if [[ -n "${helper_candidate}" ]]; then
             printf '%s\n' "${helper_candidate}"
             return 0
