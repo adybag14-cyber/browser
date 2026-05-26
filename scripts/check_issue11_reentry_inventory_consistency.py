@@ -4,9 +4,9 @@
 
 This helper is intentionally narrow. It confirms that the current issue #11
 Linux/WSL re-entry surface still references the real branch-local tracker,
-saved Rust and Zig candidate helpers, the build-readiness rerun helper, and
-the route docs that hand runs back through the live Linux/WSL helper surface
-instead of stale helper names.
+nested-workspace root-discovery helpers, saved Rust and Zig candidate helpers,
+the build-readiness rerun helper, and the route docs that hand runs back
+through the live Linux/WSL helper surface instead of stale helper names.
 """
 
 from __future__ import annotations
@@ -42,6 +42,26 @@ REQUIRED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
             "linux_build_readiness_route",
         ),
         "Issue #11 progress-tracker route guidance should stay visible across the re-entry inventory surfaces.",
+    ),
+    (
+        "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness routes should keep the workspace-context route note visible before nested or restored reruns trust default roots.",
+    ),
+    (
+        "scripts/linux/check_issue3_workspace_context_route_surface.sh",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness routes should keep the workspace-context surface checker visible before nested or restored reruns trust default roots.",
+    ),
+    (
+        "scripts/linux/show_issue3_workspace_context_route.sh",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness routes should keep the workspace-context route printer visible before nested or restored reruns trust default roots.",
+    ),
+    (
+        "scripts/check_issue3_workspace_context.py",
+        ("progress_tracker_route", "saved_rust_build_readiness_route"),
+        "The progress-tracker and saved-Rust build-readiness routes should keep the workspace-context helper visible before nested or restored reruns rebuild shared-root overrides by hand.",
     ),
     (
         "scripts/check_issue3_saved_rust_archive_candidates.py",
@@ -321,26 +341,6 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
             result["missing_by_file"]["scripts/check_issue3_saved_memory_inputs.py"],
         )
 
-    def test_flags_missing_nested_workspace_preflight_in_progress_tracker(self) -> None:
-        repo_root = build_fixture_repo(
-            missing={
-                "progress_tracker_route": {
-                    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
-                }
-            }
-        )
-        result = collect_results(repo_root)
-
-        self.assertFalse(result["ok"])
-        self.assertIn(
-            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-            result["missing_by_file"],
-        )
-        self.assertIn(
-            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
-            result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
-        )
-
     def test_flags_missing_issue11_contract_reference(self) -> None:
         repo_root = build_fixture_repo(
             missing={
@@ -399,6 +399,66 @@ class Issue11InventoryConsistencyTests(unittest.TestCase):
         self.assertIn(
             "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
             result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
+        )
+
+    def test_flags_missing_workspace_context_route_in_progress_tracker(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "progress_tracker_route": {
+                    "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md",
+            result["missing_by_file"]["docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"],
+        )
+
+    def test_flags_missing_workspace_context_helper_in_saved_rust_build_doc(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "saved_rust_build_readiness_route": {
+                    "scripts/check_issue3_workspace_context.py"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/check_issue3_workspace_context.py",
+            result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
+        )
+
+    def test_flags_missing_nested_workspace_helper_in_saved_rust_build_doc(self) -> None:
+        repo_root = build_fixture_repo(
+            missing={
+                "saved_rust_build_readiness_route": {
+                    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+                }
+            }
+        )
+        result = collect_results(repo_root)
+
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            result["missing_by_file"],
+        )
+        self.assertIn(
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+            result["missing_by_file"]["docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md"],
         )
 
     def test_flags_missing_staged_rust_route_surface_in_saved_rust_build_doc(self) -> None:
