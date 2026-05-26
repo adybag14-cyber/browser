@@ -142,8 +142,8 @@ def choose_matching_candidate(minimum_zig: str, toolchains_root: Path) -> tuple[
     for candidate in discover_toolchain_zig_candidates(toolchains_root):
         try:
             version = probe_zig_version(candidate)
-            status = "matches expected line" if same_version_line(minimum_zig, version) else (
-                "older than minimum" if parse_semver(version) < minimum_parts else "mismatched line"
+            status = "matches-expected-line" if same_version_line(minimum_zig, version) else (
+                "older-than-minimum" if parse_semver(version) < minimum_parts else "mismatched-line"
             )
         except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as exc:
             version = ""
@@ -155,7 +155,7 @@ def choose_matching_candidate(minimum_zig: str, toolchains_root: Path) -> tuple[
                 "status": status,
             }
         )
-        if selected is None and status == "matches expected line":
+        if selected is None and status == "matches-expected-line":
             selected = candidate
     return selected, reports
 
@@ -361,6 +361,34 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 report["suggested_recovery_route_command"][1],
             )
+
+    def test_candidate_reports_use_lane_shared_status_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            repo_root = root / "browser"
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
+
+            toolchains_root = root / "toolchains"
+            matching = toolchains_root / "zig-0.15.7" / "zig"
+            mismatched = toolchains_root / "zig-0.17.0" / "bin" / "zig"
+            older = toolchains_root / "zig-0.14.1" / "zig"
+            for candidate, version in (
+                (matching, "0.15.7"),
+                (mismatched, "0.17.0-dev.299+a76ce7710"),
+                (older, "0.14.1"),
+            ):
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                candidate.write_text(f"#!/usr/bin/env bash\necho {version}\n", encoding="utf-8")
+                candidate.chmod(0o755)
+
+            selected, reports = choose_matching_candidate("0.15.2", toolchains_root)
+
+            self.assertEqual(selected, matching.resolve())
+            statuses = {report["path"]: report["status"] for report in reports}
+            self.assertEqual(statuses[str(matching.resolve())], "matches-expected-line")
+            self.assertEqual(statuses[str(mismatched.resolve())], "mismatched-line")
+            self.assertEqual(statuses[str(older.resolve())], "older-than-minimum")
 
     def test_default_roots_discover_ancestor_workspace_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
