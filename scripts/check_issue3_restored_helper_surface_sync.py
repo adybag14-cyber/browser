@@ -30,6 +30,14 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
         "saved Rust toolchain route",
     ),
     (
+        "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+        "restored helper-surface sync route note",
+    ),
+    (
+        "scripts/check_issue3_restored_helper_surface_sync.py",
+        "restored helper-surface sync helper",
+    ),
+    (
         "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
         "saved-memory route surface checker",
     ),
@@ -64,6 +72,14 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
         "saved Rust toolchain route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+        "restored helper-surface sync route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+        "restored helper-surface sync route helper",
     ),
     (
         "scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh",
@@ -231,7 +247,8 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
                     "drifted"
                     if relative_path == "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
                     else "live",
-                    encoding="utf-8"),
+                    encoding="utf-8",
+                )
 
             report = compare_helper_surfaces(helper_root, restored_root)
 
@@ -243,6 +260,62 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
             self.assertIn(
                 "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
                 report["drifted_files"],
+            )
+
+    def test_restored_helper_route_note_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            helper_root = root / "helper"
+            restored_root = root / "restored"
+            helper_root.mkdir()
+            restored_root.mkdir()
+
+            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
+                helper_target = helper_root / relative_path
+                helper_target.parent.mkdir(parents=True, exist_ok=True)
+                helper_target.write_text("live", encoding="utf-8")
+
+                if relative_path == "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md":
+                    continue
+
+                restored_target = restored_root / relative_path
+                restored_target.parent.mkdir(parents=True, exist_ok=True)
+                restored_target.write_text("live", encoding="utf-8")
+
+            report = compare_helper_surfaces(helper_root, restored_root)
+
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+                report["missing_in_restored"],
+            )
+
+    def test_restored_helper_route_surface_checker_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            helper_root = root / "helper"
+            restored_root = root / "restored"
+            helper_root.mkdir()
+            restored_root.mkdir()
+
+            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
+                helper_target = helper_root / relative_path
+                helper_target.parent.mkdir(parents=True, exist_ok=True)
+                helper_target.write_text("live", encoding="utf-8")
+
+                if relative_path == "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh":
+                    continue
+
+                restored_target = restored_root / relative_path
+                restored_target.parent.mkdir(parents=True, exist_ok=True)
+                restored_target.write_text("live", encoding="utf-8")
+
+            report = compare_helper_surfaces(helper_root, restored_root)
+
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+                report["missing_in_restored"],
             )
 
 
