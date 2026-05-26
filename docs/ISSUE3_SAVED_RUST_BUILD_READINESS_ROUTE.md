@@ -7,8 +7,9 @@ compact bridge back into the broader issue `#11` build-readiness route.
 This route keeps the lower-volume issue `#11` status lane, the saved-memory
 preflight handoff, the nested-workspace saved-memory rerun helper, the
 workspace-context root-discovery handoff, the saved Rust archive-selection
-helpers, the staged Rust candidate helper, the saved Rust restore route, and
-the broader Linux build-readiness route on one branch-local surface.
+helpers, the staged Rust route note and route-surface helpers, the staged Rust
+candidate helper, the saved Rust restore route, and the broader Linux
+build-readiness route on one branch-local surface.
 
 Companion helpers:
 
@@ -16,6 +17,7 @@ Companion helpers:
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
@@ -30,6 +32,8 @@ Companion helpers:
 - `scripts/check_issue3_workspace_context.py`
 - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
@@ -122,8 +126,15 @@ python ./scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
 
 ## Surface Staged Rust Toolchain Candidates
 
-Before unpacking the saved archive again, check whether a reusable Rust
-`1.79.x` toolchain is already staged:
+Before unpacking the saved archive again, reopen the narrower staged-Rust route
+so the route surface and compact handoff stay visible first:
+
+```bash
+bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
+```
+
+Then check whether a reusable Rust `1.79.x` toolchain is already staged:
 
 ```bash
 python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
@@ -131,6 +142,9 @@ python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
 
 Use `--json` when another helper wants the preferred staged candidate or its
 recommended shell exports as structured output.
+
+If no staged candidate is good enough, fall back to the saved Rust archive
+route instead of rebuilding restore commands by hand.
 
 ## Reopen The Saved Rust Route
 
