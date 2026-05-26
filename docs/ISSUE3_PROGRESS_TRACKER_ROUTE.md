@@ -70,6 +70,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/check_issue11_saved_memory_helper_contract.py`
 - `scripts/check_issue11_reentry_inventory_consistency.py`
+- `scripts/check_issue11_toolchains_root_candidates.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
@@ -94,6 +95,18 @@ nested or restored checkout before later helpers trust their defaults, keep
 surface, print the compact route, and run `scripts/check_issue3_workspace_context.py`
 before rebuilding `memory`, `toolchains`, `saved-archives`, `offline-deps`, or
 fallback-Zig overrides by hand.
+
+If the immediate slice is about choosing between visible `toolchains/` and
+hidden `.toolchains/` roots before later Linux or WSL helpers trust a guessed
+default, keep the toolchains-root candidate helper visible first:
+
+```bash
+python ./scripts/check_issue11_toolchains_root_candidates.py --repo-root .
+```
+
+Use its surfaced `--toolchains-root` override before rerunning saved-Rust,
+build-readiness rerun, matching-line, Linux build-readiness, or Zig recovery
+helpers from the same workspace layout.
 
 If the immediate slice is about trusting an already-restored checkout as its
 own helper root, keep `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
@@ -237,176 +250,3 @@ gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
 When issue `#11` is the active progress log, keep the start and completion
 updates compact so scheduled reruns leave the same fields the route printer and
 surface checker expect:
-
-```text
-Goal: <state the exact Linux/WSL re-entry helper or environment gate work>
-Started: <UTC timestamp>
-Next: <state the first concrete helper, validation check, or branch-safe change you are about to make>
-```
-
-```text
-Achieved: <state what route, helper, or branch-safe re-entry improvement landed>
-Completed: <UTC timestamp>
-Commit: <commit sha>
-Validation: <state the focused helper check, self-test, or follow-up route that now applies>
-```
-
-## Fail Fast On The Route Surface
-
-From the browser repo root:
-
-```bash
-bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
-```
-
-Use `--json` when another helper wants the route-surface result as structured
-output.
-
-## Surface The Workspace-Context Route First When The Layout Is Unusual
-
-When the immediate issue `#11` work is about a nested or restored checkout whose
-next helper would otherwise guess the wrong shared roots, fail fast on the
-workspace-context route first:
-
-```bash
-bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
-bash ./scripts/linux/show_issue3_workspace_context_route.sh
-```
-
-Keep the root-discovery helper visible before later saved-memory, saved-Rust,
-saved-Zig, build-readiness, or Zig recovery routes are trusted:
-
-```bash
-python ./scripts/check_issue3_workspace_context.py --repo-root .
-```
-
-Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
-when the attached archive is not sitting under the nearest discovered
-`agent_files` root and the follow-up routes need to inspect the same surfaced
-path.
-
-## Surface The Restored Helper-Surface Sync Route When Reusing An Existing Restore
-
-When the immediate issue `#11` work is about trusting an already-restored
-checkout as its own helper root, fail fast on the narrower helper-surface sync
-route before later saved-memory, saved-archive, build-readiness, or runtime
-follow-up helpers are trusted from that restored root:
-
-```bash
-bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh
-bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh
-```
-
-Keep the narrower comparison helper visible before the route widens out again:
-
-```bash
-python ./scripts/check_issue3_restored_helper_surface_sync.py \
-  --helper-root . \
-  --restored-root ../browser-memory-snapshot
-```
-
-Use the in-place helper refresh when the restored checkout already exists and
-the helper surface is stale:
-
-```bash
-bash ./scripts/linux/restore_saved_browser_snapshot.sh \
-  --browser-root . \
-  --helper-root . \
-  --memory-root ../memory \
-  --archive ../memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip \
-  --destination ../browser-memory-snapshot \
-  --sync-only
-```
-
-## Surface The Saved Rust Bridge When Toolchain Reuse Is The Slice
-
-When the immediate issue `#11` work is about restoring or reusing the saved
-Rust `1.79.0` toolchain, fail fast on the saved-Rust build-readiness bridge
-surface before the broader Linux or WSL build-readiness route is trusted:
-
-```bash
-bash ./scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh
-bash ./scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
-```
-
-If the exact saved-Rust restore or shell-export surface is still needed after
-the bridge narrows the route, reopen the raw saved-Rust route directly:
-
-```bash
-bash ./scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh
-bash ./scripts/linux/show_issue3_saved_rust_toolchain_route.sh
-```
-
-Keep the staged-toolchain candidate helper visible before unpacking the archive
-again:
-
-```bash
-python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
-```
-
-Keep the nested-workspace rerun helper visible when the route wants the surfaced
-saved-memory preflight already threaded with helper, Memory, agent-files, and
-restored-checkout roots before the saved-Rust bridge widens:
-
-```bash
-bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
-```
-
-## Surface The Saved Zig Route First When Archive Selection Is The Slice
-
-When the immediate issue `#11` work is about choosing or restoring a saved Zig
-`0.15.x` archive, fail fast on the saved-Zig route surface before trusting the
-archive-selection route output:
-
-```bash
-bash ./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh
-bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
-```
-
-Keep the narrower staged-toolchain route visible when the immediate slice is
-staged candidate reuse rather than saved-archive selection:
-
-```bash
-bash ./scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh
-bash ./scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
-```
-
-Keep the staged-toolchain candidate helper visible before unpacking the archive
-again:
-
-```bash
-python ./scripts/check_issue3_staged_zig_toolchain_candidates.py --repo-root .
-```
-
-Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
-when the attached archive is not sitting beside the repo workspace and the
-saved-Rust, saved-Zig, saved-Memory, build-readiness, and Zig recovery follow-up
-helpers need to inspect the same surfaced archive path.
-
-When a matching staged Zig candidate already exists, print the exact Linux or
-WSL build-readiness rerun command before broader readiness is trusted again:
-
-```bash
-python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
-```
-
-After restoring a saved Zig candidate, fail fast on the matching-line gate and
-the archive-restore surface before broader readiness is trusted again:
-
-```bash
-bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
-bash ./scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh
-```
-
-## Print The Compact Handoff
-
-From the browser repo root:
-
-```bash
-bash ./scripts/linux/show_issue3_progress_tracker_route.sh
-```
-
-Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
-when the attached archive is not sitting beside the repo workspace and the
-saved-Rust, saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up
-routes all need to inspect the same surfaced archive path.
