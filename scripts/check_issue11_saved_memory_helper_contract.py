@@ -168,6 +168,11 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "The restore helper should keep the staged Rust route printer visible to downstream issue #11 checks.",
     ),
     (
+        "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        ("restored_checkout_helper", "restore_helper", "saved_memory_route"),
+        "The restore-side helpers and saved-memory route should keep the nested-workspace issue #11 rerun helper visible.",
+    ),
+    (
         "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
         ("restored_checkout_helper", "restore_helper"),
         "The restore-side helpers should keep the Windows runtime handoff surface checker visible.",
@@ -214,7 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def extract_restore_helper_paths(script_text: str) -> set[str]:
-    marker = 'declare -a HELPER_SURFACE_PATHS=(' 
+    marker = 'declare -a HELPER_SURFACE_PATHS=('
     in_block = False
     paths: set[str] = set()
 
@@ -507,6 +512,10 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
         )
         self.assertIn(
             "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
             result["underreported_fragments"],
         )
 
