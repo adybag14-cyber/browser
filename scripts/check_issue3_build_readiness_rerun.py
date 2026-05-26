@@ -67,6 +67,10 @@ def load_minimum_zig(repo_root: Path) -> str:
     return match.group(1)
 
 
+def resolve_default_helper_root(repo_root: Path) -> Path:
+    return repo_root.resolve()
+
+
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
     located = locate_first_existing(repo_root, "toolchains")
     if located is not None and located.is_dir():
@@ -158,6 +162,7 @@ def choose_matching_candidate(minimum_zig: str, toolchains_root: Path) -> tuple[
 
 def build_readiness_rerun_command(
     repo_root: Path,
+    helper_root: Path,
     zig_path: Path,
     toolchains_root: Path,
     saved_archives_root: Path,
@@ -166,7 +171,7 @@ def build_readiness_rerun_command(
 ) -> list[str]:
     command = [
         "python",
-        "scripts/check_linux_build_readiness.py",
+        str(helper_root / "scripts" / "check_linux_build_readiness.py"),
         "--repo-root",
         str(repo_root),
         "--zig",
@@ -192,6 +197,7 @@ def format_shell_command(command: list[str]) -> str:
 
 def collect_report(
     repo_root: Path,
+    helper_root: Path,
     toolchains_root: Path,
     saved_archives_root: Path,
     offline_deps_root: Path,
@@ -202,6 +208,7 @@ def collect_report(
     rerun_command = (
         build_readiness_rerun_command(
             repo_root,
+            helper_root,
             selected,
             toolchains_root,
             saved_archives_root,
@@ -213,7 +220,7 @@ def collect_report(
     )
     recovery_route_command = [
         "bash",
-        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        str(helper_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"),
         "--repo-root",
         str(repo_root),
         "--toolchains-root",
@@ -228,6 +235,7 @@ def collect_report(
     return {
         "status": "passed" if selected is not None else "failed",
         "repo_root": str(repo_root),
+        "helper_root": str(helper_root),
         "minimum_zig": minimum_zig,
         "toolchains_root": str(toolchains_root),
         "saved_archives_root": str(saved_archives_root),
@@ -242,6 +250,7 @@ def collect_report(
 
 def emit_text(report: dict[str, object]) -> None:
     print(f"Repo root: {report['repo_root']}")
+    print(f"Helper root: {report['helper_root']}")
     print(f"Minimum Zig from build.zig.zon: {report['minimum_zig']}")
     print(f"Toolchains root: {report['toolchains_root']}")
     print(f"Saved archives root: {report['saved_archives_root']}")
@@ -269,6 +278,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Print the exact branch-compatible Zig rerun command for issue #11 Linux/WSL recovery."
     )
     parser.add_argument("--repo-root", default=".", help="Path to the browser checkout root (default: current directory)")
+    parser.add_argument(
+        "--helper-root",
+        default=None,
+        help="Path to the live helper checkout that should supply the rerun and recovery scripts (default: repo root)",
+    )
     parser.add_argument("--toolchains-root", default=None, help="Path to the staged Zig toolchains root")
     parser.add_argument(
         "--saved-archives-root",
@@ -303,6 +317,7 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
 
             report = collect_report(
                 repo_root,
+                repo_root,
                 toolchains_root,
                 root / "memory" / "repo_archives" / "browser" / "dependencies",
                 root / "offline-deps",
@@ -315,6 +330,7 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             self.assertIn(str(matching.resolve()), command)
             self.assertIn("--expect-offline-deps", command)
             self.assertIn("--require-prebuilt-v8", command)
+            self.assertEqual(command[1], str((repo_root / "scripts" / "check_linux_build_readiness.py").resolve()))
 
     def test_reports_recovery_route_when_no_matching_candidate_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -331,6 +347,7 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
 
             report = collect_report(
                 repo_root,
+                repo_root,
                 toolchains_root,
                 root / "memory" / "repo_archives" / "browser" / "dependencies",
                 root / "offline-deps",
@@ -342,7 +359,7 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             self.assertIsNone(report["suggested_readiness_rerun_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
-                report["suggested_recovery_route_command"],
+                report["suggested_recovery_route_command"][1],
             )
 
     def test_default_roots_discover_ancestor_workspace_layout(self) -> None:
@@ -371,6 +388,42 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             self.assertEqual(resolve_default_offline_deps_root(repo_root), offline_deps_root.resolve())
             self.assertEqual(resolve_fallback_zig_archive(repo_root, None), fallback_archive.resolve())
 
+    def test_explicit_helper_root_supplies_live_rerun_and_recovery_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            helper_root = root / "browser"
+            repo_root = root / "browser-memory-snapshot"
+            helper_root.mkdir()
+            repo_root.mkdir()
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
+
+            toolchains_root = root / "toolchains"
+            matching = toolchains_root / "zig-0.15.7" / "zig"
+            matching.parent.mkdir(parents=True, exist_ok=True)
+            matching.write_text("#!/usr/bin/env bash\necho 0.15.7\n", encoding="utf-8")
+            matching.chmod(0o755)
+
+            report = collect_report(
+                repo_root,
+                helper_root,
+                toolchains_root,
+                root / "memory" / "repo_archives" / "browser" / "dependencies",
+                root / "offline-deps",
+                None,
+            )
+
+            self.assertEqual(report["helper_root"], str(helper_root.resolve()))
+            self.assertEqual(
+                report["suggested_readiness_rerun_command"][1],
+                str((helper_root / "scripts" / "check_linux_build_readiness.py").resolve()),
+            )
+            self.assertEqual(
+                report["suggested_recovery_route_command"][1],
+                str((helper_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").resolve()),
+            )
+            self.assertIn(str(repo_root.resolve()), report["suggested_readiness_rerun_command"])
+            self.assertIn(str(repo_root.resolve()), report["suggested_recovery_route_command"])
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -380,6 +433,7 @@ def main() -> int:
         return 0 if result.wasSuccessful() else 1
 
     repo_root = Path(args.repo_root).resolve()
+    helper_root = Path(args.helper_root).resolve() if args.helper_root else resolve_default_helper_root(repo_root)
     toolchains_root = Path(args.toolchains_root).resolve() if args.toolchains_root else resolve_default_toolchains_root(repo_root)
     saved_archives_root = (
         Path(args.saved_archives_root).resolve() if args.saved_archives_root else resolve_default_saved_archives_root(repo_root)
@@ -394,6 +448,7 @@ def main() -> int:
 
     report = collect_report(
         repo_root=repo_root,
+        helper_root=helper_root,
         toolchains_root=toolchains_root,
         saved_archives_root=saved_archives_root,
         offline_deps_root=offline_deps_root,
