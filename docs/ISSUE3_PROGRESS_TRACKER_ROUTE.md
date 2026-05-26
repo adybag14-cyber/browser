@@ -25,6 +25,7 @@ that prepares the next honest runtime attempt without reopening the direct
 ## Use Issue #11 For
 
 - saved snapshot restore and restored-checkout readiness
+- restored helper-surface sync checks for already-restored snapshots
 - saved archive integrity checks
 - saved Rust archive candidate discovery and staged-toolchain reuse
 - saved Zig archive candidate discovery and restore selection
@@ -40,6 +41,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `docs/ISSUE3_RUNTIME_REENTRY_GATES.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
+- `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
@@ -53,6 +55,8 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
@@ -64,6 +68,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_issue3_saved_zig_archive_candidates.py`
 - `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_linux_build_readiness.py`
 
 ## Working Rule
@@ -71,6 +76,12 @@ that prepares the next honest runtime attempt without reopening the direct
 If a scheduled run is still blocked on publication safety or a branch-compatible
 Linux or WSL validation toolchain, leave the progress update on issue `#11`
 instead of retrying comments on issue `#2` or issue `#3`.
+
+If the immediate slice is about trusting an already-restored checkout as its
+own helper root, keep `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
+visible, fail fast on its route surface, run the narrower sync check before
+saved-memory or build-readiness follow-up helpers are trusted from the restored
+root, and use the `--sync-only` refresh route when the helper surface is stale.
 
 If the immediate slice is about reusing or restoring the saved Rust `1.79.0`
 toolchain, keep `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` visible,
@@ -102,6 +113,39 @@ bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 
 Use `--json` when another helper wants the route-surface result as structured
 output.
+
+## Surface The Restored Helper-Surface Sync Route When Reusing An Existing Restore
+
+When the immediate issue `#11` work is about trusting an already-restored
+checkout as its own helper root, fail fast on the narrower helper-surface sync
+route before later saved-memory, saved-archive, build-readiness, or runtime
+follow-up helpers are trusted from that restored root:
+
+```bash
+bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh
+```
+
+Keep the narrower comparison helper visible before the route widens out again:
+
+```bash
+python ./scripts/check_issue3_restored_helper_surface_sync.py \
+  --helper-root . \
+  --restored-root ../browser-memory-snapshot
+```
+
+Use the in-place helper refresh when the restored checkout already exists and
+the helper surface is stale:
+
+```bash
+bash ./scripts/linux/restore_saved_browser_snapshot.sh \
+  --browser-root . \
+  --helper-root . \
+  --memory-root ../memory \
+  --archive ../memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip \
+  --destination ../browser-memory-snapshot \
+  --sync-only
+```
 
 ## Surface The Saved Rust Bridge When Toolchain Reuse Is The Slice
 
