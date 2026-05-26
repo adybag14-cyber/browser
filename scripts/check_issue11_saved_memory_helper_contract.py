@@ -11,6 +11,7 @@ newer helper-surface paths are present in one place but not the others.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 import tempfile
@@ -50,6 +51,16 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
         ("restored_checkout_helper", "restore_helper"),
         "The restore-side helpers should keep the saved Rust archive-candidate route visible.",
+    ),
+    (
+        "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+        ("restore_helper",),
+        "The restore helper should keep the staged Zig toolchain route visible to downstream issue #11 checks.",
+    ),
+    (
+        "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+        ("restore_helper",),
+        "The restore helper should keep the staged Rust toolchain route visible to downstream issue #11 checks.",
     ),
     (
         "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
@@ -137,6 +148,26 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
         "The restore-side helpers should keep the saved Rust archive-candidates route printer visible.",
     ),
     (
+        "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+        ("restore_helper",),
+        "The restore helper should keep the staged Zig route surface checker visible to downstream issue #11 checks.",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
+        ("restore_helper",),
+        "The restore helper should keep the staged Zig route printer visible to downstream issue #11 checks.",
+    ),
+    (
+        "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+        ("restore_helper",),
+        "The restore helper should keep the staged Rust route surface checker visible to downstream issue #11 checks.",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+        ("restore_helper",),
+        "The restore helper should keep the staged Rust route printer visible to downstream issue #11 checks.",
+    ),
+    (
         "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
         ("restored_checkout_helper", "restore_helper"),
         "The restore-side helpers should keep the Windows runtime handoff surface checker visible.",
@@ -180,11 +211,83 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def extract_restore_helper_paths(script_text: str) -> set[str]:
+    marker = 'declare -a HELPER_SURFACE_PATHS=(' 
+    in_block = False
+    paths: set[str] = set()
+
+    for line in script_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        if stripped.startswith('"') and stripped.endswith('"'):
+            paths.add(stripped.strip('"'))
+
+    return paths
+
+
+def extract_saved_memory_base_paths(source_text: str) -> set[str]:
+    try:
+        module = ast.parse(source_text)
+    except SyntaxError:
+        return set()
+
+    for node in module.body:
+        value = None
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == "BASE_REQUIRED_RESTORED_HELPER_FILES" for target in node.targets):
+                value = node.value
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name) and node.target.id == "BASE_REQUIRED_RESTORED_HELPER_FILES":
+                value = node.value
+
+        if value is None or not isinstance(value, (ast.Tuple, ast.List)):
+            continue
+
+        paths: set[str] = set()
+        for element in value.elts:
+            if not isinstance(element, (ast.Tuple, ast.List)) or not element.elts:
+                continue
+            first = element.elts[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                paths.add(first.value)
+        return paths
+
+    return set()
+
+
+def saved_memory_helper_mirrors_restore_paths(source_text: str) -> bool:
+    required_fragments = (
+        "def extract_restore_helper_paths(",
+        "helper_paths = extract_restore_helper_paths(",
+        "for helper_path in helper_paths:",
+        "required.append(",
+    )
+    return all(fragment in source_text for fragment in required_fragments)
+
+
+def is_path_fragment(fragment: str) -> bool:
+    return "/" in fragment
+
+
 def read_contract_files(repo_root: Path) -> dict[str, str]:
     texts: dict[str, str] = {}
     for key, rel_path in FILES.items():
         texts[key] = (repo_root / rel_path).read_text(encoding="utf-8")
     return texts
+
+
+def collect_saved_memory_coverage(texts: dict[str, str]) -> set[str]:
+    covered = extract_saved_memory_base_paths(texts["saved_memory_helper"])
+    if saved_memory_helper_mirrors_restore_paths(texts["saved_memory_helper"]):
+        covered.update(extract_restore_helper_paths(texts["restore_helper"]))
+    return covered
 
 
 def collect_results(repo_root: Path) -> dict[str, object]:
@@ -208,6 +311,7 @@ def collect_results(repo_root: Path) -> dict[str, object]:
             )
 
     saved_memory_text = texts["saved_memory_helper"]
+    saved_memory_coverage = collect_saved_memory_coverage(texts)
     restore_side_fragments = {
         fragment
         for fragment, _required_in, _purpose in SHARED_FRAGMENTS
@@ -216,7 +320,11 @@ def collect_results(repo_root: Path) -> dict[str, object]:
     underreported_fragments = sorted(
         fragment
         for fragment in restore_side_fragments
-        if fragment not in saved_memory_text
+        if (
+            fragment not in saved_memory_coverage
+            if is_path_fragment(fragment)
+            else fragment not in saved_memory_text
+        )
     )
 
     ok = missing_count == 0 and not underreported_fragments
@@ -248,9 +356,52 @@ def emit_text(result: dict[str, object]) -> None:
         print("\nSaved-memory helper contract check failed.")
 
 
+def build_saved_memory_helper_fixture(*, mirror_restore_paths: bool) -> str:
+    base_paths = (
+        'BASE_REQUIRED_RESTORED_HELPER_FILES = (\n'
+        '    ("scripts/check_issue3_saved_zig_archive_candidates.py", "fixture"),\n'
+        ')\n'
+    )
+    if not mirror_restore_paths:
+        return base_paths
+
+    return (
+        base_paths
+        + "\n"
+        + textwrap.dedent(
+            """
+            def extract_restore_helper_paths(script_text: str) -> list[str]:
+                return []
+
+
+            def load_required_restored_helper_files(helper_root):
+                required = list(BASE_REQUIRED_RESTORED_HELPER_FILES)
+                helper_paths = extract_restore_helper_paths("fixture")
+                for helper_path in helper_paths:
+                    required.append((helper_path, "mirrored"))
+                return required
+            """
+        ).strip()
+        + "\n"
+    )
+
+
+def build_restore_helper_fixture(*, include_restore_fragments: bool) -> str:
+    restore_paths = [
+        fragment
+        for fragment, required_in, _purpose in SHARED_FRAGMENTS
+        if include_restore_fragments and "restore_helper" in required_in and is_path_fragment(fragment)
+    ]
+    lines = ["#!/usr/bin/env bash", "", "declare -a HELPER_SURFACE_PATHS=("]
+    lines.extend(f'    "{fragment}"' for fragment in restore_paths)
+    lines.append(")")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def build_fixture_repo(
     *,
-    include_saved_memory_fragments: bool,
+    mirror_restore_paths: bool,
     include_restore_fragments: bool = True,
 ) -> Path:
     root = Path(tempfile.mkdtemp(prefix="issue11-saved-memory-contract-"))
@@ -264,25 +415,10 @@ def build_fixture_repo(
         for fragment, required_in, _purpose in SHARED_FRAGMENTS
         if "restored_checkout_helper" in required_in
     )
-    restore_bits = "\n".join(
-        fragment
-        for fragment, required_in, _purpose in SHARED_FRAGMENTS
-        if include_restore_fragments and "restore_helper" in required_in
-    )
     route_bits = "\n".join(
         fragment
         for fragment, required_in, _purpose in SHARED_FRAGMENTS
         if "saved_memory_route" in required_in
-    )
-    saved_memory_bits = "\n".join(
-        fragment
-        for fragment, required_in, _purpose in SHARED_FRAGMENTS
-        if include_saved_memory_fragments
-        and (
-            "saved_memory_helper" in required_in
-            or "restored_checkout_helper" in required_in
-            or ("restore_helper" in required_in)
-        )
     )
 
     (root / FILES["restored_checkout_helper"]).write_text(
@@ -295,12 +431,7 @@ def build_fixture_repo(
         encoding="utf-8",
     )
     (root / FILES["restore_helper"]).write_text(
-        textwrap.dedent(
-            f"""
-            {restore_bits}
-            """
-        ).strip()
-        + "\n",
+        build_restore_helper_fixture(include_restore_fragments=include_restore_fragments),
         encoding="utf-8",
     )
     (root / FILES["saved_memory_route"]).write_text(
@@ -313,36 +444,35 @@ def build_fixture_repo(
         encoding="utf-8",
     )
     (root / FILES["saved_memory_helper"]).write_text(
-        textwrap.dedent(
-            f"""
-            {saved_memory_bits}
-            """
-        ).strip()
-        + "\n",
+        build_saved_memory_helper_fixture(mirror_restore_paths=mirror_restore_paths),
         encoding="utf-8",
     )
     return root
 
 
 class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
-    def test_passes_when_expected_fragments_are_present(self) -> None:
+    def test_passes_when_dynamic_restore_mirroring_is_present(self) -> None:
         repo_root = build_fixture_repo(
-            include_saved_memory_fragments=True,
+            mirror_restore_paths=True,
         )
         result = collect_results(repo_root)
         self.assertTrue(result["ok"])
         self.assertEqual(result["underreported_fragments"], [])
 
-    def test_flags_restored_checkout_fragments_missing_from_saved_memory_helper(self) -> None:
-        repo_root = build_fixture_repo(include_saved_memory_fragments=False)
+    def test_flags_restore_side_paths_when_saved_memory_helper_lacks_dynamic_mirroring(self) -> None:
+        repo_root = build_fixture_repo(mirror_restore_paths=False)
         result = collect_results(repo_root)
         self.assertFalse(result["ok"])
         self.assertIn(
-            "scripts/check_issue3_saved_zig_archive_candidates.py",
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
             result["underreported_fragments"],
         )
         self.assertIn(
-            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
             result["underreported_fragments"],
         )
         self.assertIn(
@@ -350,21 +480,17 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
             result["underreported_fragments"],
         )
         self.assertIn(
-            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
             result["underreported_fragments"],
         )
         self.assertIn(
-            "scripts/check_issue3_build_readiness_rerun.py",
-            result["underreported_fragments"],
-        )
-        self.assertIn(
-            "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+            "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
             result["underreported_fragments"],
         )
 
     def test_flags_restore_helper_fragments_missing_from_contract_checks(self) -> None:
         repo_root = build_fixture_repo(
-            include_saved_memory_fragments=True,
+            mirror_restore_paths=True,
             include_restore_fragments=False,
         )
         result = collect_results(repo_root)
