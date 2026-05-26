@@ -90,6 +90,7 @@ staged_rust_toolchain_candidates_script = repo_root / "scripts" / "check_issue3_
 linux_build_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_linux_build_readiness_route_surface.sh"
 linux_build_route_script = repo_root / "scripts" / "linux" / "show_issue3_linux_build_readiness_route.sh"
 zig_recovery_route_script = repo_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"
+staged_zig_toolchain_candidates_script = repo_root / "scripts" / "check_issue3_staged_zig_toolchain_candidates.py"
 saved_zig_route_surface_script = repo_root / "scripts" / "linux" / "check_issue3_saved_zig_archive_candidates_route_surface.sh"
 saved_zig_route_script = repo_root / "scripts" / "linux" / "show_issue3_saved_zig_archive_candidates_route.sh"
 
@@ -163,6 +164,17 @@ zig_recovery_command = format_command(
     ["bash", str(zig_recovery_route_script), "--repo-root", str(repo_root)]
     + (["--fallback-zig-archive", fallback_zig_archive] if fallback_zig_archive else [])
 )
+staged_zig_toolchain_candidates_command = format_command(
+    helper_report.get("suggested_staged_zig_toolchain_candidates_command")
+    or [
+        sys.executable,
+        str(staged_zig_toolchain_candidates_script),
+        "--repo-root",
+        str(repo_root),
+        "--toolchains-root",
+        str(helper_report.get("toolchains_root") or (repo_root.parent / "toolchains")),
+    ]
+)
 saved_zig_surface_command = format_command(
     ["bash", str(saved_zig_route_surface_script), "--repo-root", str(repo_root)]
 )
@@ -197,6 +209,7 @@ result = {
         "linux_build_readiness_route_surface": linux_build_surface_command,
         "linux_build_readiness_route": linux_build_command,
         "zig_toolchain_recovery_route": zig_recovery_command,
+        "staged_zig_toolchain_candidates": staged_zig_toolchain_candidates_command,
         "saved_zig_archive_candidates_route_surface": saved_zig_surface_command,
         "saved_zig_archive_candidates_route": saved_zig_command,
         "readiness_command": readiness_command,
@@ -211,6 +224,7 @@ result = {
         "Run the printed saved and staged Rust candidate commands before unpacking the archive again so a nested checkout can reuse the surfaced helper roots consistently.",
         "Run the printed Linux build-readiness surface check before the Linux build-readiness route when the shared roots are known and the next rerun can move straight into those gates.",
         "Use the printed Zig toolchain recovery route when the next rerun already has the practical roots but still lacks a branch-compatible 0.15.x toolchain.",
+        "Run the printed staged Zig toolchain candidates command before widening back to saved Zig archive selection so a reusable staged 0.15.x line wins first when it exists.",
         "Run the printed saved Zig archive candidates surface check before the saved Zig archive candidates route when the next rerun needs to pick or restage a branch-compatible 0.15.x archive before broader recovery is trusted.",
         "Use the printed readiness command as the shortest direct handoff once the practical roots are already surfaced and the next step does not need a broader route wrapper.",
         "Thread --fallback-zig-archive through this route when the attached archive is outside the nearest discovered agent_files root so every follow-up route inspects the same surfaced path.",
@@ -244,6 +258,7 @@ print("  docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md")
 print("  docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md")
 print("  docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md")
 print("  docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md")
+print("  docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md")
 print("  docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md")
 print()
 print("Suggested route")
@@ -286,6 +301,9 @@ print(f"    {linux_build_command}")
 print()
 print("  Zig toolchain recovery route:")
 print(f"    {zig_recovery_command}")
+print()
+print("  Staged Zig toolchain candidates:")
+print(f"    {staged_zig_toolchain_candidates_command}")
 print()
 print("  Saved Zig archive candidates surface check:")
 print(f"    {saved_zig_surface_command}")
