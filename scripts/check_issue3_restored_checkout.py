@@ -54,11 +54,19 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
         "saved Rust archive candidates route note",
     ),
+    (
+        "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+        "staged Rust toolchain candidates route note",
+    ),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
     (
         "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
         "saved Zig archive candidates route note",
+    ),
+    (
+        "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+        "staged Zig toolchain candidates route note",
     ),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build-inputs note"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
@@ -95,6 +103,8 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
     ("scripts/check_issue3_build_readiness_rerun.py", "build-readiness rerun helper"),
+    ("scripts/check_issue11_saved_memory_helper_contract.py", "issue #11 saved-memory helper contract checker"),
+    ("scripts/check_issue11_reentry_inventory_consistency.py", "issue #11 re-entry inventory checker"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     (
         "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
@@ -119,6 +129,22 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
         "saved Zig archive candidates route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+        "staged Zig toolchain candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
+        "staged Zig toolchain candidates route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+        "staged Rust toolchain candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+        "staged Rust toolchain candidates route printer",
     ),
     ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
     (
@@ -172,6 +198,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh", "saved-Memory route surface check"),
     ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-Memory route printer"),
+    (
+        "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        "issue #11 nested-workspace saved-memory preflight runner",
+    ),
     (
         "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
         "saved Rust build-readiness bridge surface check",
@@ -1077,6 +1107,46 @@ class RestoredCheckoutTests(unittest.TestCase):
                 if not entry["exists"]
             }
             self.assertIn("scripts/windows/start_attached_pages_catalog.ps1", missing)
+
+    def test_issue11_and_staged_toolchain_followups_are_required_for_synced_helper_surface(self) -> None:
+        required_followups = {
+            "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            "scripts/check_issue11_saved_memory_helper_contract.py",
+            "scripts/check_issue11_reentry_inventory_consistency.py",
+            "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+            "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "browser-memory-snapshot"
+            repo_root.mkdir()
+            for relative_path, _label in RESTORED_CHECKOUT_PATHS:
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path in required_followups:
+                    continue
+                target = repo_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ok", encoding="utf-8")
+
+            result = collect_results(
+                repo_root=repo_root,
+                helper_root=None,
+                expect_helper_surface=True,
+            )
+
+            self.assertFalse(result["ok"])
+            missing = {
+                entry["path"]
+                for entry in result["helper_surface"]
+                if not entry["exists"]
+            }
+            self.assertTrue(required_followups.issubset(missing))
 
     def test_missing_required_paths_gets_its_own_diagnosis(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
