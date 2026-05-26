@@ -20,6 +20,7 @@ than `/workspace/browser`.
 - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
 - `scripts/linux/show_issue3_workspace_context_route.sh`
 - `scripts/check_issue3_workspace_context.py`
+- `scripts/check_issue11_toolchains_root_candidates.py`
 - `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
@@ -76,6 +77,24 @@ python scripts/check_issue3_workspace_context.py \
   --fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
 ```
 
+## Surface Toolchains-Root Candidates Before Rebuilding Overrides
+
+If both visible `toolchains/` and hidden `.toolchains/` roots may exist above
+the checkout, run the dedicated issue `#11` helper before broader Linux or WSL
+reruns trust a guessed staged-toolchains path:
+
+```bash
+python scripts/check_issue11_toolchains_root_candidates.py --repo-root .
+```
+
+Use `--json` when another helper needs the preferred toolchains root, warnings,
+or ready-to-rerun follow-up commands as structured output.
+
+Treat the surfaced `--toolchains-root` override as the shared handoff for the
+next saved-Rust, staged-Rust, nested-workspace saved-Memory preflight,
+build-readiness rerun, matching-line, Linux build-readiness, or Zig recovery
+command from the same workspace layout.
+
 ## What The Helper Surfaces
 
 The helper prints:
@@ -113,6 +132,10 @@ The helper prints:
 - Use the printed issue `#11` progress-tracker route command when the next rerun
   still needs a lower-volume status lane before reopening the direct runtime
   patch.
+- Use `scripts/check_issue11_toolchains_root_candidates.py` before broader
+  Linux or WSL readiness, nested-workspace saved-Memory preflight, matching-line,
+  or Zig recovery reruns when both `toolchains/` and `.toolchains/` may be
+  visible above the checkout.
 - Use `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
   when the next step is the saved-memory preflight from a nested or restored
   checkout and the run wants the surfaced helper, Memory, agent-files, and
