@@ -39,23 +39,80 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
-resolve_workspace_companion_path() {
-    local root="$1"
-    local name="$2"
-    local child_path="${root}/${name}"
-    local sibling_path="$(cd "${root}/.." && pwd)/${name}"
+has_live_helper_surface() {
+    local candidate="$1"
+    [[ -d "${candidate}" ]] || return 1
+    [[ -f "${candidate}/build.zig.zon" ]] || return 1
+    [[ -f "${candidate}/scripts/check_issue3_saved_memory_inputs.py" ]] || return 1
+    [[ -f "${candidate}/scripts/linux/show_issue3_saved_memory_inputs_route.sh" ]] || return 1
+}
 
-    if [[ -e "${child_path}" ]]; then
-        printf '%s\n' "${child_path}"
-        return
+find_first_existing_ancestor_dir() {
+    local start="$1"
+    local relative_dir="$2"
+    local current candidate
+
+    current="$(cd "${start}" && pwd)"
+    while true; do
+        candidate="${current}/${relative_dir}"
+        if [[ -d "${candidate}" ]]; then
+            cd "${candidate}" && pwd
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            break
+        fi
+        current="$(dirname "${current}")"
+    done
+    return 1
+}
+
+find_first_live_helper_surface() {
+    local start="$1"
+    local current
+
+    current="$(cd "${start}" && pwd)"
+    while true; do
+        if has_live_helper_surface "${current}"; then
+            printf '%s\n' "${current}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            break
+        fi
+        current="$(dirname "${current}")"
+    done
+    return 1
+}
+
+resolve_default_helper_root() {
+    local repo_root="$1"
+    local cwd helper_candidate
+
+    repo_root="$(cd "${repo_root}" && pwd)"
+    cwd="$(pwd)"
+    if [[ "$(basename "${repo_root}")" == "${DEFAULT_DESTINATION_NAME}" && "${cwd}" != "${repo_root}" ]]; then
+        helper_candidate="$(find_first_live_helper_surface "${cwd}" || true)"
+        if [[ -n "${helper_candidate}" ]]; then
+            printf '%s\n' "${helper_candidate}"
+            return 0
+        fi
     fi
+    printf '%s\n' "${repo_root}"
+}
 
-    if [[ "$(basename "${root}")" == "workspace" ]]; then
-        printf '%s\n' "${child_path}"
-        return
+resolve_discovered_or_default_root() {
+    local start="$1"
+    local relative_dir="$2"
+    local fallback_root="$3"
+    local discovered_root
+
+    discovered_root="$(find_first_existing_ancestor_dir "${start}" "${relative_dir}" || true)"
+    if [[ -n "${discovered_root}" ]]; then
+        printf '%s\n' "${discovered_root}"
+        return 0
     fi
-
-    printf '%s\n' "${sibling_path}"
+    printf '%s\n' "${fallback_root}"
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -130,20 +187,26 @@ fi
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${HELPER_ROOT}" ]]; then
-    HELPER_ROOT="${REPO_ROOT}"
+    HELPER_ROOT="$(resolve_default_helper_root "${REPO_ROOT}")"
+else
+    HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 fi
-HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
+HELPER_WORKSPACE_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(resolve_workspace_companion_path "${REPO_ROOT}" "memory")"
+    MEMORY_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "memory" "${HELPER_WORKSPACE_ROOT}/memory")"
 fi
 if [[ -z "${ARCHIVE_PATH}" ]]; then
     ARCHIVE_PATH="${MEMORY_ROOT}/repo_archives/browser/${DEFAULT_ARCHIVE_NAME}"
 fi
 if [[ -z "${DESTINATION}" ]]; then
-    DESTINATION="$(resolve_workspace_companion_path "${REPO_ROOT}" "${DEFAULT_DESTINATION_NAME}")"
+    if [[ "$(basename "${REPO_ROOT}")" == "${DEFAULT_DESTINATION_NAME}" ]]; then
+        DESTINATION="${REPO_ROOT}"
+    else
+        DESTINATION="$(resolve_discovered_or_default_root "${REPO_ROOT}" "${DEFAULT_DESTINATION_NAME}" "$(cd "${REPO_ROOT}/.." && pwd)/${DEFAULT_DESTINATION_NAME}")"
+    fi
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    DEFAULT_AGENT_FILES_ROOT="$(resolve_workspace_companion_path "${HELPER_ROOT}" "agent_files")"
+    DEFAULT_AGENT_FILES_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "agent_files" "${HELPER_WORKSPACE_ROOT}/agent_files")"
     CANDIDATE_FALLBACK_ZIG_ARCHIVE="${DEFAULT_AGENT_FILES_ROOT}/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
