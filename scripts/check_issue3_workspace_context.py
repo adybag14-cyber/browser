@@ -4,6 +4,7 @@
 
 This helper is intentionally small and create-only so scheduled runs can answer:
 - where the nearest shared toolchains directory lives
+- where the nearest shared hidden .toolchains directory lives when that is the staged toolchain surface
 - where the saved Memory browser archives live
 - where the attached fallback Zig archive is visible from this checkout
 - where the nearest shared offline dependency root and Memory root live
@@ -85,9 +86,10 @@ def path_has_live_helper_surface(path: Path) -> bool:
 
 
 def infer_toolchains_root(repo_root: Path) -> tuple[Path, bool]:
-    located = locate_first_existing(repo_root, "toolchains")
-    if located is not None and located.is_dir():
-        return located, True
+    for relative_path in ("toolchains", ".toolchains"):
+        located = locate_first_existing(repo_root, relative_path)
+        if located is not None and located.is_dir():
+            return located, True
     return (repo_root.parent / "toolchains").resolve(), False
 
 
@@ -527,6 +529,30 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/check_issue3_saved_zig_archive_candidates.py",
                 context["suggested_saved_zig_archive_candidates_command"],
             )
+
+    def test_locates_hidden_toolchains_root_above_nested_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            repo_root = base / "restored" / "browser-fork-headed-mode-foundation"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+
+            hidden_toolchains_root = base / ".toolchains"
+            hidden_toolchains_root.mkdir()
+
+            context = collect_context(repo_root, None)
+
+            self.assertEqual(context["status"], "passed")
+            self.assertEqual(context["toolchains_root"], str(hidden_toolchains_root.resolve()))
+            self.assertTrue(context["toolchains_root_found"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_readiness_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_build_readiness_route_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_saved_rust_archive_candidates_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_staged_rust_toolchain_candidates_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_zig_recovery_route_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_zig_match_command"])
+            self.assertIn(str(hidden_toolchains_root.resolve()), context["suggested_saved_zig_archive_candidates_command"])
 
     def test_defaults_when_ancestor_roots_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
