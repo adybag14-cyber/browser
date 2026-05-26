@@ -124,6 +124,23 @@ The required helper surface mirrors the synced helper contract from
 - `scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh`
 - `scripts/linux/show_issue3_windows_runtime_handoff_route.sh`
 
+## Practical Stale-Archive Symptom
+
+During live validation against the saved Memory snapshot, a plain restore could
+still bring back `build.zig.zon` while exposing only a tiny legacy Windows
+helper surface under `scripts/windows/`, such as:
+
+- `scripts/windows/check_lightpanda_windows_prereqs.ps1`
+- `scripts/windows/manage_build_artifacts.ps1`
+- `scripts/windows/package_bare_metal_image.ps1`
+
+Treat that shape as archive age, not restore corruption. The snapshot is still
+historically valid, but it is too old to act as the sole helper root for the
+current issue `#11` Linux or WSL follow-up commands. Prefer
+`--sync-helper-surface`, keep the live helper root visible for the next
+commands, and use `--sync-only` when the restored checkout already exists and
+only the helper surface needs to catch up.
+
 ## Working Rules
 
 - Prefer a plain restore only when the helper reports that the archive already
