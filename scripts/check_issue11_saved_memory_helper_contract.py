@@ -3,9 +3,9 @@
 """Check the issue #11 saved-memory helper contract for restore-route drift.
 
 This helper is for the Linux/WSL headed re-entry lane. It compares the main
-saved-memory preflight, the restored-checkout checker, and the saved-memory
-route printer so future runs can fail fast when newer helper-surface paths are
-present in one place but not the others.
+saved-memory preflight, the restored-checkout checker, the snapshot-restore
+helper, and the saved-memory route printer so future runs can fail fast when
+newer helper-surface paths are present in one place but not the others.
 """
 
 from __future__ import annotations
@@ -21,89 +21,90 @@ import unittest
 FILES = {
     "saved_memory_helper": "scripts/check_issue3_saved_memory_inputs.py",
     "restored_checkout_helper": "scripts/check_issue3_restored_checkout.py",
+    "restore_helper": "scripts/linux/restore_saved_browser_snapshot.sh",
     "saved_memory_route": "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
 }
 
 SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-        ("restored_checkout_helper", "saved_memory_route"),
+        ("restored_checkout_helper", "restore_helper", "saved_memory_route"),
         "Issue #11 progress-tracker handoff should stay visible across the live helper contract.",
     ),
     (
         "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the narrower restored-helper surface sync route visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restored-checkout and restore helpers should keep the narrower restored-helper surface sync route visible.",
     ),
     (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the saved snapshot archive-surface note.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved snapshot archive-surface note visible.",
     ),
     (
         "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust build-readiness bridge visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust build-readiness bridge visible.",
     ),
     (
         "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust archive-candidate route visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust archive-candidate route visible.",
     ),
     (
         "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the saved snapshot archive-surface helper.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved snapshot archive-surface helper visible.",
     ),
     (
         "scripts/check_issue3_saved_rust_archive_candidates.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust archive-candidate helper visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust archive-candidate helper visible.",
     ),
     (
         "scripts/check_issue3_staged_rust_toolchain_candidates.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the staged Rust toolchain candidate helper visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the staged Rust toolchain candidate helper visible.",
     ),
     (
         "scripts/check_issue3_saved_zig_archive_candidates.py",
-        ("saved_memory_helper", "restored_checkout_helper"),
-        "Saved Zig archive candidate discovery should stay visible in both helper contracts.",
+        ("saved_memory_helper", "restored_checkout_helper", "restore_helper"),
+        "Saved Zig archive candidate discovery should stay visible in the shared helper contract.",
     ),
     (
         "scripts/check_issue3_staged_zig_toolchain_candidates.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the staged Zig toolchain candidate helper visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the staged Zig toolchain candidate helper visible.",
     ),
     (
         "scripts/check_issue3_restored_helper_surface_sync.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the restored-helper surface sync checker visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the restored-helper surface sync checker visible.",
     ),
     (
         "scripts/check_issue3_build_readiness_rerun.py",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the build-readiness rerun helper visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the build-readiness rerun helper visible.",
     ),
     (
         "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the issue #11 progress-tracker surface checker.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the issue #11 progress-tracker surface checker visible.",
     ),
     (
         "scripts/linux/show_issue3_progress_tracker_route.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the issue #11 progress-tracker route printer.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the issue #11 progress-tracker route printer visible.",
     ),
     (
         "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the restored-helper surface sync route checker visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the restored-helper surface sync route checker visible.",
     ),
     (
         "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the restored-helper surface sync route printer visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the restored-helper surface sync route printer visible.",
     ),
     (
         "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
@@ -117,33 +118,33 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust build-readiness route checker visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust build-readiness route checker visible.",
     ),
     (
         "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust build-readiness route printer visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust build-readiness route printer visible.",
     ),
     (
         "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust archive-candidates route checker visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust archive-candidates route checker visible.",
     ),
     (
         "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper should keep the saved Rust archive-candidates route printer visible.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the saved Rust archive-candidates route printer visible.",
     ),
     (
         "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the Windows runtime handoff surface checker.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the Windows runtime handoff surface checker visible.",
     ),
     (
         "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
-        ("restored_checkout_helper",),
-        "The restored-checkout helper still expects the Windows runtime handoff route printer.",
+        ("restored_checkout_helper", "restore_helper"),
+        "The restore-side helpers should keep the Windows runtime handoff route printer visible.",
     ),
     (
         "live_helper_restored_checkout_preflight",
@@ -157,8 +158,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Check whether the issue #11 saved-memory helper contract has drifted "
-            "between the saved-memory preflight, restored-checkout helper, and "
-            "saved-memory route printer."
+            "between the saved-memory preflight, restored-checkout helper, "
+            "snapshot-restore helper, and saved-memory route printer."
         )
     )
     parser.add_argument(
@@ -206,15 +207,17 @@ def collect_results(repo_root: Path) -> dict[str, object]:
                 }
             )
 
-    # Flag the main mismatch we care about: restored-checkout helper expects
-    # branch-local helper-surface fragments that the saved-memory helper does not.
     saved_memory_text = texts["saved_memory_helper"]
-    restored_text = texts["restored_checkout_helper"]
-    underreported_fragments = [
+    restore_side_fragments = {
         fragment
         for fragment, _required_in, _purpose in SHARED_FRAGMENTS
-        if fragment in restored_text and fragment not in saved_memory_text
-    ]
+        if fragment in texts["restored_checkout_helper"] or fragment in texts["restore_helper"]
+    }
+    underreported_fragments = sorted(
+        fragment
+        for fragment in restore_side_fragments
+        if fragment not in saved_memory_text
+    )
 
     ok = missing_count == 0 and not underreported_fragments
     return {
@@ -235,7 +238,7 @@ def emit_text(result: dict[str, object]) -> None:
         print(f"  {check['purpose']}")
 
     if result["underreported_fragments"]:
-        print("\nUnder-reported restored-checkout fragments:", flush=True)
+        print("\nUnder-reported restore-side fragments:", flush=True)
         for fragment in result["underreported_fragments"]:
             print(f"  - {fragment}")
 
@@ -245,7 +248,11 @@ def emit_text(result: dict[str, object]) -> None:
         print("\nSaved-memory helper contract check failed.")
 
 
-def build_fixture_repo(*, include_saved_memory_fragments: bool) -> Path:
+def build_fixture_repo(
+    *,
+    include_saved_memory_fragments: bool,
+    include_restore_fragments: bool = True,
+) -> Path:
     root = Path(tempfile.mkdtemp(prefix="issue11-saved-memory-contract-"))
     for rel_path in FILES.values():
         target = root / rel_path
@@ -257,6 +264,11 @@ def build_fixture_repo(*, include_saved_memory_fragments: bool) -> Path:
         for fragment, required_in, _purpose in SHARED_FRAGMENTS
         if "restored_checkout_helper" in required_in
     )
+    restore_bits = "\n".join(
+        fragment
+        for fragment, required_in, _purpose in SHARED_FRAGMENTS
+        if include_restore_fragments and "restore_helper" in required_in
+    )
     route_bits = "\n".join(
         fragment
         for fragment, required_in, _purpose in SHARED_FRAGMENTS
@@ -266,13 +278,26 @@ def build_fixture_repo(*, include_saved_memory_fragments: bool) -> Path:
         fragment
         for fragment, required_in, _purpose in SHARED_FRAGMENTS
         if include_saved_memory_fragments
-        and ("saved_memory_helper" in required_in or "restored_checkout_helper" in required_in)
+        and (
+            "saved_memory_helper" in required_in
+            or "restored_checkout_helper" in required_in
+            or ("restore_helper" in required_in)
+        )
     )
 
     (root / FILES["restored_checkout_helper"]).write_text(
         textwrap.dedent(
             f"""
             {restored_bits}
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / FILES["restore_helper"]).write_text(
+        textwrap.dedent(
+            f"""
+            {restore_bits}
             """
         ).strip()
         + "\n",
@@ -301,7 +326,9 @@ def build_fixture_repo(*, include_saved_memory_fragments: bool) -> Path:
 
 class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
     def test_passes_when_expected_fragments_are_present(self) -> None:
-        repo_root = build_fixture_repo(include_saved_memory_fragments=True)
+        repo_root = build_fixture_repo(
+            include_saved_memory_fragments=True,
+        )
         result = collect_results(repo_root)
         self.assertTrue(result["ok"])
         self.assertEqual(result["underreported_fragments"], [])
@@ -322,6 +349,15 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
             "scripts/check_issue3_staged_rust_toolchain_candidates.py",
             result["underreported_fragments"],
         )
+
+    def test_flags_restore_helper_fragments_missing_from_contract_checks(self) -> None:
+        repo_root = build_fixture_repo(
+            include_saved_memory_fragments=True,
+            include_restore_fragments=False,
+        )
+        result = collect_results(repo_root)
+        self.assertFalse(result["ok"])
+        self.assertGreater(result["missing_count"], 0)
 
 
 def main() -> int:
