@@ -93,6 +93,37 @@ python ./scripts/check_issue3_restored_helper_surface_sync.py \
 Use `--json` when another helper wants the missing-file or drift report as
 structured output.
 
+## Keep Saved-Memory Preflight In Order
+
+When the next commands will run from the restored checkout itself, do not treat
+an apparently healthy saved-memory preflight as a replacement for this narrower
+sync check.
+
+The saved-memory helper is still the right follow-up for archive presence,
+archive readability, and fallback Zig surfacing, but it should run only after
+this sync route confirms that the restored checkout and the live helper root
+agree on the current issue `#11` helper files.
+
+Use this order when the restored checkout is supposed to become its own
+follow-up helper root:
+
+```bash
+python ./scripts/check_issue3_restored_checkout.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --expect-helper-surface
+python ./scripts/check_issue3_restored_helper_surface_sync.py \
+  --helper-root . \
+  --restored-root ../browser-memory-snapshot
+python ./scripts/check_issue3_saved_memory_inputs.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --restored-checkout-root ../browser-memory-snapshot
+```
+
+That ordering keeps stale helper-surface drift from being hidden behind a later
+saved-memory pass.
+
 ## If The Check Fails
 
 Do not trust the restored checkout as the follow-up helper root yet.
@@ -118,3 +149,7 @@ For restored snapshots that are supposed to carry the current issue `#11`
 helper surface, use this narrower sync route after the broader restored-
 checkout readiness check and before trusting the restored checkout as its own
 helper root.
+
+A passing saved-memory preflight is useful follow-up evidence, but it is not the
+replacement for this sync check when the route commands themselves will be
+invoked from the restored checkout.
