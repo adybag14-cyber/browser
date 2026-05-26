@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-"""Audit the saved-memory preflight helper against expected live helper surfaces.
+"""Check that the saved-memory helper surface tracks the live restore helper.
 
-This is a small branch-local regression helper for the issue #11 Linux/WSL
-re-entry lane. It checks whether scripts/check_issue3_saved_memory_inputs.py
-still requires the helper-surface files that newer route notes and follow-up
-helpers depend on before a scheduled run trusts the saved-Memory preflight.
+This guard compares the hard-coded restored-helper file list in
+`scripts/check_issue3_saved_memory_inputs.py` against the current
+`HELPER_SURFACE_PATHS` list in `scripts/linux/restore_saved_browser_snapshot.sh`.
+It fails fast when the saved-memory preflight is missing newer helper-surface
+paths that the restore route now mirrors into restored checkouts.
 """
 
 from __future__ import annotations
@@ -14,75 +15,25 @@ import argparse
 import ast
 import json
 from pathlib import Path
+import re
+import sys
 import tempfile
+import textwrap
 import unittest
 
 
-TARGET_SCRIPT = "scripts/check_issue3_saved_memory_inputs.py"
-TARGET_CONSTANT = "REQUIRED_RESTORED_HELPER_FILES"
-
-EXPECTED_HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
-    (
-        "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
-        "saved-memory route note should stay visible to the same preflight it documents",
-    ),
-    (
-        "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-        "issue #11 tracker note should stay visible before broader build-readiness helpers are trusted",
-    ),
-    (
-        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
-        "saved snapshot archive-surface note should stay visible before restore mode is chosen",
-    ),
-    (
-        "scripts/check_issue3_saved_browser_snapshot_archive_surface.py",
-        "saved snapshot archive-surface helper should stay visible before restore mode is chosen",
-    ),
-    (
-        "scripts/check_issue3_saved_zig_archive_candidates.py",
-        "saved Zig archive candidate helper should stay visible before archive selection is rebuilt by hand",
-    ),
-    (
-        "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
-        "saved-memory route surface check should stay visible before the preflight is trusted",
-    ),
-    (
-        "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
-        "saved-memory route printer should stay visible before the preflight is trusted",
-    ),
-    (
-        "scripts/linux/check_issue3_progress_tracker_route_surface.sh",
-        "issue #11 tracker route surface check should stay visible before issue comments are treated as the current lane",
-    ),
-    (
-        "scripts/linux/show_issue3_progress_tracker_route.sh",
-        "issue #11 tracker route printer should stay visible before issue comments are treated as the current lane",
-    ),
-    (
-        "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
-        "saved Zig archive route surface check should stay visible before archive choice is rebuilt by hand",
-    ),
-    (
-        "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
-        "saved Zig archive route printer should stay visible before archive choice is rebuilt by hand",
-    ),
-    (
-        "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
-        "Windows runtime handoff surface check should stay visible once the Linux/WSL gates reopen",
-    ),
-    (
-        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
-        "Windows runtime handoff route printer should stay visible once the Linux/WSL gates reopen",
-    ),
-)
+ISSUE_LABEL = "Issue #11 saved-memory helper-surface contract"
+JSON_PROFILE = "issue11-saved-memory-helper-surface-contract"
+RESTORE_HELPER_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
+SAVED_MEMORY_INPUTS_PATH = "scripts/check_issue3_saved_memory_inputs.py"
+RESTORE_SURFACE_LINE_RE = re.compile(r'^\s*"([^"]+)"\s*$')
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Check whether scripts/check_issue3_saved_memory_inputs.py still "
-            "requires the live helper-surface entries that the Linux/WSL re-entry "
-            "lane depends on."
+            "Check that the saved-memory preflight helper surface keeps up with "
+            "the current restore helper surface for issue #11 re-entry work."
         )
     )
     parser.add_argument(
@@ -93,206 +44,303 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Emit JSON instead of line-oriented text",
+        help="Emit JSON instead of the human-readable report",
     )
     parser.add_argument(
         "--self-test",
         action="store_true",
-        help="Run focused helper tests and exit",
+        help="Run focused unit tests and exit",
     )
     return parser
 
 
-def extract_required_helper_paths(script_path: Path, constant_name: str) -> set[str]:
-    module = ast.parse(script_path.read_text(encoding="utf-8"), filename=str(script_path))
+def extract_restore_helper_paths(script_text: str) -> list[str]:
+    marker = "declare -a HELPER_SURFACE_PATHS=("
+    in_block = False
+    paths: list[str] = []
+
+    for line in script_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        match = RESTORE_SURFACE_LINE_RE.match(line)
+        if match is not None:
+            paths.append(match.group(1))
+
+    if not in_block:
+        raise ValueError(
+            f"Could not find HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH}"
+        )
+    if not paths:
+        raise ValueError(f"HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH} is empty")
+    return paths
+
+
+def extract_saved_memory_required_paths(script_text: str) -> list[str]:
+    module = ast.parse(script_text, filename=SAVED_MEMORY_INPUTS_PATH)
     for node in module.body:
         if not isinstance(node, ast.Assign):
             continue
         for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == constant_name:
-                value = ast.literal_eval(node.value)
-                return {entry[0] for entry in value}
-    raise ValueError(f"Could not find {constant_name} in {script_path}")
-
-
-def collect_results(repo_root: Path) -> dict[str, object]:
-    target_script = repo_root / TARGET_SCRIPT
-    target_script_exists = target_script.is_file()
-    required_paths = (
-        extract_required_helper_paths(target_script, TARGET_CONSTANT)
-        if target_script_exists
-        else set()
+            if isinstance(target, ast.Name) and target.id == "REQUIRED_RESTORED_HELPER_FILES":
+                return _extract_tuple_pair_paths(node.value)
+    raise ValueError(
+        f"Could not find REQUIRED_RESTORED_HELPER_FILES in {SAVED_MEMORY_INPUTS_PATH}"
     )
 
-    expected_entries: list[dict[str, object]] = []
-    missing_live_paths: list[str] = []
-    missing_contract_paths: list[str] = []
 
-    for relative_path, reason in EXPECTED_HELPER_SURFACE_PATHS:
-        live_path = repo_root / relative_path
-        live_exists = live_path.is_file()
-        in_contract = relative_path in required_paths
-        if not live_exists:
-            missing_live_paths.append(relative_path)
-        elif not in_contract:
-            missing_contract_paths.append(relative_path)
-        expected_entries.append(
-            {
-                "path": relative_path,
-                "reason": reason,
-                "live_exists": live_exists,
-                "in_saved_memory_contract": in_contract,
-            }
-        )
+def _extract_tuple_pair_paths(value: ast.AST) -> list[str]:
+    if not isinstance(value, (ast.Tuple, ast.List)):
+        raise ValueError("Required helper list must be a tuple or list literal")
 
-    ok = target_script_exists and not missing_live_paths and not missing_contract_paths
+    paths: list[str] = []
+    for element in value.elts:
+        if not isinstance(element, ast.Tuple) or len(element.elts) < 1:
+            raise ValueError("Required helper entries must be tuples")
+        path_node = element.elts[0]
+        if not isinstance(path_node, ast.Constant) or not isinstance(path_node.value, str):
+            raise ValueError("Required helper paths must be string literals")
+        paths.append(path_node.value)
+
+    if not paths:
+        raise ValueError("Required helper path list is empty")
+    return paths
+
+
+def collect_contract_report(repo_root: Path) -> dict[str, object]:
+    restore_helper_path = repo_root / RESTORE_HELPER_PATH
+    saved_memory_inputs_path = repo_root / SAVED_MEMORY_INPUTS_PATH
+
+    restore_exists = restore_helper_path.is_file()
+    saved_memory_exists = saved_memory_inputs_path.is_file()
+    if not restore_exists or not saved_memory_exists:
+        return {
+            "ok": False,
+            "repo_root": str(repo_root),
+            "restore_helper_path": str(restore_helper_path),
+            "saved_memory_inputs_path": str(saved_memory_inputs_path),
+            "restore_helper_exists": restore_exists,
+            "saved_memory_inputs_exists": saved_memory_exists,
+            "restore_helper_count": 0,
+            "saved_memory_required_count": 0,
+            "missing_in_saved_memory_inputs": [],
+            "extra_in_saved_memory_inputs": [],
+        }
+
+    restore_helper_paths = extract_restore_helper_paths(
+        restore_helper_path.read_text(encoding="utf-8")
+    )
+    saved_memory_required_paths = extract_saved_memory_required_paths(
+        saved_memory_inputs_path.read_text(encoding="utf-8")
+    )
+
+    restore_set = set(restore_helper_paths)
+    saved_memory_set = set(saved_memory_required_paths)
+
+    missing_in_saved_memory_inputs = sorted(restore_set - saved_memory_set)
+    extra_in_saved_memory_inputs = sorted(saved_memory_set - restore_set)
+
     return {
-        "ok": ok,
+        "ok": not missing_in_saved_memory_inputs,
         "repo_root": str(repo_root),
-        "target_script": str(target_script),
-        "target_script_exists": target_script_exists,
-        "target_constant": TARGET_CONSTANT,
-        "expected_entries": expected_entries,
-        "missing_live_paths": missing_live_paths,
-        "missing_contract_paths": missing_contract_paths,
+        "restore_helper_path": str(restore_helper_path),
+        "saved_memory_inputs_path": str(saved_memory_inputs_path),
+        "restore_helper_exists": True,
+        "saved_memory_inputs_exists": True,
+        "restore_helper_count": len(restore_helper_paths),
+        "saved_memory_required_count": len(saved_memory_required_paths),
+        "missing_in_saved_memory_inputs": missing_in_saved_memory_inputs,
+        "extra_in_saved_memory_inputs": extra_in_saved_memory_inputs,
     }
 
 
-def emit_text(result: dict[str, object]) -> None:
-    print("Issue #11 saved-memory helper-surface contract audit")
-    print()
-    print(f"Repo root:      {result['repo_root']}")
-    print(f"Target script:  {result['target_script']}")
-    print(f"Target constant:{result['target_constant']}")
-    print()
-    for entry in result["expected_entries"]:
-        if not entry["live_exists"]:
-            status = "WARN"
-        elif entry["in_saved_memory_contract"]:
-            status = "PASS"
-        else:
-            status = "FAIL"
-        print(f"[{status}] {entry['path']}")
-        print(f"  {entry['reason']}")
+def serialize_report(report: dict[str, object]) -> dict[str, object]:
+    return {"profile": JSON_PROFILE, "issue": ISSUE_LABEL, **report}
 
-    if result["ok"]:
-        print("\nSaved-memory helper-surface contract looks current.")
-        return
 
-    print("\nSaved-memory helper-surface contract audit failed.")
-    if not result["target_script_exists"]:
-        print("Suggested next step: restore or fetch the target saved-memory helper before trusting this audit.")
-        return
-    if result["missing_live_paths"]:
-        joined = ", ".join(result["missing_live_paths"])
-        print(f"Suggested next step: confirm the live helper surface first; missing repo paths: {joined}")
-        return
-    joined = ", ".join(result["missing_contract_paths"])
+def emit_text(report: dict[str, object]) -> None:
+    print(ISSUE_LABEL)
+    print()
+    print(f"Repo root: {report['repo_root']}")
     print(
-        "Suggested next step: update scripts/check_issue3_saved_memory_inputs.py "
-        f"so REQUIRED_RESTORED_HELPER_FILES includes the missing live helper-surface paths: {joined}"
+        "Restore helper paths: "
+        f"{report['restore_helper_count']} | saved-memory required paths: "
+        f"{report['saved_memory_required_count']}"
+    )
+    print()
+
+    if not report["restore_helper_exists"]:
+        print(f"[FAIL] missing {RESTORE_HELPER_PATH}")
+    if not report["saved_memory_inputs_exists"]:
+        print(f"[FAIL] missing {SAVED_MEMORY_INPUTS_PATH}")
+
+    for relative_path in report["missing_in_saved_memory_inputs"]:
+        print(f"[FAIL] saved-memory preflight is missing {relative_path}")
+
+    for relative_path in report["extra_in_saved_memory_inputs"]:
+        print(f"[INFO] saved-memory preflight tracks extra path {relative_path}")
+
+    if report["ok"]:
+        print("Saved-memory helper-surface contract passed.")
+        return
+
+    print()
+    print("Suggested next step:")
+    print(
+        "  Update scripts/check_issue3_saved_memory_inputs.py so its restored "
+        "helper-surface list covers every path mirrored by the restore helper."
+    )
+
+
+def _write_repo_files(repo_root: Path, *, restore_paths: list[str], required_paths: list[str]) -> None:
+    restore_helper = repo_root / RESTORE_HELPER_PATH
+    restore_helper.parent.mkdir(parents=True, exist_ok=True)
+    restore_helper.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env bash",
+                "",
+                "declare -a HELPER_SURFACE_PATHS=(",
+                *[f'    \"{path}\"' for path in restore_paths],
+                ")",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    required_literal = "\n".join(
+        f'    (\"{path}\", \"label\"),' for path in required_paths
+    )
+    saved_memory_inputs = repo_root / SAVED_MEMORY_INPUTS_PATH
+    saved_memory_inputs.parent.mkdir(parents=True, exist_ok=True)
+    saved_memory_inputs.write_text(
+        "REQUIRED_RESTORED_HELPER_FILES = (\n"
+        f"{required_literal}\n"
+        ")\n",
+        encoding="utf-8",
     )
 
 
 class SavedMemoryHelperSurfaceContractTests(unittest.TestCase):
-    def make_repo(
-        self,
-        root: Path,
-        *,
-        included_contract_paths: set[str],
-        live_paths: set[str],
-    ) -> Path:
-        repo_root = root / "browser"
-        target_script = repo_root / TARGET_SCRIPT
-        target_script.parent.mkdir(parents=True, exist_ok=True)
-        lines = [f'    ("{path}", "label"),' for path in sorted(included_contract_paths)]
-        constant_entries = "\n".join(lines)
-        target_script.write_text(
-            (
-                "REQUIRED_RESTORED_HELPER_FILES = (\n"
-                f"{constant_entries}\n"
-                ")\n"
-            ),
-            encoding="utf-8",
+    def test_extract_restore_helper_paths_parses_array(self) -> None:
+        script_text = textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+
+            declare -a HELPER_SURFACE_PATHS=(
+                \"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md\"
+                \"scripts/check_issue3_workspace_context.py\"
+            )
+            """
         )
-        for relative_path in live_paths:
-            live_path = repo_root / relative_path
-            live_path.parent.mkdir(parents=True, exist_ok=True)
-            live_path.write_text("live", encoding="utf-8")
-        return repo_root
 
-    def test_extract_required_helper_paths_reads_literal_tuple(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            script_path = Path(tmpdir) / "helper.py"
-            script_path.write_text(
-                'REQUIRED_RESTORED_HELPER_FILES = (("a", "one"), ("b", "two"))\n',
-                encoding="utf-8",
-            )
-            self.assertEqual(
-                extract_required_helper_paths(script_path, "REQUIRED_RESTORED_HELPER_FILES"),
-                {"a", "b"},
-            )
-
-    def test_collect_results_passes_when_live_paths_and_contract_match(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            live_paths = {path for path, _reason in EXPECTED_HELPER_SURFACE_PATHS}
-            repo_root = self.make_repo(
-                Path(tmpdir),
-                included_contract_paths=live_paths,
-                live_paths=live_paths,
-            )
-            result = collect_results(repo_root)
-            self.assertTrue(result["ok"])
-            self.assertEqual(result["missing_live_paths"], [])
-            self.assertEqual(result["missing_contract_paths"], [])
-
-    def test_collect_results_reports_missing_contract_paths(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            live_paths = {path for path, _reason in EXPECTED_HELPER_SURFACE_PATHS}
-            included = live_paths - {
+        self.assertEqual(
+            extract_restore_helper_paths(script_text),
+            [
                 "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
-                "scripts/linux/show_issue3_progress_tracker_route.sh",
-            }
-            repo_root = self.make_repo(
-                Path(tmpdir),
-                included_contract_paths=included,
-                live_paths=live_paths,
+                "scripts/check_issue3_workspace_context.py",
+            ],
+        )
+
+    def test_extract_saved_memory_required_paths_parses_tuple(self) -> None:
+        script_text = textwrap.dedent(
+            """\
+            REQUIRED_RESTORED_HELPER_FILES = (
+                (\"docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md\", \"tracker\"),
+                (\"scripts/check_issue3_workspace_context.py\", \"workspace\"),
             )
-            result = collect_results(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertEqual(result["missing_live_paths"], [])
-            self.assertIn("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", result["missing_contract_paths"])
-            self.assertIn(
-                "scripts/linux/show_issue3_progress_tracker_route.sh",
-                result["missing_contract_paths"],
+            """
+        )
+
+        self.assertEqual(
+            extract_saved_memory_required_paths(script_text),
+            [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+            ],
+        )
+
+    def test_collect_contract_report_passes_when_saved_memory_covers_restore_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            paths = [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+                "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+            ]
+            _write_repo_files(repo_root, restore_paths=paths, required_paths=paths)
+
+            report = collect_contract_report(repo_root)
+
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["missing_in_saved_memory_inputs"], [])
+
+    def test_collect_contract_report_flags_missing_restore_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            restore_paths = [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+                "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+            ]
+            required_paths = [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+            ]
+            _write_repo_files(
+                repo_root,
+                restore_paths=restore_paths,
+                required_paths=required_paths,
             )
 
-    def test_collect_results_reports_missing_live_paths_separately(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            live_paths = {path for path, _reason in EXPECTED_HELPER_SURFACE_PATHS} - {
-                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
-            }
-            included = {path for path, _reason in EXPECTED_HELPER_SURFACE_PATHS}
-            repo_root = self.make_repo(
-                Path(tmpdir),
-                included_contract_paths=included,
-                live_paths=live_paths,
-            )
-            result = collect_results(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertIn(
-                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
-                result["missing_live_paths"],
-            )
-            self.assertEqual(result["missing_contract_paths"], [])
+            report = collect_contract_report(repo_root)
 
-    def test_collect_results_reports_missing_target_script(self) -> None:
+            self.assertFalse(report["ok"])
+            self.assertEqual(
+                report["missing_in_saved_memory_inputs"],
+                ["scripts/linux/show_issue3_saved_rust_build_readiness_route.sh"],
+            )
+
+    def test_collect_contract_report_keeps_extra_saved_memory_paths_informational(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_root = Path(tmpdir) / "browser"
-            repo_root.mkdir()
-            result = collect_results(repo_root)
-            self.assertFalse(result["ok"])
-            self.assertFalse(result["target_script_exists"])
+            repo_root = Path(tmpdir)
+            restore_paths = [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+            ]
+            required_paths = restore_paths + [
+                "docs/ISSUE3_RUNTIME_REENTRY_GATES.md",
+            ]
+            _write_repo_files(
+                repo_root,
+                restore_paths=restore_paths,
+                required_paths=required_paths,
+            )
+
+            report = collect_contract_report(repo_root)
+
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["missing_in_saved_memory_inputs"], [])
+            self.assertEqual(
+                report["extra_in_saved_memory_inputs"],
+                ["docs/ISSUE3_RUNTIME_REENTRY_GATES.md"],
+            )
+
+    def test_collect_contract_report_flags_missing_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            report = collect_contract_report(repo_root)
+
+            self.assertFalse(report["ok"])
+            self.assertFalse(report["restore_helper_exists"])
+            self.assertFalse(report["saved_memory_inputs_exists"])
 
 
 def main() -> int:
@@ -305,18 +353,14 @@ def main() -> int:
         return 0 if result.wasSuccessful() else 1
 
     repo_root = Path(args.repo_root).resolve()
-    result = collect_results(repo_root)
+    report = collect_contract_report(repo_root)
+
     if args.json:
-        print(
-            json.dumps(
-                {"profile": "issue11-saved-memory-helper-surface-contract", **result},
-                indent=2,
-            )
-        )
+        print(json.dumps(serialize_report(report), indent=2))
     else:
-        emit_text(result)
-    return 0 if result["ok"] else 1
+        emit_text(report)
+    return 0 if report["ok"] else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
