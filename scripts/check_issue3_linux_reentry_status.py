@@ -244,10 +244,14 @@ def choose_next_step(results: dict[str, dict[str, object]], repo_root: pathlib.P
     zig_json = zig_match.get("json") or {}
     if not zig_match["ok"]:
         preferred_restore = None
+        saved_archive_discovery = None
         if isinstance(zig_json, dict):
             preferred_restore = zig_json.get("preferred_saved_archive_restore_check")
+            saved_archive_discovery = zig_json.get("saved_archive_discovery_command")
         if isinstance(preferred_restore, str) and preferred_restore:
             return preferred_restore
+        if isinstance(saved_archive_discovery, str) and saved_archive_discovery:
+            return saved_archive_discovery
         return route_command(repo_root, "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh")
 
     build_readiness = results["build_readiness"]
@@ -400,6 +404,24 @@ class ReentryStatusTests(unittest.TestCase):
         next_step = choose_next_step(results, repo_root)
 
         self.assertIn("restore_zig_toolchain_archive.sh --check-only", next_step)
+
+    def test_choose_next_step_uses_saved_archive_discovery_when_restore_missing(self) -> None:
+        repo_root = pathlib.Path("/tmp/browser")
+        results = {
+            "workspace_context": {"ok": True},
+            "saved_memory": {"ok": True},
+            "zig_match": {
+                "ok": False,
+                "json": {
+                    "saved_archive_discovery_command": "python /tmp/browser/scripts/check_issue3_saved_zig_archive_candidates.py --repo-root /tmp/browser"
+                },
+            },
+            "build_readiness": {"ok": False, "json": {}},
+        }
+
+        next_step = choose_next_step(results, repo_root)
+
+        self.assertIn("check_issue3_saved_zig_archive_candidates.py", next_step)
 
     def test_choose_next_step_falls_back_to_recovery_route_when_restore_missing(self) -> None:
         repo_root = pathlib.Path("/tmp/browser")
