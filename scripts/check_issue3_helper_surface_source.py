@@ -27,17 +27,68 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md", "runtime revalidation note"),
     ("docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md", "saved snapshot restore note"),
     ("docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md", "restored-checkout re-entry note"),
+    (
+        "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+        "restored helper-surface sync route note",
+    ),
     ("docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md", "saved-archive integrity note"),
+    (
+        "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
+        "saved snapshot archive-surface note",
+    ),
+    ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 progress-tracker route note"),
+    ("docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md", "workspace-context route note"),
+    ("docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md", "saved-Memory inputs route note"),
     ("docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md", "Linux build-readiness note"),
+    (
+        "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+        "saved Rust build-readiness bridge note",
+    ),
+    (
+        "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
+        "saved Rust archive candidates route note",
+    ),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery note"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore note"),
+    (
+        "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
+        "saved Zig archive candidates route note",
+    ),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build-inputs note"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain note"),
     ("docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md", "attached-page validation flow note"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
+    ("scripts/check_issue3_saved_rust_archive_candidates.py", "saved Rust archive candidate helper"),
+    (
+        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+        "staged Rust toolchain candidate helper",
+    ),
+    ("scripts/check_issue3_saved_browser_snapshot_archive_surface.py", "saved snapshot archive-surface helper"),
     ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
+    ("scripts/check_issue3_restored_helper_surface_sync.py", "restored helper-surface sync helper"),
+    ("scripts/check_issue3_workspace_context.py", "workspace-context helper"),
+    ("scripts/check_issue3_saved_zig_archive_candidates.py", "saved Zig archive candidate helper"),
+    (
+        "scripts/check_issue3_staged_zig_toolchain_candidates.py",
+        "staged Zig toolchain candidate helper",
+    ),
+    ("scripts/check_issue3_build_readiness_rerun.py", "build-readiness rerun helper"),
+    ("scripts/check_issue11_saved_memory_helper_contract.py", "issue #11 saved-memory helper-contract checker"),
+    ("scripts/check_issue11_reentry_inventory_consistency.py", "issue #11 re-entry inventory checker"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check"),
+    ("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer"),
+    ("scripts/linux/check_issue3_workspace_context_route_surface.sh", "workspace-context route surface check"),
+    ("scripts/linux/show_issue3_workspace_context_route.sh", "workspace-context route printer"),
+    (
+        "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+        "saved Zig archive candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+        "saved Zig archive candidates route printer",
+    ),
     ("scripts/windows/HeadedValidationHelpers.ps1", "Windows headed validation helper"),
     (
         "scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1",
@@ -71,11 +122,42 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
         "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
         "restored-checkout re-entry route printer",
     ),
+    (
+        "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+        "restored helper-surface sync route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+        "restored helper-surface sync route printer",
+    ),
+    ("scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh", "saved-Memory route surface check"),
+    ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-Memory route printer"),
+    (
+        "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
+        "saved Rust build-readiness bridge surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+        "saved Rust build-readiness bridge route printer",
+    ),
+    (
+        "scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+        "saved Rust archive candidates route surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
+        "saved Rust archive candidates route printer",
+    ),
     ("scripts/linux/check_issue3_linux_build_readiness_route_surface.sh", "Linux build-readiness surface check"),
     ("scripts/linux/show_issue3_linux_build_readiness_route.sh", "Linux build-readiness route printer"),
     ("scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh", "runtime revalidation surface check"),
     ("scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh", "runtime revalidation route printer"),
     ("scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh", "Zig toolchain recovery surface check"),
+    ("scripts/linux/check_issue3_zig_toolchain_match.sh", "Zig toolchain matching-line gate"),
+    (
+        "scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh",
+        "Zig toolchain archive-restore surface check",
+    ),
     ("scripts/linux/show_issue3_zig_toolchain_recovery_route.sh", "Zig toolchain recovery route printer"),
     ("scripts/linux/restore_issue3_fallback_zig_toolchain.sh", "fallback Zig restore helper"),
     ("scripts/linux/restore_zig_toolchain_archive.sh", "saved Zig archive restore helper"),
@@ -85,6 +167,14 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ("scripts/linux/check_issue3_offline_build_inputs_route_surface.sh", "offline inputs surface check"),
     ("scripts/linux/show_issue3_offline_build_inputs_route.sh", "offline inputs route printer"),
     ("scripts/linux/prepare_offline_build_inputs.sh", "offline inputs restore helper"),
+    (
+        "scripts/linux/check_issue3_windows_runtime_handoff_route_surface.sh",
+        "Windows runtime handoff surface check",
+    ),
+    (
+        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+        "Windows runtime handoff route printer",
+    ),
 )
 
 
@@ -267,6 +357,44 @@ class HelperSurfaceSourceTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["diagnosis"], "restored-checkout-helper-surface-drift")
             self.assertEqual(result["drifted_paths"], [HELPER_SURFACE_PATHS[0][0]])
+
+    def test_issue11_helper_contract_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "helper-root"
+            helper_root.mkdir()
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue11_saved_memory_helper_contract.py":
+                    continue
+                target = helper_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(relative_path, encoding="utf-8")
+
+            result = collect_results(helper_root=helper_root, restored_checkout_root=None)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/check_issue11_saved_memory_helper_contract.py",
+                result["missing_paths"],
+            )
+
+    def test_progress_tracker_route_printer_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "helper-root"
+            helper_root.mkdir()
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/linux/show_issue3_progress_tracker_route.sh":
+                    continue
+                target = helper_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(relative_path, encoding="utf-8")
+
+            result = collect_results(helper_root=helper_root, restored_checkout_root=None)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/linux/show_issue3_progress_tracker_route.sh",
+                result["missing_paths"],
+            )
 
 
 def main() -> int:
