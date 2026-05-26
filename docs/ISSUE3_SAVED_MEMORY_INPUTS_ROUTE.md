@@ -50,9 +50,9 @@ Use this route when any of these are true:
   saved-input, restore, or build-readiness helper would otherwise guess the
   wrong workspace roots
 - the direct issue `#3` runtime patch is still blocked and the run needs the
-  progress-tracker handoff, the dedicated saved-archive integrity route, the
-  saved Zig archive candidate route, and the workspace-context route back on one
-  compact helper surface before it widens into restore or build-readiness
+  progress-tracker handoff, the dedicated saved-archive integrity handoff, the
+  saved Zig archive candidate handoff, and the workspace-context route back on
+  one compact helper surface before it widens into restore or build-readiness
   follow-up
 
 ## Run The Surface Check First
@@ -82,6 +82,31 @@ Use the printed workspace-context output to decide whether this saved-Memory
 route should keep its defaults or whether it should be rerun with explicit
 `--memory-root`, `--agent-files-root`, `--restored-checkout-root`, or
 `--fallback-zig-archive` overrides before broader Linux or WSL follow-up.
+
+## When Repo Root Is Already The Restored Checkout
+
+When the current shell is already rooted inside `../browser-memory-snapshot` or
+another deeper restored checkout, do not assume the saved-memory preflight can
+still infer the live helper root, `memory/`, `agent_files/`, or the restored
+checkout path from the immediate parent alone.
+
+In that situation, print the workspace-context route first and then rerun the
+saved-memory preflight with explicit roots so the live helper surface and saved
+artifacts stay anchored to the real workspace paths:
+
+```bash
+python ./scripts/check_issue3_saved_memory_inputs.py \
+  --repo-root /path/to/browser-memory-snapshot \
+  --helper-root /path/to/live/browser \
+  --memory-root /path/to/workspace/memory \
+  --agent-files-root /path/to/workspace/agent_files \
+  --restored-checkout-root /path/to/browser-memory-snapshot
+```
+
+Keep those explicit overrides in place until the workspace-context output and
+the saved-memory preflight agree on the same resolved roots. This is especially
+important when the restored checkout is being used as its own follow-up root but
+helper drift still needs to be checked against a separate live branch checkout.
 
 ## Print The Route
 
@@ -222,6 +247,10 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Run the workspace-context route first when the checkout sits deeper than the
   default sibling layout or the next helper would otherwise guess the wrong
   `memory`, `agent_files`, `toolchains`, or `offline-deps` roots.
+- When the current repo root is itself a deeper restored checkout, prefer the
+  explicit `--helper-root`, `--memory-root`, `--agent-files-root`, and
+  `--restored-checkout-root` override set instead of trusting default sibling
+  inference.
 - Run the saved-input preflight before broader Linux or WSL helper output is
   treated as trustworthy.
 - Use `--skip-archive-integrity-check` only for a quick presence-only branch
