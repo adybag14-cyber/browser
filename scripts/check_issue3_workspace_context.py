@@ -236,6 +236,8 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
         "--repo-root",
         str(repo_root),
+        "--helper-root",
+        str(helper_root),
         "--memory-root",
         str(memory_root),
         "--destination",
@@ -489,6 +491,8 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_linux_build_readiness_route.sh",
                 context["suggested_build_readiness_route_command"],
             )
+            self.assertIn("--helper-root", context["suggested_saved_snapshot_route_command"])
+            self.assertIn(str(repo_root.resolve()), context["suggested_saved_snapshot_route_command"])
             self.assertIn("--sync-helper-surface", context["suggested_saved_snapshot_route_command"])
             self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
             self.assertNotIn("--restored-checkout-root", context["suggested_saved_snapshot_route_command"])
@@ -562,7 +566,7 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn("--saved-archives-root", context["suggested_progress_tracker_route_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
-                context["suggested_saved_rust_route_command"],
+                context["suggested_saved_rust_route_command"]
             )
             self.assertIn(
                 "scripts/check_issue3_saved_rust_archive_candidates.py",
@@ -580,6 +584,8 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/check_issue3_zig_toolchain_match.sh",
                 context["suggested_zig_match_command"],
             )
+            self.assertIn("--helper-root", context["suggested_saved_snapshot_route_command"])
+            self.assertIn(str(repo_root.resolve()), context["suggested_saved_snapshot_route_command"])
             self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
 
     def test_nested_restored_checkout_prefers_live_helper_root_from_cwd(self) -> None:
@@ -613,6 +619,8 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn(str(live_root.resolve()), context["suggested_saved_memory_preflight_command"])
             self.assertIn("--helper-root", context["suggested_progress_tracker_route_command"])
             self.assertIn(str(live_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn("--helper-root", context["suggested_saved_snapshot_route_command"])
+            self.assertIn(str(live_root.resolve()), context["suggested_saved_snapshot_route_command"])
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
