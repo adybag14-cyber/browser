@@ -27,13 +27,10 @@ that prepares the next honest runtime attempt without reopening the direct
 - saved snapshot restore and restored-checkout readiness
 - restored helper-surface sync checks for already-restored snapshots
 - saved archive integrity checks
-- saved Rust archive candidate discovery and staged-toolchain reuse
-- saved Zig archive candidate discovery and restore selection
 - offline dependency staging
 - saved Rust toolchain reuse
-- branch-compatible Zig recovery under `../toolchains`
-- Linux or WSL helper-route work that reduces friction before the next real
-  issue `#3` runtime re-entry
+- branch-compatible Zig toolchain recovery under `../toolchains`
+- Linux/WSL helper routes that unblock the next real issue `#3` runtime re-entry
 
 ## Keep Using These Branch-Local Surfaces
 
@@ -49,6 +46,7 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md`
@@ -57,6 +55,8 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
 - `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
@@ -65,8 +65,6 @@ that prepares the next honest runtime attempt without reopening the direct
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh`
-- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
-- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 - `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
@@ -97,14 +95,31 @@ fallback-Zig overrides by hand.
 If the immediate slice is about trusting an already-restored checkout as its
 own helper root, keep `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 visible, fail fast on its route surface, run the narrower sync check before
-saved-memory or build-readiness follow-up helpers are trusted from the restored
+saved-memory or build-readiness follow-up helpers are trusted from that restored
 root, and use the `--sync-only` refresh route when the helper surface is stale.
 
 If the immediate slice is about choosing the exact saved Rust archive before
 toolchain restore, keep `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
-visible, fail fast on its route surface, surface the staged-toolchain candidate
-helper before unpacking the archive again, and print the saved-Rust archive
-candidate route before falling back to the raw restore ladder.
+visible, fail fast on its route surface, surface the staged-toolchain
+candidate helper before unpacking the archive again, and print the saved-Rust
+archive candidate route before falling back to the raw restore ladder.
+
+If the immediate slice is about reusing a staged Rust candidate before any
+archive restore, fail fast on the narrower staged-Rust route first and print
+its compact handoff before the broader saved-Rust archive or build-readiness
+bridge routes are trusted:
+
+```bash
+bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
+```
+
+Keep the staged-toolchain candidate helper visible before unpacking the archive
+again:
+
+```bash
+python ./scripts/check_issue3_staged_rust_toolchain_candidates.py --repo-root .
+```
 
 If the immediate slice is about reusing or restoring the saved Rust `1.79.0`
 toolchain, keep `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` visible,
@@ -256,7 +271,7 @@ python ./scripts/check_issue3_staged_zig_toolchain_candidates.py --repo-root .
 
 Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
 when the attached archive is not sitting beside the repo workspace and the
-saved-Rust, saved-Zig, saved-Memory, build-readiness, or Zig recovery follow-up
+saved-Rust, saved-Zig, saved-Memory, build-readiness, and Zig recovery follow-up
 helpers need to inspect the same surfaced archive path.
 
 When a matching staged Zig candidate already exists, print the exact Linux or
