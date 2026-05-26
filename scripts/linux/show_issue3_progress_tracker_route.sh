@@ -54,6 +54,22 @@ normalize_saved_archives_root() {
     printf '%s\n' "${raw_root}"
 }
 
+resolve_first_existing_path() {
+    local start="$1"
+    local relative_path="$2"
+    local current="$start"
+    while true; do
+        if [[ -e "${current}/${relative_path}" ]]; then
+            printf '%s\n' "${current}/${relative_path}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            return 1
+        fi
+        current="$(dirname "${current}")"
+    done
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -64,6 +80,7 @@ RESTORED_CHECKOUT_ROOT=""
 SAVED_ARCHIVES_ROOT=""
 TOOLCHAINS_ROOT=""
 OFFLINE_DEPS_ROOT=""
+AGENT_FILES_ROOT=""
 FALLBACK_ZIG_ARCHIVE=""
 JSON=0
 
@@ -124,24 +141,48 @@ fi
 HELPER_ROOT="$(cd "${HELPER_ROOT}" && pwd)"
 HELPER_WORKSPACE_ROOT="$(cd "${HELPER_ROOT}/.." && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="${HELPER_WORKSPACE_ROOT}/memory"
+    MEMORY_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "memory" || true)"
+    if [[ -z "${MEMORY_ROOT}" ]]; then
+        MEMORY_ROOT="${HELPER_WORKSPACE_ROOT}/memory"
+    fi
 fi
 if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
-    RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
+    RESTORED_CHECKOUT_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "browser-memory-snapshot" || true)"
+    if [[ -z "${RESTORED_CHECKOUT_ROOT}" ]]; then
+        RESTORED_CHECKOUT_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/browser-memory-snapshot"
+    fi
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+    SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="${MEMORY_ROOT}/repo_archives/browser"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="${HELPER_WORKSPACE_ROOT}/toolchains"
+    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "toolchains" || true)"
+    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="${HELPER_WORKSPACE_ROOT}/toolchains"
+    fi
 fi
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
-    OFFLINE_DEPS_ROOT="${HELPER_WORKSPACE_ROOT}/offline-deps"
+    OFFLINE_DEPS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "offline-deps" || true)"
+    if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+        OFFLINE_DEPS_ROOT="${HELPER_WORKSPACE_ROOT}/offline-deps"
+    fi
+fi
+if [[ -z "${AGENT_FILES_ROOT}" ]]; then
+    AGENT_FILES_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "agent_files" || true)"
+    if [[ -z "${AGENT_FILES_ROOT}" ]]; then
+        AGENT_FILES_ROOT="${HELPER_WORKSPACE_ROOT}/agent_files"
+    fi
 fi
 RUST_TOOLCHAIN_DIR="${TOOLCHAINS_ROOT}/rust-1.79.0"
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${HELPER_WORKSPACE_ROOT}/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${HELPER_ROOT}" "agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz" || true)"
+    if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        CANDIDATE_FALLBACK_ZIG_ARCHIVE="${AGENT_FILES_ROOT}/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    fi
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
@@ -153,7 +194,7 @@ ROUTE_NOTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_progress_tracker_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_MEMORY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_memory_inputs_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
-SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${HELPER_WORKSPACE_ROOT}/agent_files")"
+SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 SAVED_RUST_BRIDGE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 SAVED_RUST_BRIDGE_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --rust-toolchain-dir $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
 SAVED_RUST_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
