@@ -11,6 +11,8 @@ helpers:
 - `docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
@@ -23,6 +25,10 @@ helpers:
 - `scripts/linux/show_issue3_progress_tracker_route.sh`
 - `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
+- `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
+- `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
+- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
@@ -35,6 +41,8 @@ helpers:
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
 - `scripts/linux/check_issue3_zig_toolchain_match.sh`
+- `scripts/check_issue3_restored_checkout.py`
+- `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
@@ -113,6 +121,40 @@ bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
 That route keeps the saved snapshot surface check, the restore command, the
 saved-Memory preflight, and the first build-readiness or runtime follow-up
 commands on one branch-local helper surface.
+
+## Recheck Restored Checkout Helper Sync Before Saved-Memory Preflight
+
+If the route plans to reuse `../browser-memory-snapshot` as its own follow-up
+helper root, do not jump straight from restore into the saved-Memory preflight.
+
+Run the broader restored-checkout route first:
+
+```bash
+bash ./scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_checkout_reentry_route.sh
+```
+
+Then run the narrower helper-surface sync route before widening back out to the
+saved-Memory or build-readiness helpers:
+
+```bash
+bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh
+
+python ./scripts/check_issue3_restored_checkout.py \
+  --repo-root ../browser-memory-snapshot \
+  --helper-root . \
+  --expect-helper-surface
+
+python ./scripts/check_issue3_restored_helper_surface_sync.py \
+  --helper-root . \
+  --restored-root ../browser-memory-snapshot
+```
+
+That narrower route catches the issue `#11` helper-surface drift that can still
+exist even when the broader restored checkout looks usable, and it keeps
+`restore_saved_browser_snapshot.sh --sync-only` visible when the fix is just an
+in-place helper refresh.
 
 ## Run The Saved-Memory Preflight Next
 
@@ -317,50 +359,58 @@ The Linux route now stays short and ordered:
 3. A saved-browser-snapshot restore route using
    `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` when no reusable
    checkout exists yet
-4. A saved-Memory route surface check using
+4. A restored-checkout route surface check using
+   `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
+5. A restored-checkout route printer using
+   `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
+6. A restored-helper-surface sync route surface check using
+   `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+7. A restored-helper-surface sync route printer using
+   `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
+8. A saved-Memory route surface check using
    `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
-5. A saved-Memory route printer using
+9. A saved-Memory route printer using
    `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
-6. An issue `#11` progress-tracker route surface check using
-   `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
-7. An issue `#11` progress-tracker route printer using
-   `scripts/linux/show_issue3_progress_tracker_route.sh`
-8. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
-9. A saved-archive integrity preflight using
-   `scripts/check_issue3_saved_archive_integrity.py`
-10. A Zig-line recovery helper using
+10. An issue `#11` progress-tracker route surface check using
+    `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+11. An issue `#11` progress-tracker route printer using
+    `scripts/linux/show_issue3_progress_tracker_route.sh`
+12. A saved-Memory preflight using `scripts/check_issue3_saved_memory_inputs.py`
+13. A saved-archive integrity preflight using
+    `scripts/check_issue3_saved_archive_integrity.py`
+14. A Zig-line recovery helper using
     `scripts/linux/show_issue3_zig_toolchain_recovery_route.sh`
-11. A dedicated Zig matching-line gate using
+15. A dedicated Zig matching-line gate using
     `scripts/linux/check_issue3_zig_toolchain_match.sh`
-12. A saved Zig archive candidate surface check using
+16. A saved Zig archive candidate surface check using
     `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
-13. A saved Zig archive candidate route using
+17. A saved Zig archive candidate route using
     `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
-14. A saved Zig archive discovery helper using
+18. A saved Zig archive discovery helper using
     `scripts/check_issue3_saved_zig_archive_candidates.py`
-15. A Zig archive-restore surface check using
+19. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-16. A saved Rust archive discovery helper using
+20. A saved Rust archive discovery helper using
     `scripts/check_issue3_saved_rust_archive_candidates.py`
-17. A staged Rust toolchain candidate helper using
+21. A staged Rust toolchain candidate helper using
     `scripts/check_issue3_staged_rust_toolchain_candidates.py`
-18. A saved Rust route surface check using
+22. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-19. A saved Rust restore route using
+23. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-20. A dedicated offline build-inputs route using
+24. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-21. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-22. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+25. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+26. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-23. A saved Rust `1.79.0` restore command
-24. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-25. The attached fallback Zig archive location when it is present beside the
+27. A saved Rust `1.79.0` restore command
+28. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+29. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as
     branch-compatible validation evidence
-26. A full readiness command that expects the saved archives, offline deps, and
+30. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-27. A direct handoff back to the smaller Windows runtime revalidation route
+31. A direct handoff back to the smaller Windows runtime revalidation route
     once the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
