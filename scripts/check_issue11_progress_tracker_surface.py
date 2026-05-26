@@ -3,7 +3,8 @@
 """Check whether a checkout carries the current issue #11 re-entry surface.
 
 This helper is intentionally narrow. It gives Linux/WSL headed-mode recovery
-runs one fast check for the newer low-volume progress-tracker route and the
+runs one fast check for the newer low-volume progress-tracker route, the helper-
+inventory consistency checker, the workspace-aware readiness helper, and the
 matching-Zig rerun helper that recent issue #11 work depends on.
 """
 
@@ -25,6 +26,8 @@ REQUIRED_ISSUE11_SURFACE: tuple[tuple[str, str], ...] = (
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_helper_surface_source.py", "helper-surface source checker"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
+    ("scripts/check_issue11_reentry_inventory_consistency.py", "helper-inventory consistency checker"),
+    ("scripts/check_issue11_workspace_readiness.py", "workspace-aware issue #11 readiness helper"),
     ("scripts/show_issue11_matching_zig_readiness_command.py", "matching-Zig readiness helper"),
 )
 
