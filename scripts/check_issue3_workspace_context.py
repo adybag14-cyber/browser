@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -74,6 +75,15 @@ def locate_first_existing(start: Path, relative_path: str) -> Path | None:
     return None
 
 
+def path_has_live_helper_surface(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / "build.zig.zon").is_file()
+        and (path / "scripts" / "check_issue3_saved_memory_inputs.py").is_file()
+        and (path / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh").is_file()
+    )
+
+
 def infer_toolchains_root(repo_root: Path) -> tuple[Path, bool]:
     located = locate_first_existing(repo_root, "toolchains")
     if located is not None and located.is_dir():
@@ -116,6 +126,20 @@ def infer_restored_checkout_root(repo_root: Path) -> tuple[Path, bool]:
     return (repo_root.parent / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME).resolve(), False
 
 
+def infer_helper_root(repo_root: Path, restored_checkout_root: Path) -> tuple[Path, bool]:
+    cwd = Path.cwd().resolve()
+    repo_root = repo_root.resolve()
+    restored_checkout_root = restored_checkout_root.resolve()
+
+    if cwd != repo_root and path_has_live_helper_surface(cwd):
+        if repo_root == restored_checkout_root or restored_checkout_root in repo_root.parents:
+            return cwd, True
+
+    if path_has_live_helper_surface(repo_root):
+        return repo_root, True
+    return repo_root, False
+
+
 def infer_fallback_zig_archive(
     repo_root: Path, explicit_archive: Path | None
 ) -> tuple[Path | None, bool]:
@@ -139,6 +163,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     agent_files_root, agent_files_found = infer_agent_files_root(repo_root)
     offline_deps_root, offline_deps_found = infer_offline_deps_root(repo_root)
     restored_checkout_root, restored_checkout_found = infer_restored_checkout_root(repo_root)
+    helper_root, helper_root_found = infer_helper_root(repo_root, restored_checkout_root)
     fallback_zig_archive, fallback_found = infer_fallback_zig_archive(repo_root, explicit_archive)
     rust_toolchain_dir = (toolchains_root / "rust-1.79.0").resolve()
 
@@ -162,6 +187,8 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "scripts/check_issue3_saved_memory_inputs.py",
         "--repo-root",
         str(repo_root),
+        "--helper-root",
+        str(helper_root),
         "--memory-root",
         str(memory_root),
         "--agent-files-root",
@@ -176,7 +203,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "--repo-root",
         str(repo_root),
         "--helper-root",
-        str(repo_root),
+        str(helper_root),
         "--memory-root",
         str(memory_root),
         "--restored-checkout-root",
@@ -295,6 +322,8 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "status": status,
         "repo_root": str(repo_root),
         "build_zig_zon_exists": build_zon.is_file(),
+        "helper_root": str(helper_root),
+        "helper_root_found": helper_root_found,
         "toolchains_root": str(toolchains_root),
         "toolchains_root_found": toolchains_found,
         "memory_root": str(memory_root),
@@ -328,6 +357,10 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
 def emit_text(context: dict[str, object]) -> None:
     print(f"Repo root: {context['repo_root']}")
     print(f"build.zig.zon present: {'yes' if context['build_zig_zon_exists'] else 'no'}")
+    print(
+        f"Helper root: {context['helper_root']} "
+        f"[{'found' if context['helper_root_found'] else 'defaulted'}]"
+    )
     print(
         f"Toolchains root: {context['toolchains_root']} "
         f"[{'found' if context['toolchains_root_found'] else 'defaulted'}]"
@@ -393,6 +426,12 @@ class WorkspaceContextTests(unittest.TestCase):
             repo_root = base / "restored" / "browser-fork-headed-mode-foundation"
             repo_root.mkdir(parents=True)
             (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            (repo_root / "scripts" / "check_issue3_saved_memory_inputs.py").parent.mkdir(parents=True)
+            (repo_root / "scripts" / "check_issue3_saved_memory_inputs.py").write_text("pass", encoding="utf-8")
+            (repo_root / "scripts" / "linux").mkdir(parents=True)
+            (repo_root / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh").write_text(
+                "pass", encoding="utf-8"
+            )
 
             toolchains_root = base / "toolchains"
             toolchains_root.mkdir()
@@ -412,6 +451,8 @@ class WorkspaceContextTests(unittest.TestCase):
             context = collect_context(repo_root, None)
 
             self.assertEqual(context["status"], "passed")
+            self.assertEqual(context["helper_root"], str(repo_root.resolve()))
+            self.assertTrue(context["helper_root_found"])
             self.assertEqual(context["toolchains_root"], str(toolchains_root.resolve()))
             self.assertEqual(context["memory_root"], str(memory_root.resolve()))
             self.assertEqual(context["saved_archives_root"], str(saved_archives_root.resolve()))
@@ -428,6 +469,8 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/check_issue3_saved_memory_inputs.py",
                 context["suggested_saved_memory_preflight_command"],
             )
+            self.assertIn("--helper-root", context["suggested_saved_memory_preflight_command"])
+            self.assertIn(str(repo_root.resolve()), context["suggested_saved_memory_preflight_command"])
             self.assertIn(str(memory_root.resolve()), context["suggested_saved_memory_preflight_command"])
             self.assertIn(str(agent_files_root.resolve()), context["suggested_saved_memory_preflight_command"])
             self.assertIn(str(restored_checkout_root.resolve()), context["suggested_saved_memory_preflight_command"])
@@ -436,46 +479,24 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
             )
-            self.assertIn(
-                str(memory_root.resolve()),
-                context["suggested_progress_tracker_route_command"],
-            )
-            self.assertIn(
-                str(restored_checkout_root.resolve()),
-                context["suggested_progress_tracker_route_command"],
-            )
-            self.assertIn(
-                str(toolchains_root.resolve()),
-                context["suggested_progress_tracker_route_command"],
-            )
-            self.assertIn(
-                str(offline_deps_root.resolve()),
-                context["suggested_progress_tracker_route_command"],
-            )
+            self.assertIn("--helper-root", context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(repo_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(memory_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(restored_checkout_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(toolchains_root.resolve()), context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(offline_deps_root.resolve()), context["suggested_progress_tracker_route_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_linux_build_readiness_route.sh",
                 context["suggested_build_readiness_route_command"],
             )
-            self.assertIn(
-                "--sync-helper-surface",
-                context["suggested_saved_snapshot_route_command"],
-            )
-            self.assertIn(
-                "--destination",
-                context["suggested_saved_snapshot_route_command"],
-            )
-            self.assertNotIn(
-                "--restored-checkout-root",
-                context["suggested_saved_snapshot_route_command"],
-            )
+            self.assertIn("--sync-helper-surface", context["suggested_saved_snapshot_route_command"])
+            self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
+            self.assertNotIn("--restored-checkout-root", context["suggested_saved_snapshot_route_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
                 context["suggested_saved_rust_route_command"],
             )
-            self.assertIn(
-                str(saved_archives_root.resolve()),
-                context["suggested_saved_rust_route_command"],
-            )
+            self.assertIn(str(saved_archives_root.resolve()), context["suggested_saved_rust_route_command"])
             self.assertIn(
                 str((toolchains_root / "rust-1.79.0").resolve()),
                 context["suggested_saved_rust_route_command"],
@@ -492,14 +513,8 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
                 context["suggested_zig_recovery_route_command"],
             )
-            self.assertIn(
-                str(saved_archives_root.resolve()),
-                context["suggested_zig_recovery_route_command"],
-            )
-            self.assertIn(
-                str(offline_deps_root.resolve()),
-                context["suggested_zig_recovery_route_command"],
-            )
+            self.assertIn(str(saved_archives_root.resolve()), context["suggested_zig_recovery_route_command"])
+            self.assertIn(str(offline_deps_root.resolve()), context["suggested_zig_recovery_route_command"])
             self.assertIn(
                 "scripts/linux/check_issue3_zig_toolchain_match.sh",
                 context["suggested_zig_match_command"],
@@ -518,6 +533,7 @@ class WorkspaceContextTests(unittest.TestCase):
             context = collect_context(repo_root, None)
 
             self.assertEqual(context["status"], "passed")
+            self.assertFalse(context["helper_root_found"])
             self.assertFalse(context["toolchains_root_found"])
             self.assertFalse(context["memory_root_found"])
             self.assertFalse(context["saved_archives_root_found"])
@@ -529,6 +545,7 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/check_issue3_saved_memory_inputs.py",
                 context["suggested_saved_memory_preflight_command"],
             )
+            self.assertIn("--helper-root", context["suggested_saved_memory_preflight_command"])
             self.assertIn("--memory-root", context["suggested_saved_memory_preflight_command"])
             self.assertIn("--agent-files-root", context["suggested_saved_memory_preflight_command"])
             self.assertIn("--restored-checkout-root", context["suggested_saved_memory_preflight_command"])
@@ -540,6 +557,7 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
             )
+            self.assertIn("--helper-root", context["suggested_progress_tracker_route_command"])
             self.assertIn("--memory-root", context["suggested_progress_tracker_route_command"])
             self.assertIn("--saved-archives-root", context["suggested_progress_tracker_route_command"])
             self.assertIn(
@@ -562,10 +580,39 @@ class WorkspaceContextTests(unittest.TestCase):
                 "scripts/linux/check_issue3_zig_toolchain_match.sh",
                 context["suggested_zig_match_command"],
             )
-            self.assertIn(
-                "--destination",
-                context["suggested_saved_snapshot_route_command"],
+            self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
+
+    def test_nested_restored_checkout_prefers_live_helper_root_from_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            live_root = base / "browser"
+            live_root.mkdir()
+            (live_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+            (live_root / "scripts" / "check_issue3_saved_memory_inputs.py").parent.mkdir(parents=True)
+            (live_root / "scripts" / "check_issue3_saved_memory_inputs.py").write_text("pass", encoding="utf-8")
+            (live_root / "scripts" / "linux").mkdir(parents=True)
+            (live_root / "scripts" / "linux" / "show_issue3_progress_tracker_route.sh").write_text(
+                "pass", encoding="utf-8"
             )
+
+            restored_root = base / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME
+            repo_root = restored_root / "browser"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text(".minimum_zig_version = \"0.15.2\"", encoding="utf-8")
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                context = collect_context(repo_root, None)
+            finally:
+                os.chdir(original_cwd)
+
+            self.assertEqual(context["helper_root"], str(live_root.resolve()))
+            self.assertTrue(context["helper_root_found"])
+            self.assertIn("--helper-root", context["suggested_saved_memory_preflight_command"])
+            self.assertIn(str(live_root.resolve()), context["suggested_saved_memory_preflight_command"])
+            self.assertIn("--helper-root", context["suggested_progress_tracker_route_command"])
+            self.assertIn(str(live_root.resolve()), context["suggested_progress_tracker_route_command"])
 
     def test_explicit_fallback_archive_overrides_search(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
