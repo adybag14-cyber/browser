@@ -116,6 +116,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "docs/ISSUE3_ENTER_SUBMIT_RUNTIME_REVALIDATION.md"
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
     "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md"
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md"
     "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md"
     "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md"
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
@@ -135,6 +136,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/check_issue3_staged_rust_toolchain_candidates.py"
     "scripts/check_issue3_saved_browser_snapshot_archive_surface.py"
     "scripts/check_issue3_restored_checkout.py"
+    "scripts/check_issue3_restored_helper_surface_sync.py"
     "scripts/check_issue3_workspace_context.py"
     "scripts/check_issue3_saved_zig_archive_candidates.py"
     "scripts/check_issue3_staged_zig_toolchain_candidates.py"
@@ -159,6 +161,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/restore_saved_browser_snapshot.sh"
     "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh"
     "scripts/linux/show_issue3_restored_checkout_reentry_route.sh"
+    "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh"
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh"
     "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh"
@@ -342,6 +346,7 @@ FOLLOW_UP_RESTORED_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/sc
 if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
     FOLLOW_UP_RESTORED_CHECK+=" --helper-root $(format_shell_arg "${HELPER_ROOT}") --expect-helper-surface"
 fi
+FOLLOW_UP_RESTORED_HELPER_SURFACE_SYNC_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_restored_helper_surface_sync.py") --helper-root $(format_shell_arg "${HELPER_ROOT}") --restored-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_MEMORY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK="python $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${DESTINATION}")"
 FOLLOW_UP_BUILD_ROUTE="bash $(format_shell_arg "${FOLLOW_UP_HELPER_ROOT}/scripts/linux/show_issue3_linux_build_readiness_route.sh") --repo-root $(format_shell_arg "${DESTINATION}")"
@@ -367,6 +372,7 @@ if [[ "${JSON}" == "true" ]]; then
     printf '  "archive_top_level": %s,\n' "$(json_escape "${TOP_LEVEL_ENTRY}")"
     printf '  "archive_required": %s,\n' "$([[ "${ARCHIVE_REQUIRED}" == "true" ]] && echo true || echo false)"
     printf '  "follow_up_restored_checkout_check": %s,\n' "$(json_escape "${FOLLOW_UP_RESTORED_CHECK}")"
+    printf '  "follow_up_restored_helper_surface_sync_check": %s,\n' "$(json_escape "${FOLLOW_UP_RESTORED_HELPER_SURFACE_SYNC_CHECK}")"
     printf '  "follow_up_memory_check": %s,\n' "$(json_escape "${FOLLOW_UP_MEMORY_CHECK}")"
     printf '  "follow_up_archive_integrity_check": %s,\n' "$(json_escape "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}")"
     printf '  "follow_up_build_route": %s,\n' "$(json_escape "${FOLLOW_UP_BUILD_ROUTE}")"
@@ -428,6 +434,9 @@ if [[ "${CHECK_ONLY}" == "true" ]]; then
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
+    if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+        printf "  %s\n" "${FOLLOW_UP_RESTORED_HELPER_SURFACE_SYNC_CHECK}"
+    fi
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
@@ -463,6 +472,7 @@ if [[ "${SYNC_ONLY}" == "true" ]]; then
     echo
     echo "Suggested follow-up checks:"
     printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
+    printf "  %s\n" "${FOLLOW_UP_RESTORED_HELPER_SURFACE_SYNC_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
     printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
@@ -516,6 +526,9 @@ fi
 echo
 echo "Suggested follow-up checks:"
 printf "  %s\n" "${FOLLOW_UP_RESTORED_CHECK}"
+if [[ "${SYNC_HELPER_SURFACE}" == "true" ]]; then
+    printf "  %s\n" "${FOLLOW_UP_RESTORED_HELPER_SURFACE_SYNC_CHECK}"
+fi
 printf "  %s\n" "${FOLLOW_UP_MEMORY_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_ARCHIVE_INTEGRITY_CHECK}"
 printf "  %s\n" "${FOLLOW_UP_BUILD_ROUTE}"
