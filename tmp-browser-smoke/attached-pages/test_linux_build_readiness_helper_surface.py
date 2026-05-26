@@ -34,118 +34,128 @@ FIXTURE_FILES = {
     "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md": """
 # Issue #3 Linux Build-Readiness Route
 
+- `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+- `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
-- `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+- `docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md`
+- `scripts/check_issue3_workspace_context.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
+- `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_linux_build_readiness.py`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
-- restore the saved Rust `1.79.0` toolchain
-- Prefer a Zig `0.15.2` toolchain
+- saved Rust `1.79.0` restore command
+- `zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`
 
 ```bash
+bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh
+bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh
+python ./scripts/check_issue3_restored_helper_surface_sync.py \
+  --helper-root . \
+  --restored-root ../browser-memory-snapshot
+bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
+bash ./scripts/linux/show_issue3_progress_tracker_route.sh
 python scripts/check_issue3_saved_archive_integrity.py --repo-root .
+bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
 ```
 """,
     "scripts/linux/show_issue3_linux_build_readiness_route.sh": r"""
+docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md
+docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md
+docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md
+docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md
+docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
+docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
 docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
-SAVED_MEMORY_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
-SAVED_MEMORY_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_memory_inputs_route.sh"
+docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md
+docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md
+docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
+docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
+docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md
+WORKSPACE_CONTEXT_COMMAND="python scripts/check_issue3_workspace_context.py --repo-root ${REPO_ROOT}"
+RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh --repo-root ${REPO_ROOT}"
+RESTORED_CHECKOUT_ROUTE_COMMAND="bash scripts/linux/show_issue3_restored_checkout_reentry_route.sh --repo-root ${REPO_ROOT}"
+RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh --repo-root ${REPO_ROOT}"
+RESTORED_HELPER_SYNC_ROUTE_COMMAND="bash scripts/linux/show_issue3_restored_helper_surface_sync_route.sh --helper-root ${REPO_ROOT} --restored-root ${RESTORED_CHECKOUT_ROOT} --memory-root ${MEMORY_ROOT}"
+SAVED_MEMORY_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh --repo-root ${REPO_ROOT}"
+SAVED_MEMORY_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_memory_inputs_route.sh --repo-root ${REPO_ROOT}"
+PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_progress_tracker_route_surface.sh --repo-root ${REPO_ROOT}"
+PROGRESS_TRACKER_ROUTE_COMMAND="bash scripts/linux/show_issue3_progress_tracker_route.sh --repo-root ${REPO_ROOT}"
+SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh --repo-root ${REPO_ROOT}"
+SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh --repo-root ${REPO_ROOT}"
+STAGED_RUST_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh --repo-root ${REPO_ROOT}"
+STAGED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh --repo-root ${REPO_ROOT}"
 SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py --repo-root ${REPO_ROOT}"
-SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
-SAVED_ARCHIVE_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_archive_integrity_route.sh"
 SAVED_ARCHIVE_INTEGRITY_COMMAND="python scripts/check_issue3_saved_archive_integrity.py --repo-root ${REPO_ROOT}"
-PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies"
-PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh --browser-root ${REPO_ROOT} --browser-deps-archive ${BROWSER_DEPS_ARCHIVE} --boringssl-archive ${BORINGSSL_ARCHIVE} --html5ever-archive ${HTML5EVER_ARCHIVE} --check-only"
-RUST_RESTORE_COMMAND="mkdir -p ${RUST_TOOLCHAIN_DIR} && tar -xf ${RUST_ARCHIVE} -C ${RUST_TOOLCHAIN_DIR} --strip-components=1"
-RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH"
-FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-saved-archives --saved-archives-root ${SAVED_ARCHIVES_ROOT}/dependencies --expect-offline-deps --require-prebuilt-v8"
+PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --skip-zig-check --skip-rust-check --expect-saved-archives"
+FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py --repo-root ${REPO_ROOT} --expect-offline-deps --require-prebuilt-v8"
+Restored-checkout route surface check:
+Restored-checkout re-entry route:
+Restored helper-surface sync route surface check:
+Restored helper-surface sync route:
 Saved Memory route surface check:
 Saved Memory route:
-Saved Memory input preflight:
-Saved archive integrity route surface check:
-Saved archive integrity route:
+Progress-tracker route surface check:
+Progress-tracker route:
+Saved Rust archive route surface check:
+Saved Rust archive route:
+Staged Rust route surface check:
+Staged Rust route:
 Saved archive integrity preflight:
 Fallback Zig archive:
+issue #11 should stay visible as the current status lane
 """,
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh": r"""
-REFERENCE_PATHS=(
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note"
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|Read-first Linux note"
-    "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|file|Saved archive integrity note"
-    "scripts/check_issue3_saved_memory_inputs.py|file|Saved Memory input preflight"
-    "scripts/check_issue3_saved_archive_integrity.py|file|Saved archive integrity helper"
-    "scripts/check_linux_build_readiness.py|file|Python helper"
-    "scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh|file|Saved archive integrity route surface checker"
-    "scripts/linux/show_issue3_saved_archive_integrity_route.sh|file|Saved archive integrity route printer"
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Route printer"
-    "scripts/linux/prepare_offline_build_inputs.sh|file|Offline restore helper"
-    "build.zig.zon|file|Manifest surface"
-)
-CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|Gate note keeps Linux route visible."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|scripts/check_issue3_saved_memory_inputs.py|Gate note keeps saved-Memory preflight visible."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|Linux note keeps saved-archive integrity note visible."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|Linux note keeps saved-Memory preflight visible."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|Linux note keeps saved-archive integrity helper visible."
-    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|python scripts/check_issue3_saved_archive_integrity.py --repo-root .|Linux note keeps the exact saved-archive integrity command visible."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_memory_inputs.py|Route printer points at saved-Memory preflight."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_archive_integrity.py|Route printer points at saved-archive integrity preflight."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved Memory route surface check:|Route printer prints saved-Memory route surface step."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity route surface check:|Route printer prints saved-archive integrity surface step."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity route:|Route printer prints saved-archive integrity route step."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity preflight:|Route printer prints saved-archive integrity preflight step."
-    "scripts/check_linux_build_readiness.py|saved Rust toolchain archive|Readiness helper knows saved Rust archive contract."
-    "scripts/linux/prepare_offline_build_inputs.sh|--check-only|Offline prep helper supports surface-only validation."
-)
+"docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|file|Read-first restored helper-surface sync note that should stay visible before wider saved-memory follow-up helpers."
+"scripts/check_issue3_restored_helper_surface_sync.py|file|Restored helper-surface sync helper used before wider saved-memory, build-readiness, or runtime follow-up helpers."
+"scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|file|Fail-fast restored helper-surface sync checker used before wider saved-memory follow-up helpers are trusted."
+"scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|file|Compact restored helper-surface sync route printer for refreshing helper drift before wider follow-up helpers."
+"scripts/linux/check_issue3_progress_tracker_route_surface.sh|file|Fail-fast issue #11 progress-tracker checker used before the Linux or WSL lane trusts that lower-volume status route."
+"scripts/linux/show_issue3_progress_tracker_route.sh|file|Compact issue #11 progress-tracker route printer that keeps the lower-volume status lane visible."
+"scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|file|Fail-fast saved Rust archive-candidate route checker used before the route rebuilds the saved Rust restore path by hand."
+"scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|file|Compact saved Rust archive-candidate route printer for surfacing the preferred saved Rust restore path."
+"scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh|file|Fail-fast staged Rust candidate route checker used before the route blames host Rust or replays the restore path."
+"scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh|file|Compact staged Rust candidate route printer for surfacing reusable Rust toolchains under ../toolchains."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|The Linux build-readiness note keeps the restored helper-surface sync route visible before the raw saved-memory preflight."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_restored_helper_surface_sync.py|The Linux build-readiness note keeps the restored helper-surface sync helper named explicitly before wider follow-up helpers."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|The Linux build-readiness note keeps the exact restored helper-surface sync surface-check command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|The Linux build-readiness note keeps the exact restored helper-surface sync route command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|The Linux build-readiness note keeps the issue #11 handoff note visible before broader build-readiness or Zig follow-up output is treated as the plan."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh|The Linux build-readiness note keeps the exact progress-tracker surface-check command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_progress_tracker_route.sh|The Linux build-readiness note keeps the exact progress-tracker route command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|The Linux build-readiness note keeps the exact saved Rust archive-candidate surface-check command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|The Linux build-readiness note keeps the exact saved Rust archive-candidate route command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh|The Linux build-readiness note keeps the exact staged Rust surface-check command visible."
+"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh|The Linux build-readiness note keeps the exact staged Rust route command visible."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND|The Linux route printer keeps a dedicated restored helper-surface sync surface-check command before the raw saved-memory preflight."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|RESTORED_HELPER_SYNC_ROUTE_COMMAND|The Linux route printer keeps a dedicated restored helper-surface sync route command before the raw saved-memory preflight."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND|The Linux route printer keeps a dedicated progress-tracker route surface-check command before the raw saved-memory preflight."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|PROGRESS_TRACKER_ROUTE_COMMAND|The Linux route printer keeps a dedicated progress-tracker route command before the raw saved-memory preflight."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND|The Linux route printer keeps a dedicated saved Rust archive surface-check command before the restore path is rebuilt."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|SAVED_RUST_ARCHIVE_ROUTE_COMMAND|The Linux route printer keeps a dedicated saved Rust archive route command before the restore path is rebuilt."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|STAGED_RUST_ROUTE_SURFACE_COMMAND|The Linux route printer keeps a dedicated staged Rust route surface-check command before host Rust or restore drift is blamed."
+"scripts/linux/show_issue3_linux_build_readiness_route.sh|STAGED_RUST_ROUTE_COMMAND|The Linux route printer keeps a dedicated staged Rust route command before host Rust or restore drift is blamed."
+"scripts/check_linux_build_readiness.py|saved Rust toolchain archive|The readiness helper still knows the saved Rust archive contract."
+"scripts/check_linux_build_readiness.py|saved browser dependency archive|The readiness helper still knows the saved browser dependency archive contract."
 """,
     "scripts/check_linux_build_readiness.py": """
-MINIMUM_ZIG_RE = re.compile(r'\\.minimum_zig_version\\s*=\\s*\"([^\"]+)\"')
-PATH_VALUE_RE = re.compile(r'\\.path\\s*=\\s*\"([^\"]+)\"')
-URL_VALUE_RE = re.compile(r'\\.url\\s*=\\s*\"([^\"]+)\"')
-OFFLINE_DEP_NAMES = (\"brotli\", \"zlib\", \"nghttp2\", \"curl\")
-PREBUILT_V8_GLOB = \"libc_v8_*.a\"
-SAVED_ARCHIVE_GLOBS = {
-    \"rust_toolchain\": \"01-rust-*.tar.xz\",
-    \"html5ever\": \"02-litefetch-html5ever-*.zip\",
-    \"boringssl\": \"03-boringssl-zig-main.zip\",
-    \"browser_deps\": \"04-zig-browser-depo.tar.zip\",
-}
 SAVED_ARCHIVE_LABELS = {
-    \"rust_toolchain\": \"saved Rust toolchain archive\",
-    \"html5ever\": \"saved html5ever dependency archive\",
-    \"boringssl\": \"saved BoringSSL archive\",
-    \"browser_deps\": \"saved browser dependency archive\",
+    "rust_toolchain": "saved Rust toolchain archive",
+    "html5ever": "saved html5ever dependency archive",
+    "boringssl": "saved BoringSSL archive",
+    "browser_deps": "saved browser dependency archive",
 }
-REQUIRED_SAVED_ARCHIVE_KEYS = (\"rust_toolchain\", \"boringssl\", \"browser_deps\")
-OPTIONAL_SAVED_ARCHIVE_KEYS = (\"html5ever\",)
-def build_parser():
-    parser.add_argument(\"--skip-zig-check\")
-    parser.add_argument(\"--expect-offline-deps\")
-    parser.add_argument(\"--require-prebuilt-v8\")
-    parser.add_argument(\"--expect-saved-archives\")
-    parser.add_argument(\"--saved-archives-root\")
-    parser.add_argument(\"--self-test\")
-def build_prepare_offline_command(repo_root, saved_archives):
-    command = [
-        str(repo_root / \"scripts\" / \"linux\" / \"prepare_offline_build_inputs.sh\"),
-        \"--browser-deps-archive\",
-        str(saved_archives[\"browser_deps\"]),
-        \"--boringssl-archive\",
-        str(saved_archives[\"boringssl\"]),
-    ]
-    command.extend((\"--html5ever-archive\", str(saved_archives[\"html5ever\"])))
-    command.append(\"--check-only\")
-    return command
-
-class ReadinessHelperTests(unittest.TestCase):
-    def test_saved_archives_root_finds_required_archives(self): ...
-    def test_saved_archives_root_reports_missing_required_archives(self): ...
-    def test_prepare_command_includes_optional_html5ever_archive(self): ...
-    def test_offline_dependency_root_and_prebuilt_v8_pass(self): ...
-
-def main():
-    print(\"run the saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain.\")
 """,
 }
 
@@ -186,115 +196,8 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
         cls.readiness_helper = read_text(
             cls.repo_root / "scripts/check_linux_build_readiness.py"
         )
-        cls.build_manifest = read_text(cls.repo_root / "build.zig.zon")
 
-    def test_route_note_keeps_saved_memory_archive_and_toolchain_guidance(self) -> None:
-        for fragment in (
-            "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
-            "check_issue3_linux_build_readiness_route_surface.sh",
-            "scripts/check_issue3_saved_memory_inputs.py",
-            "scripts/check_issue3_saved_archive_integrity.py",
-            "scripts/check_linux_build_readiness.py",
-            "scripts/linux/show_issue3_linux_build_readiness_route.sh",
-            "saved Rust `1.79.0` toolchain",
-            "Prefer a Zig `0.15.2` toolchain",
-            "python scripts/check_issue3_saved_archive_integrity.py --repo-root .",
-        ):
-            self.assertIn(fragment, self.route_note)
-
-    def test_route_helper_keeps_saved_memory_surface_preflight_restore_and_full_readiness_commands(self) -> None:
-        for fragment in (
-            "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
-            'SAVED_MEMORY_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh',
-            'SAVED_MEMORY_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_memory_inputs_route.sh',
-            'SAVED_MEMORY_INPUTS_COMMAND="python scripts/check_issue3_saved_memory_inputs.py',
-            'SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh',
-            'SAVED_ARCHIVE_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_archive_integrity_route.sh',
-            'SAVED_ARCHIVE_INTEGRITY_COMMAND="python scripts/check_issue3_saved_archive_integrity.py',
-            'PREFLIGHT_COMMAND="python scripts/check_linux_build_readiness.py',
-            "--skip-zig-check --expect-saved-archives",
-            'PREPARE_COMMAND="bash scripts/linux/prepare_offline_build_inputs.sh',
-            "--browser-deps-archive",
-            "--boringssl-archive",
-            "--html5ever-archive",
-            "--check-only",
-            'RUST_RESTORE_COMMAND="mkdir -p ${RUST_TOOLCHAIN_DIR}',
-            'RUST_PATH_COMMAND="export PATH=${RUST_TOOLCHAIN_DIR}/cargo/bin:$PATH"',
-            'FULL_READINESS_COMMAND="python scripts/check_linux_build_readiness.py',
-            "--expect-offline-deps --require-prebuilt-v8",
-            "Saved Memory route surface check:",
-            "Saved Memory route:",
-            "Saved Memory input preflight:",
-            "Saved archive integrity route surface check:",
-            "Saved archive integrity route:",
-            "Saved archive integrity preflight:",
-            "Fallback Zig archive:",
-        ):
-            self.assertIn(fragment, self.route_helper)
-
-    def test_surface_checker_keeps_route_saved_memory_and_archive_expectations(self) -> None:
-        for fragment in (
-            '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|',
-            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|file|',
-            '"docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|file|',
-            '"scripts/check_issue3_saved_memory_inputs.py|file|',
-            '"scripts/check_issue3_saved_archive_integrity.py|file|',
-            '"scripts/check_linux_build_readiness.py|file|',
-            '"scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh|file|',
-            '"scripts/linux/show_issue3_saved_archive_integrity_route.sh|file|',
-            '"build.zig.zon|file|Manifest surface"',
-            '"docs/ISSUE3_RUNTIME_REENTRY_GATES.md|docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|',
-            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md|',
-            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|',
-            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|',
-            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|python scripts/check_issue3_saved_archive_integrity.py --repo-root .|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_memory_inputs.py|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|scripts/check_issue3_saved_archive_integrity.py|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved Memory route surface check:|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity route surface check:|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity route:|',
-            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|Saved archive integrity preflight:|',
-            '"scripts/check_linux_build_readiness.py|saved Rust toolchain archive|',
-            '"scripts/linux/prepare_offline_build_inputs.sh|--check-only|',
-        ):
-            self.assertIn(fragment, self.surface_checker)
-
-    def test_readiness_helper_keeps_archive_layout_and_cli_switches(self) -> None:
-        for fragment in (
-            'SAVED_ARCHIVE_GLOBS',
-            '"rust_toolchain": "01-rust-*.tar.xz"',
-            '"html5ever": "02-litefetch-html5ever-*.zip"',
-            '"boringssl": "03-boringssl-zig-main.zip"',
-            '"browser_deps": "04-zig-browser-depo.tar.zip"',
-            '"saved Rust toolchain archive"',
-            '"saved browser dependency archive"',
-            'REQUIRED_SAVED_ARCHIVE_KEYS = ("rust_toolchain", "boringssl", "browser_deps")',
-            'OPTIONAL_SAVED_ARCHIVE_KEYS = ("html5ever",)',
-            '--expect-saved-archives',
-            '--saved-archives-root',
-            '--expect-offline-deps',
-            '--require-prebuilt-v8',
-            '--skip-zig-check',
-            '--self-test',
-        ):
-            self.assertIn(fragment, self.readiness_helper)
-
-    def test_readiness_helper_keeps_prepare_command_and_self_test_coverage(self) -> None:
-        for fragment in (
-            'str(repo_root / "scripts" / "linux" / "prepare_offline_build_inputs.sh")',
-            '"--browser-deps-archive"',
-            '"--boringssl-archive"',
-            '"--html5ever-archive"',
-            '"--check-only"',
-            'def test_saved_archives_root_finds_required_archives',
-            'def test_saved_archives_root_reports_missing_required_archives',
-            'def test_prepare_command_includes_optional_html5ever_archive',
-            'def test_offline_dependency_root_and_prebuilt_v8_pass',
-            'saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain.',
-        ):
-            self.assertIn(fragment, self.readiness_helper)
-
-    def test_runtime_gates_and_manifest_still_point_at_the_linux_readiness_surface(self) -> None:
+    def test_runtime_gates_keep_linux_readiness_lane_visible(self) -> None:
         for fragment in (
             "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md",
             "scripts/linux/show_issue3_linux_build_readiness_route.sh",
@@ -303,13 +206,88 @@ class LinuxBuildReadinessHelperSurfaceTest(unittest.TestCase):
         ):
             self.assertIn(fragment, self.runtime_gates)
 
+    def test_route_note_keeps_restored_helper_sync_and_issue11_handoff_visible(self) -> None:
         for fragment in (
-            '.minimum_zig_version = "0.15.2"',
-            '.v8 = .{ .path = "../zig-v8-fork" }',
-            '.@"boringssl-zig" = .{ .path = "../boringssl-zig" }',
-            '.curl = .{ .url = "https://example.invalid/curl.tar.gz" }',
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            "scripts/check_issue3_restored_helper_surface_sync.py",
+            "bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+            "bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+            "bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh",
+            "bash ./scripts/linux/show_issue3_progress_tracker_route.sh",
+            "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
+            "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            "bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh",
+            "bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
+            "bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+            "bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+            "saved Rust `1.79.0` restore command",
+            "`zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz`",
         ):
-            self.assertIn(fragment, self.build_manifest)
+            self.assertIn(fragment, self.route_note)
+
+    def test_route_helper_keeps_restored_helper_sync_progress_and_saved_rust_commands(self) -> None:
+        for fragment in (
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            'WORKSPACE_CONTEXT_COMMAND="python scripts/check_issue3_workspace_context.py',
+            'RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh',
+            'RESTORED_CHECKOUT_ROUTE_COMMAND="bash scripts/linux/show_issue3_restored_checkout_reentry_route.sh',
+            'RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh',
+            'RESTORED_HELPER_SYNC_ROUTE_COMMAND="bash scripts/linux/show_issue3_restored_helper_surface_sync_route.sh',
+            'PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_progress_tracker_route_surface.sh',
+            'PROGRESS_TRACKER_ROUTE_COMMAND="bash scripts/linux/show_issue3_progress_tracker_route.sh',
+            'SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh',
+            'SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh',
+            'STAGED_RUST_ROUTE_SURFACE_COMMAND="bash scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh',
+            'STAGED_RUST_ROUTE_COMMAND="bash scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh',
+            "Restored helper-surface sync route surface check:",
+            "Restored helper-surface sync route:",
+            "Progress-tracker route surface check:",
+            "Progress-tracker route:",
+            "Saved Rust archive route surface check:",
+            "Saved Rust archive route:",
+            "Staged Rust route surface check:",
+            "Staged Rust route:",
+            "issue #11 should stay visible as the current status lane",
+            "Fallback Zig archive:",
+        ):
+            self.assertIn(fragment, self.route_helper)
+
+    def test_surface_checker_keeps_restored_helper_sync_progress_and_saved_rust_expectations(self) -> None:
+        for fragment in (
+            '"docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|file|',
+            '"scripts/check_issue3_restored_helper_surface_sync.py|file|',
+            '"scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|file|',
+            '"scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|file|',
+            '"scripts/linux/check_issue3_progress_tracker_route_surface.sh|file|',
+            '"scripts/linux/show_issue3_progress_tracker_route.sh|file|',
+            '"scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|file|',
+            '"scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|file|',
+            '"scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh|file|',
+            '"scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh|file|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|scripts/check_issue3_restored_helper_surface_sync.py|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_progress_tracker_route.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh|',
+            '"docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md|bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|RESTORED_HELPER_SYNC_ROUTE_SURFACE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|RESTORED_HELPER_SYNC_ROUTE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|PROGRESS_TRACKER_ROUTE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|SAVED_RUST_ARCHIVE_ROUTE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|STAGED_RUST_ROUTE_SURFACE_COMMAND|',
+            '"scripts/linux/show_issue3_linux_build_readiness_route.sh|STAGED_RUST_ROUTE_COMMAND|',
+            '"scripts/check_linux_build_readiness.py|saved Rust toolchain archive|',
+            '"scripts/check_linux_build_readiness.py|saved browser dependency archive|',
+        ):
+            self.assertIn(fragment, self.surface_checker)
 
 
 if __name__ == "__main__":
