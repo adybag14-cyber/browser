@@ -48,6 +48,22 @@ FIXTURE_FILES = {
     - `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh`
     - `bash ./scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
     """,
+    "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md": """
+    # Issue #3 Linux Build-Readiness Route
+
+    - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
+    - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
+    - `scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh`
+    - `scripts/linux/show_issue3_restored_checkout_reentry_route.sh`
+    - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+    - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
+    - `scripts/check_issue3_restored_checkout.py`
+    - `scripts/check_issue3_restored_helper_surface_sync.py`
+    - `restore_saved_browser_snapshot.sh --sync-only`
+    - `python ./scripts/check_issue3_restored_checkout.py`
+    - `python ./scripts/check_issue3_restored_helper_surface_sync.py`
+    - `bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh`
+    """,
     "scripts/check_issue3_restored_helper_surface_sync.py": """
     REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
         ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 tracker route"),
@@ -133,6 +149,9 @@ class Issue3RestoredHelperSurfaceSyncRouteSurfaceTest(unittest.TestCase):
         cls.restored_route = read_text(
             cls.repo_root / "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md"
         )
+        cls.build_readiness_note = read_text(
+            cls.repo_root / "docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md"
+        )
         cls.sync_helper = read_text(
             cls.repo_root / "scripts/check_issue3_restored_helper_surface_sync.py"
         )
@@ -202,6 +221,35 @@ class Issue3RestoredHelperSurfaceSyncRouteSurfaceTest(unittest.TestCase):
         self.assertLess(saved_memory_index, saved_archive_index)
         self.assertLess(saved_archive_index, build_index)
         self.assertLess(build_index, runtime_index)
+
+    def test_build_readiness_route_keeps_restored_checkout_and_sync_routes_visible_before_wider_followups(self) -> None:
+        for fragment in (
+            "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md",
+            "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            "scripts/linux/check_issue3_restored_checkout_reentry_route_surface.sh",
+            "scripts/linux/show_issue3_restored_checkout_reentry_route.sh",
+            "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+            "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh",
+            "scripts/check_issue3_restored_checkout.py",
+            "scripts/check_issue3_restored_helper_surface_sync.py",
+            "restore_saved_browser_snapshot.sh --sync-only",
+            "python ./scripts/check_issue3_restored_checkout.py",
+            "python ./scripts/check_issue3_restored_helper_surface_sync.py",
+            "bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh",
+        ):
+            self.assertIn(fragment, self.build_readiness_note)
+
+        restored_index = self.build_readiness_note.index(
+            "python ./scripts/check_issue3_restored_checkout.py"
+        )
+        sync_index = self.build_readiness_note.index(
+            "python ./scripts/check_issue3_restored_helper_surface_sync.py"
+        )
+        build_index = self.build_readiness_note.index(
+            "bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh"
+        )
+        self.assertLess(restored_index, sync_index)
+        self.assertLess(sync_index, build_index)
 
     def test_sync_helper_keeps_required_issue11_route_surface_catalog_visible(self) -> None:
         for fragment in (
