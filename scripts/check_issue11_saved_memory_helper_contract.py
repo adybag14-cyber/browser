@@ -34,7 +34,7 @@ SHARED_FRAGMENTS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
         ("restored_checkout_helper", "restore_helper"),
-        "The restored-checkout and restore helpers should keep the narrower restored-helper surface sync route visible.",
+        "The restore-side helpers should keep the narrower restored-helper surface sync route visible.",
     ),
     (
         "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ARCHIVE_SURFACE.md",
@@ -347,6 +347,18 @@ class Issue11SavedMemoryHelperContractTests(unittest.TestCase):
         )
         self.assertIn(
             "scripts/check_issue3_staged_rust_toolchain_candidates.py",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "scripts/check_issue3_build_readiness_rerun.py",
+            result["underreported_fragments"],
+        )
+        self.assertIn(
+            "scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh",
             result["underreported_fragments"],
         )
 
