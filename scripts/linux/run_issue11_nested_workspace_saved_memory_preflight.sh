@@ -101,6 +101,12 @@ AGENT_FILES_ROOT="${SURFACED_VALUES[2]}"
 RESTORED_CHECKOUT_ROOT="${SURFACED_VALUES[3]}"
 SURFACED_FALLBACK_ZIG="${SURFACED_VALUES[4]}"
 
+if [[ -d "${RESTORED_CHECKOUT_ROOT}" ]]; then
+    CONTRACT_TARGET_ROOT="${RESTORED_CHECKOUT_ROOT}"
+else
+    CONTRACT_TARGET_ROOT="${HELPER_ROOT}"
+fi
+
 SURFACED_WORKSPACE_CONTEXT_SCRIPT="${HELPER_ROOT}/scripts/check_issue3_workspace_context.py"
 SURFACED_WORKSPACE_CONTEXT_CMD=(
     python3
@@ -132,13 +138,13 @@ PREFLIGHT_CMD=(
 HELPER_CONTRACT_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py"
-    --repo-root "${RESTORED_CHECKOUT_ROOT}"
+    --repo-root "${CONTRACT_TARGET_ROOT}"
 )
 
 REENTRY_INVENTORY_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py"
-    --repo-root "${RESTORED_CHECKOUT_ROOT}"
+    --repo-root "${CONTRACT_TARGET_ROOT}"
 )
 
 if [[ -n "${SURFACED_FALLBACK_ZIG}" ]]; then
@@ -151,7 +157,7 @@ fi
 if [[ "${JSON}" -eq 1 ]]; then
     CONTEXT_JSON="${CONTEXT_JSON}" PREFLIGHT_JSON="$(
         "${PREFLIGHT_CMD[@]}" --json
-    )" python3 - "$SKIP_ARCHIVE_INTEGRITY_CHECK" <<'PY'
+    )" python3 - "$SKIP_ARCHIVE_INTEGRITY_CHECK" "$CONTRACT_TARGET_ROOT" <<'PY'
 import json
 import os
 import shlex
@@ -159,6 +165,7 @@ import sys
 
 context = json.loads(os.environ["CONTEXT_JSON"])
 preflight = json.loads(os.environ["PREFLIGHT_JSON"])
+contract_target_root = sys.argv[2]
 
 command = [
     "python3",
@@ -197,14 +204,14 @@ helper_contract_command = [
     "python3",
     f"{context['helper_root']}/scripts/check_issue11_saved_memory_helper_contract.py",
     "--repo-root",
-    context["restored_checkout_root"],
+    contract_target_root,
 ]
 
 reentry_inventory_command = [
     "python3",
     f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
     "--repo-root",
-    context["restored_checkout_root"],
+    contract_target_root,
 ]
 
 print(json.dumps({
@@ -227,6 +234,7 @@ print(json.dumps({
     ),
     "workspace_context": context,
     "preflight": preflight,
+    "contract_target_root": contract_target_root,
     "command": command,
     "command_shell": " ".join(shlex.quote(part) for part in command),
 }, indent=2))
@@ -244,6 +252,7 @@ Live helper root:       ${HELPER_ROOT}
 Memory root:            ${MEMORY_ROOT}
 Agent files root:       ${AGENT_FILES_ROOT}
 Restored checkout root: ${RESTORED_CHECKOUT_ROOT}
+Contract target root:   ${CONTRACT_TARGET_ROOT}
 Fallback Zig archive:   ${SURFACED_FALLBACK_ZIG:-not surfaced}
 
 Saved-Memory route surface command:
