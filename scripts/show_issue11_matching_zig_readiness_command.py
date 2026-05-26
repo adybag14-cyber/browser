@@ -20,6 +20,9 @@ import tempfile
 import unittest
 
 
+DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -73,16 +76,63 @@ def format_shell_command(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def ancestor_chain(start: Path) -> list[Path]:
+    chain: list[Path] = []
+    current = start.resolve()
+    while True:
+        chain.append(current)
+        if current.parent == current:
+            break
+        current = current.parent
+    return chain
+
+
+def locate_first_existing(start: Path, relative_path: str) -> Path | None:
+    for ancestor in ancestor_chain(start):
+        candidate = ancestor / relative_path
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "toolchains").resolve()
 
 
+def normalize_saved_archives_root(path: Path) -> Path:
+    dependencies_root = path / "dependencies"
+    if dependencies_root.is_dir():
+        return dependencies_root.resolve()
+    return path.resolve()
+
+
 def resolve_default_saved_archives_root(repo_root: Path) -> Path:
-    return (repo_root.parent / "memory" / "repo_archives" / "browser").resolve()
+    located = locate_first_existing(repo_root, "memory/repo_archives/browser")
+    if located is not None and located.is_dir():
+        return normalize_saved_archives_root(located)
+    return normalize_saved_archives_root(
+        (repo_root.parent / "memory" / "repo_archives" / "browser").resolve()
+    )
 
 
 def resolve_default_offline_deps_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "offline-deps")
+    if located is not None and located.is_dir():
+        return located
     return (repo_root.parent / "offline-deps").resolve()
+
+
+def resolve_default_fallback_zig_archive(repo_root: Path) -> Path | None:
+    located = locate_first_existing(
+        repo_root, f"agent_files/{DEFAULT_FALLBACK_ZIG_ARCHIVE}"
+    )
+    if located is not None and located.is_file():
+        return located
+    candidate = (repo_root.parent / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE).resolve()
+    return candidate if candidate.is_file() else None
 
 
 def run_readiness_discovery(
@@ -358,6 +408,26 @@ class MatchingZigCommandTests(unittest.TestCase):
             self.assertIn("selected_candidate", rendered)
             self.assertIn("command", rendered)
 
+    def test_discovers_ancestor_workspace_roots_for_nested_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            repo_root = workspace / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            (workspace / "toolchains").mkdir()
+            (workspace / "memory" / "repo_archives" / "browser" / "dependencies").mkdir(parents=True)
+            (workspace / "offline-deps").mkdir()
+            (workspace / "agent_files").mkdir()
+            fallback = workspace / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE
+            fallback.write_text("zig", encoding="utf-8")
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), (workspace / "toolchains").resolve())
+            self.assertEqual(
+                resolve_default_saved_archives_root(repo_root),
+                (workspace / "memory" / "repo_archives" / "browser" / "dependencies").resolve(),
+            )
+            self.assertEqual(resolve_default_offline_deps_root(repo_root), (workspace / "offline-deps").resolve())
+            self.assertEqual(resolve_default_fallback_zig_archive(repo_root), fallback.resolve())
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -385,6 +455,8 @@ def main() -> int:
     fallback_zig_archive = (
         Path(args.fallback_zig_archive).resolve() if args.fallback_zig_archive else None
     )
+    if fallback_zig_archive is None:
+        fallback_zig_archive = resolve_default_fallback_zig_archive(repo_root)
 
     payload = run_readiness_discovery(
         repo_root=repo_root,
