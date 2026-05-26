@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import shlex
@@ -18,6 +19,8 @@ import unittest
 MINIMUM_ZIG_RE = re.compile(r'\.minimum_zig_version\s*=\s*"([^"]+)"')
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
 DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
+REQUIRED_REPO_ROOT_FILE = "build.zig.zon"
 DEFAULT_ZIG_TOOLCHAIN_GLOBS = (
     "zig*/zig",
     "zig*/bin/zig",
@@ -67,8 +70,25 @@ def load_minimum_zig(repo_root: Path) -> str:
     return match.group(1)
 
 
+def path_has_live_helper_surface(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / REQUIRED_REPO_ROOT_FILE).is_file()
+        and (path / "scripts" / "check_linux_build_readiness.py").is_file()
+        and (path / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").is_file()
+    )
+
+
 def resolve_default_helper_root(repo_root: Path) -> Path:
-    return repo_root.resolve()
+    repo_root = repo_root.resolve()
+    cwd = Path.cwd().resolve()
+    if (
+        repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME
+        and cwd != repo_root
+        and path_has_live_helper_surface(cwd)
+    ):
+        return cwd
+    return repo_root
 
 
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
@@ -281,7 +301,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--helper-root",
         default=None,
-        help="Path to the live helper checkout that should supply the rerun and recovery scripts (default: repo root)",
+        help=(
+            "Path to the live helper checkout that should supply the rerun and recovery scripts "
+            "(default: repo root, or the current live helper checkout when repo-root is a restored snapshot)"
+        ),
     )
     parser.add_argument("--toolchains-root", default=None, help="Path to the staged Zig toolchains root")
     parser.add_argument(
@@ -415,6 +438,45 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             )
             self.assertEqual(resolve_default_offline_deps_root(repo_root), offline_deps_root.resolve())
             self.assertEqual(resolve_fallback_zig_archive(repo_root, None), fallback_archive.resolve())
+
+    def test_default_helper_root_prefers_live_helper_cwd_for_restored_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_root.mkdir()
+            (live_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (live_root / "scripts" / "linux").mkdir(parents=True)
+            (live_root / "scripts" / "check_linux_build_readiness.py").write_text("pass\n", encoding="utf-8")
+            (live_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").write_text(
+                "#!/usr/bin/env bash\n",
+                encoding="utf-8",
+            )
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                self.assertEqual(resolve_default_helper_root(restored_root), live_root.resolve())
+            finally:
+                os.chdir(original_cwd)
+
+    def test_default_helper_root_stays_on_repo_root_without_live_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_root.mkdir()
+            (restored_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                self.assertEqual(resolve_default_helper_root(restored_root), restored_root.resolve())
+            finally:
+                os.chdir(original_cwd)
 
     def test_explicit_helper_root_supplies_live_rerun_and_recovery_scripts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
