@@ -17,16 +17,17 @@ toolchain, or offline-dependency lane.
 Keep the next run on one honest ladder from:
 
 1. issue `#11` progress updates
-2. saved-archive trust checks
-3. restored-checkout and saved-input checks
-4. saved Rust and Zig toolchain recovery
-5. Linux or WSL build-readiness reruns
-6. the narrower Windows runtime re-entry route once the environment gates turn green
+2. helper-inventory drift checks for restored or nested checkouts
+3. saved-archive trust checks
+4. restored-checkout and saved-input checks
+5. saved Rust and Zig toolchain recovery
+6. Linux or WSL build-readiness reruns
+7. the narrower Windows runtime re-entry route once the environment gates turn green
 
 That ladder should also surface the newer issue `#11`-specific helper checks so
-a run can verify the tracker surface, print a workspace-aware readiness command,
-and print the exact matching-Zig rerun command without rebuilding those steps by
-hand.
+a run can verify the tracker surface, the reusable helper inventories, print a
+workspace-aware readiness command, and print the exact matching-Zig rerun
+command without rebuilding those steps by hand.
 
 ## Expected Shared Roots
 
@@ -46,6 +47,17 @@ bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
 bash ./scripts/linux/show_issue3_workspace_context_route.sh
 python ./scripts/check_issue3_workspace_context.py --repo-root .
 ```
+
+Before trusting helper inventories copied into restored or nested checkouts,
+verify that the reusable issue `#3` and issue `#11` helper surfaces still point
+at the current tracker and matching-Zig helpers:
+
+```bash
+python ./scripts/check_issue11_reentry_inventory_consistency.py --repo-root .
+```
+
+Use `--json` when another helper needs the surfaced drift result as structured
+output.
 
 If the run wants one issue `#11`-specific command surface that already threads
 the shared roots into the saved-archive preflight, saved-Zig route, and broader
