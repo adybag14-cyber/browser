@@ -35,9 +35,35 @@ print(json.dumps(sys.argv[1]))
 PY
 }
 
+canonicalize_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+resolve_first_existing_path() {
+    local start="$1"
+    local relative_path="$2"
+    local current="$start"
+    while true; do
+        if [[ -e "${current}/${relative_path}" ]]; then
+            canonicalize_path "${current}/${relative_path}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            return 1
+        fi
+        current="$(dirname "${current}")"
+    done
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME="zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
 MEMORY_ROOT=""
 AGENT_FILES_ROOT=""
@@ -85,20 +111,35 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${MEMORY_ROOT}" ]]; then
-    MEMORY_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory"
+    MEMORY_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory" || true)"
+    if [[ -z "${MEMORY_ROOT}" ]]; then
+        MEMORY_ROOT="$(canonicalize_path "${REPO_ROOT}/../memory")"
+    fi
+else
+    MEMORY_ROOT="$(canonicalize_path "${MEMORY_ROOT}")"
 fi
 if [[ -z "${AGENT_FILES_ROOT}" ]]; then
-    AGENT_FILES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/agent_files"
+    AGENT_FILES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files" || true)"
+    if [[ -z "${AGENT_FILES_ROOT}" ]]; then
+        AGENT_FILES_ROOT="$(canonicalize_path "${REPO_ROOT}/../agent_files")"
+    fi
+else
+    AGENT_FILES_ROOT="$(canonicalize_path "${AGENT_FILES_ROOT}")"
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="${AGENT_FILES_ROOT}/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
-    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
-        FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}" || true)"
+    if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        CANDIDATE_FALLBACK_ZIG_ARCHIVE="${AGENT_FILES_ROOT}/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
     fi
+    if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        FALLBACK_ZIG_ARCHIVE="$(canonicalize_path "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}")"
+    fi
+else
+    FALLBACK_ZIG_ARCHIVE="$(canonicalize_path "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
-VERIFY_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+VERIFY_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
 STRICT_VERIFY_COMMAND="${VERIFY_COMMAND} --require-fallback-zig"
 SNAPSHOT_SURFACE_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_browser_snapshot_archive_surface.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 PRESENCE_PREFLIGHT_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
