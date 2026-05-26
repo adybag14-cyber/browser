@@ -74,6 +74,8 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|python ./scripts/check_issue3_saved_memory_inputs.py --repo-root .|The saved-Memory-inputs note keeps the main preflight command visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_saved_archive_integrity_route.sh|The saved-Memory-inputs note keeps the saved-archive integrity follow-up route visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|show_issue3_saved_zig_archive_candidates_route.sh|The saved-Memory-inputs note keeps the saved Zig archive candidates follow-up route visible."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|nearest ancestor|The saved-Memory-inputs note keeps the nearest-ancestor workspace-root guidance visible."
+    "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|falls back to sibling defaults|The saved-Memory-inputs note explains the sibling fallback after nearest-ancestor discovery."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--skip-archive-integrity-check|The saved-Memory-inputs note keeps the quick presence-only mode visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--restored-checkout-root ../browser-memory-snapshot|The saved-Memory-inputs note keeps the restored-checkout override visible."
     "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md|--repo-root ../browser-memory-snapshot|The saved-Memory-inputs note keeps the live-helper restored-checkout example visible."
