@@ -15,6 +15,8 @@ helpers:
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
@@ -33,6 +35,10 @@ helpers:
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
+- `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+- `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/check_issue3_offline_build_inputs_route_surface.sh`
 - `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
@@ -311,8 +317,19 @@ Then use `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md` and
 ## Surface Saved Rust Candidates Before Rebuilding The Restore Path
 
 If the exact saved Rust archive path is not already known or a restored Rust
-`1.79.x` toolchain may already be staged under `../toolchains`, surface those
-helpers before rebuilding the restore command or blaming host Rust:
+`1.79.x` toolchain may already be staged under `../toolchains`, surface the
+branch-local route helpers before rebuilding the restore command or blaming host
+Rust:
+
+```bash
+bash ./scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+bash ./scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+bash ./scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
+```
+
+When the route wants the surfaced archive choice or staged candidate result
+without reopening the route printers, run the Python helpers directly:
 
 ```bash
 python scripts/check_issue3_saved_rust_archive_candidates.py --repo-root .
@@ -434,27 +451,35 @@ The Linux route now stays short and ordered:
     `scripts/check_issue3_saved_zig_archive_candidates.py`
 23. A Zig archive-restore surface check using
     `scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh`
-24. A saved Rust archive discovery helper using
+24. A saved Rust archive route surface check using
+    `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+25. A saved Rust archive route using
+    `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
+26. A staged Rust route surface check using
+    `scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh`
+27. A staged Rust route using
+    `scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh`
+28. A saved Rust archive discovery helper using
     `scripts/check_issue3_saved_rust_archive_candidates.py`
-25. A staged Rust toolchain candidate helper using
+29. A staged Rust toolchain candidate helper using
     `scripts/check_issue3_staged_rust_toolchain_candidates.py`
-26. A saved Rust route surface check using
+30. A saved Rust route surface check using
     `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
-27. A saved Rust restore route using
+31. A saved Rust restore route using
     `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
-28. A dedicated offline build-inputs route using
+32. A dedicated offline build-inputs route using
     `scripts/linux/show_issue3_offline_build_inputs_route.sh`
-29. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
-30. A `prepare_offline_build_inputs.sh --check-only` command for the offline
+33. A saved-archive preflight using `scripts/check_linux_build_readiness.py`
+34. A `prepare_offline_build_inputs.sh --check-only` command for the offline
     dependency surface
-31. A saved Rust `1.79.0` restore command
-32. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
-33. The attached fallback Zig archive location when it is present beside the
+35. A saved Rust `1.79.0` restore command
+36. A PATH export that keeps the restored Rust toolchain ahead of any host Rust
+37. The attached fallback Zig archive location when it is present beside the
     repo workspace, so runs can surface it without treating it as
     branch-compatible validation evidence
-34. A full readiness command that expects the saved archives, offline deps, and
+38. A full readiness command that expects the saved archives, offline deps, and
     prebuilt V8 archive to be staged before retrying `zig build`
-35. A direct handoff back to the smaller Windows runtime revalidation route
+39. A direct handoff back to the smaller Windows runtime revalidation route
     once the saved-archive and toolchain checks stop being the blocker
 
 ## Hand Back To The Windows Runtime Route
