@@ -109,6 +109,10 @@ def build_command(*parts: str) -> list[str]:
     return list(parts)
 
 
+def repo_script(repo_root: Path, relative_path: str) -> str:
+    return str((repo_root / relative_path).resolve())
+
+
 def choose_next_step(
     *,
     build_zig_zon_exists: bool,
@@ -144,7 +148,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
 
     preflight_command = build_command(
         "python",
-        "scripts/check_linux_build_readiness.py",
+        repo_script(repo_root, "scripts/check_linux_build_readiness.py"),
         "--repo-root",
         str(repo_root),
         "--toolchains-root",
@@ -159,7 +163,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     )
     full_readiness_command = build_command(
         "python",
-        "scripts/check_linux_build_readiness.py",
+        repo_script(repo_root, "scripts/check_linux_build_readiness.py"),
         "--repo-root",
         str(repo_root),
         "--toolchains-root",
@@ -174,13 +178,13 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     )
     workspace_context_command = build_command(
         "python",
-        "scripts/check_issue3_workspace_context.py",
+        repo_script(repo_root, "scripts/check_issue3_workspace_context.py"),
         "--repo-root",
         str(repo_root),
     )
     saved_zig_route_surface_command = build_command(
         "bash",
-        "./scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
+        repo_script(repo_root, "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh"),
         "--repo-root",
         str(repo_root),
         "--saved-archives-root",
@@ -190,7 +194,7 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
     )
     saved_zig_route_command = build_command(
         "bash",
-        "./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
+        repo_script(repo_root, "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh"),
         "--repo-root",
         str(repo_root),
         "--saved-archives-root",
@@ -314,16 +318,24 @@ class WorkspaceReadinessTests(unittest.TestCase):
                 context["saved_archives_root"],
                 str((base / "memory" / "repo_archives" / "browser" / "dependencies").resolve()),
             )
+            self.assertEqual(
+                context["suggested_workspace_context_command"][1],
+                str((repo_root / "scripts" / "check_issue3_workspace_context.py").resolve()),
+            )
+            self.assertEqual(
+                context["suggested_preflight_command"][1],
+                str((repo_root / "scripts" / "check_linux_build_readiness.py").resolve()),
+            )
             self.assertIn("--expect-saved-archives", context["suggested_preflight_command"])
             self.assertIn("--expect-offline-deps", context["suggested_full_readiness_command"])
             self.assertIn("--require-prebuilt-v8", context["suggested_full_readiness_command"])
-            self.assertIn(
-                "check_issue3_saved_zig_archive_candidates_route_surface.sh",
+            self.assertEqual(
                 context["suggested_saved_zig_route_surface_command"][1],
+                str((repo_root / "scripts" / "linux" / "check_issue3_saved_zig_archive_candidates_route_surface.sh").resolve()),
             )
-            self.assertIn(
-                "show_issue3_saved_zig_archive_candidates_route.sh",
+            self.assertEqual(
                 context["suggested_saved_zig_route_command"][1],
+                str((repo_root / "scripts" / "linux" / "show_issue3_saved_zig_archive_candidates_route.sh").resolve()),
             )
             self.assertIn("saved-Zig route", context["suggested_next_step"])
 
@@ -343,6 +355,10 @@ class WorkspaceReadinessTests(unittest.TestCase):
             self.assertFalse(context["offline_deps_root_found"])
             self.assertFalse(context["fallback_zig_archive_found"])
             self.assertIn("explicit --fallback-zig-archive path", context["suggested_next_step"])
+            self.assertEqual(
+                context["suggested_preflight_command"][1],
+                str((repo_root / "scripts" / "check_linux_build_readiness.py").resolve()),
+            )
 
     def test_explicit_fallback_archive_is_threaded_into_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
