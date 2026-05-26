@@ -21,6 +21,7 @@ import unittest
 
 
 DEFAULT_FALLBACK_ZIG_ARCHIVE = "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+DEFAULT_TOOLCHAINS_ROOT_CANDIDATES = ("toolchains", ".toolchains")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,7 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the staged Zig toolchains root (default: ../toolchains beside the repo)",
+        help=(
+            "Path to the staged Zig toolchains root (default: discover the nearest "
+            "ancestor toolchains or .toolchains root, or fall back to ../toolchains "
+            "beside the repo)"
+        ),
     )
     parser.add_argument(
         "--saved-archives-root",
@@ -96,9 +101,10 @@ def locate_first_existing(start: Path, relative_path: str) -> Path | None:
 
 
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
-    located = locate_first_existing(repo_root, "toolchains")
-    if located is not None and located.is_dir():
-        return located
+    for relative_path in DEFAULT_TOOLCHAINS_ROOT_CANDIDATES:
+        located = locate_first_existing(repo_root, relative_path)
+        if located is not None and located.is_dir():
+            return located
     return (repo_root.parent / "toolchains").resolve()
 
 
@@ -401,7 +407,7 @@ class MatchingZigCommandTests(unittest.TestCase):
                 toolchains_root=root / "toolchains",
                 saved_archives_root=root / "memory" / "repo_archives" / "browser" / "dependencies",
                 offline_deps_root=root / "offline-deps",
-                fallback_zig_archive=root / "agent_files" / "zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz",
+                fallback_zig_archive=root / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE,
                 payload=payload,
             )
             rendered = json.dumps(result)
@@ -427,6 +433,19 @@ class MatchingZigCommandTests(unittest.TestCase):
             )
             self.assertEqual(resolve_default_offline_deps_root(repo_root), (workspace / "offline-deps").resolve())
             self.assertEqual(resolve_default_fallback_zig_archive(repo_root), fallback.resolve())
+
+    def test_discovers_hidden_toolchains_root_from_ancestor_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            repo_root = workspace / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            hidden_toolchains = workspace / ".toolchains"
+            hidden_toolchains.mkdir()
+
+            self.assertEqual(
+                resolve_default_toolchains_root(repo_root),
+                hidden_toolchains.resolve(),
+            )
 
 
 def main() -> int:
