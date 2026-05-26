@@ -75,7 +75,10 @@ HELPER_SURFACE_PATHS: tuple[tuple[str, str], ...] = (
     ),
     ("scripts/check_issue3_build_readiness_rerun.py", "build-readiness rerun helper"),
     ("scripts/check_issue11_saved_memory_helper_contract.py", "issue #11 saved-memory helper-contract checker"),
+    ("scripts/check_issue11_progress_tracker_surface.py", "issue #11 progress-tracker surface checker"),
     ("scripts/check_issue11_reentry_inventory_consistency.py", "issue #11 re-entry inventory checker"),
+    ("scripts/check_issue11_workspace_readiness.py", "issue #11 workspace-aware readiness helper"),
+    ("scripts/show_issue11_matching_zig_readiness_command.py", "issue #11 matching-Zig readiness helper"),
     ("scripts/check_linux_build_readiness.py", "Linux build-readiness checker"),
     ("scripts/linux/check_issue3_progress_tracker_route_surface.sh", "issue #11 progress-tracker route surface check"),
     ("scripts/linux/show_issue3_progress_tracker_route.sh", "issue #11 progress-tracker route printer"),
@@ -374,6 +377,63 @@ class HelperSurfaceSourceTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertIn(
                 "scripts/check_issue11_saved_memory_helper_contract.py",
+                result["missing_paths"],
+            )
+
+    def test_issue11_progress_tracker_surface_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "helper-root"
+            helper_root.mkdir()
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue11_progress_tracker_surface.py":
+                    continue
+                target = helper_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(relative_path, encoding="utf-8")
+
+            result = collect_results(helper_root=helper_root, restored_checkout_root=None)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/check_issue11_progress_tracker_surface.py",
+                result["missing_paths"],
+            )
+
+    def test_issue11_workspace_readiness_helper_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "helper-root"
+            helper_root.mkdir()
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/check_issue11_workspace_readiness.py":
+                    continue
+                target = helper_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(relative_path, encoding="utf-8")
+
+            result = collect_results(helper_root=helper_root, restored_checkout_root=None)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/check_issue11_workspace_readiness.py",
+                result["missing_paths"],
+            )
+
+    def test_issue11_matching_zig_helper_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir) / "helper-root"
+            helper_root.mkdir()
+            for relative_path, _label in HELPER_SURFACE_PATHS:
+                if relative_path == "scripts/show_issue11_matching_zig_readiness_command.py":
+                    continue
+                target = helper_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(relative_path, encoding="utf-8")
+
+            result = collect_results(helper_root=helper_root, restored_checkout_root=None)
+
+            self.assertFalse(result["ok"])
+            self.assertIn(
+                "scripts/show_issue11_matching_zig_readiness_command.py",
                 result["missing_paths"],
             )
 
