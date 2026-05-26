@@ -7,7 +7,7 @@ This helper is intentionally small and create-only so scheduled runs can answer:
 - where the saved Memory browser archives live
 - where the attached fallback Zig archive is visible from this checkout
 - where the nearest shared offline dependency root and Memory root live
-- which saved-snapshot, saved-Rust, build-readiness, and issue #11 progress-
+- which saved-snapshot, saved-memory, saved-Rust, build-readiness, and issue #11 progress-
   tracker route commands already match those roots
 
 It is useful when a restored checkout sits deeper than the default sibling
@@ -154,6 +154,19 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "--offline-deps-root",
         str(offline_deps_root),
     ]
+    saved_memory_preflight_command = [
+        "python",
+        "scripts/check_issue3_saved_memory_inputs.py",
+        "--repo-root",
+        str(repo_root),
+        "--memory-root",
+        str(memory_root),
+        "--agent-files-root",
+        str(agent_files_root),
+        "--restored-checkout-root",
+        str(restored_checkout_root),
+    ]
+    quick_saved_memory_preflight_command = [*saved_memory_preflight_command, "--skip-archive-integrity-check"]
     progress_tracker_route_command = [
         "bash",
         "scripts/linux/show_issue3_progress_tracker_route.sh",
@@ -260,27 +273,15 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(toolchains_root),
     ]
     if fallback_zig_archive is not None:
-        readiness_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        progress_tracker_route_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        build_readiness_route_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        saved_snapshot_route_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        zig_recovery_route_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        zig_match_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
-        saved_zig_archive_candidates_command.extend(
-            ("--fallback-zig-archive", str(fallback_zig_archive))
-        )
+        readiness_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        saved_memory_preflight_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        quick_saved_memory_preflight_command = [*saved_memory_preflight_command, "--skip-archive-integrity-check"]
+        progress_tracker_route_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        build_readiness_route_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        saved_snapshot_route_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        zig_recovery_route_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        zig_match_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
+        saved_zig_archive_candidates_command.extend(("--fallback-zig-archive", str(fallback_zig_archive)))
 
     status = "passed" if build_zon.is_file() else "failed"
     failures: list[str] = []
@@ -306,6 +307,8 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         "fallback_zig_archive": str(fallback_zig_archive) if fallback_zig_archive else None,
         "fallback_zig_archive_found": fallback_found,
         "suggested_readiness_command": readiness_command,
+        "suggested_saved_memory_preflight_command": saved_memory_preflight_command,
+        "suggested_quick_saved_memory_preflight_command": quick_saved_memory_preflight_command,
         "suggested_progress_tracker_route_command": progress_tracker_route_command,
         "suggested_build_readiness_route_command": build_readiness_route_command,
         "suggested_saved_snapshot_route_command": saved_snapshot_route_command,
@@ -352,6 +355,10 @@ def emit_text(context: dict[str, object]) -> None:
     )
     print("Suggested readiness command:")
     print("  " + " ".join(context["suggested_readiness_command"]))
+    print("Suggested saved-memory preflight command:")
+    print("  " + " ".join(context["suggested_saved_memory_preflight_command"]))
+    print("Suggested quick saved-memory preflight command:")
+    print("  " + " ".join(context["suggested_quick_saved_memory_preflight_command"]))
     print("Suggested issue #11 progress-tracker route command:")
     print("  " + " ".join(context["suggested_progress_tracker_route_command"]))
     print("Suggested build-readiness route command:")
@@ -411,6 +418,14 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertEqual(context["fallback_zig_archive"], str(fallback.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
             self.assertIn("--offline-deps-root", context["suggested_readiness_command"])
+            self.assertIn(
+                "scripts/check_issue3_saved_memory_inputs.py",
+                context["suggested_saved_memory_preflight_command"],
+            )
+            self.assertIn(str(memory_root.resolve()), context["suggested_saved_memory_preflight_command"])
+            self.assertIn(str(agent_files_root.resolve()), context["suggested_saved_memory_preflight_command"])
+            self.assertIn(str(restored_checkout_root.resolve()), context["suggested_saved_memory_preflight_command"])
+            self.assertIn("--skip-archive-integrity-check", context["suggested_quick_saved_memory_preflight_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
@@ -505,6 +520,14 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertFalse(context["restored_checkout_root_found"])
             self.assertFalse(context["fallback_zig_archive_found"])
             self.assertIn(
+                "scripts/check_issue3_saved_memory_inputs.py",
+                context["suggested_saved_memory_preflight_command"],
+            )
+            self.assertIn("--memory-root", context["suggested_saved_memory_preflight_command"])
+            self.assertIn("--agent-files-root", context["suggested_saved_memory_preflight_command"])
+            self.assertIn("--restored-checkout-root", context["suggested_saved_memory_preflight_command"])
+            self.assertIn("--skip-archive-integrity-check", context["suggested_quick_saved_memory_preflight_command"])
+            self.assertIn(
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
             )
@@ -548,6 +571,8 @@ class WorkspaceContextTests(unittest.TestCase):
 
             self.assertEqual(context["fallback_zig_archive"], str(explicit_archive.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_memory_preflight_command"])
+            self.assertIn(str(explicit_archive.resolve()), context["suggested_quick_saved_memory_preflight_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_saved_snapshot_route_command"])
             self.assertIn("--destination", context["suggested_saved_snapshot_route_command"])
             self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_recovery_route_command"])
