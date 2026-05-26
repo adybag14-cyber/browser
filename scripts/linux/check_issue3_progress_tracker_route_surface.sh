@@ -86,11 +86,8 @@ declare -a REFERENCE_PATHS=(
     "scripts/check_issue3_saved_archive_integrity.py|file|Saved-archive integrity helper used by the blocked Linux or WSL re-entry lane."
     "scripts/check_issue3_saved_zig_archive_candidates.py|file|Saved-Zig archive discovery helper used when issue #11 is tracking archive-selection work."
     "scripts/check_linux_build_readiness.py|file|Linux build-readiness helper used before the narrowed runtime lane is reopened."
-    "scripts/check_issue11_progress_tracker_surface.py|file|Issue #11-specific helper-surface checker used before broader re-entry helpers are trusted."
     "scripts/check_issue11_saved_memory_helper_contract.py|file|Issue #11 saved-memory helper-contract checker used before the broader saved-memory preflight widens the route."
     "scripts/check_issue11_reentry_inventory_consistency.py|file|Issue #11 helper-inventory consistency checker used when newer tracker-specific helpers should still be present."
-    "scripts/check_issue11_workspace_readiness.py|file|Issue #11 workspace-aware readiness helper used before matching-Zig rerun commands are trusted."
-    "scripts/show_issue11_matching_zig_readiness_command.py|file|Issue #11 matching-Zig rerun helper used after workspace-aware discovery or saved-Zig candidate selection."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
@@ -101,11 +98,8 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|check_issue3_workspace_context_route_surface.sh|The progress-tracker note keeps the workspace-context route surface visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|show_issue3_workspace_context_route.sh|The progress-tracker note keeps the workspace-context route printer visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue3_workspace_context.py|The progress-tracker note keeps the workspace-context helper visible."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_progress_tracker_surface.py|The progress-tracker note keeps the tracker-specific surface checker visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_saved_memory_helper_contract.py|The progress-tracker note keeps the narrower saved-memory helper-contract checker visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_reentry_inventory_consistency.py|The progress-tracker note keeps the tracker-specific inventory checker visible."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_workspace_readiness.py|The progress-tracker note keeps the workspace-aware issue #11 readiness helper visible."
-    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/show_issue11_matching_zig_readiness_command.py|The progress-tracker note keeps the matching-Zig rerun helper visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Use the saved-memory helper-contract checker before the broader saved-memory|The progress-tracker note explains the narrower saved-memory contract check before the broader preflight."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz|The progress-tracker note keeps the explicit fallback Zig archive handoff visible when nested routes need the same surfaced archive path."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Goal:|The progress-tracker note keeps the start-update template visible."
