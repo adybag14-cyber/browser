@@ -23,6 +23,11 @@ Keep the next run on one honest ladder from:
 5. Linux or WSL build-readiness reruns
 6. the narrower Windows runtime re-entry route once the environment gates turn green
 
+That ladder should also surface the newer issue `#11`-specific helper checks so
+a run can verify the tracker surface, print a workspace-aware readiness command,
+and print the exact matching-Zig rerun command without rebuilding those steps by
+hand.
+
 ## Expected Shared Roots
 
 Unless the checkout was restored into a different layout, assume these shared
@@ -42,11 +47,24 @@ bash ./scripts/linux/show_issue3_workspace_context_route.sh
 python ./scripts/check_issue3_workspace_context.py --repo-root .
 ```
 
-## Start With The Progress Tracker Route
-
-Run the surface check before treating issue `#11` as the current status lane:
+If the run wants one issue `#11`-specific command surface that already threads
+the shared roots into the saved-archive preflight, saved-Zig route, and broader
+readiness rerun, print it before rebuilding those commands by hand:
 
 ```bash
+python ./scripts/check_issue11_workspace_readiness.py --repo-root .
+```
+
+Use `--json` when another helper needs the surfaced command set as structured
+output.
+
+## Start With The Progress Tracker Route
+
+Run the issue `#11` surface check before treating the lower-volume tracker as
+the current status lane, then reopen the route itself:
+
+```bash
+python ./scripts/check_issue11_progress_tracker_surface.py --repo-root .
 bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
 bash ./scripts/linux/show_issue3_progress_tracker_route.sh
 ```
@@ -127,11 +145,16 @@ Then reopen the broader recovery route and the dedicated matching-line gate:
 bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
 bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
 bash ./scripts/linux/check_issue3_zig_toolchain_match.sh
+python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
 ```
 
 Treat the attached Zig `0.17` dev archive as a surfaced fallback only. Do not
 count it as honest branch-compatible validation evidence for a checkout that
 still expects a `0.15.x` line.
+
+Use the final helper above when a matching staged candidate does exist and the
+run wants the exact `check_linux_build_readiness.py --zig ...` rerun command
+without rebuilding the shared paths by hand.
 
 ## Re-run Linux Build Readiness Only After The Gates Above
 
@@ -149,6 +172,7 @@ rerun command surfaced first, use:
 
 ```bash
 python ./scripts/check_issue3_build_readiness_rerun.py --repo-root .
+python ./scripts/show_issue11_matching_zig_readiness_command.py --repo-root .
 ```
 
 ## Hand Control Back To The Runtime Route Only When Ready
