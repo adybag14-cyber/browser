@@ -18,6 +18,8 @@ Companion helpers:
 - `docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md`
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
 - `scripts/check_issue3_restored_checkout.py`
@@ -31,6 +33,10 @@ Companion helpers:
 - `scripts/check_issue11_reentry_inventory_consistency.py`
 - `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
 - `scripts/linux/show_issue3_progress_tracker_route.sh`
+- `scripts/linux/check_issue3_workspace_context_route_surface.sh`
+- `scripts/linux/show_issue3_workspace_context_route.sh`
+- `scripts/check_issue3_workspace_context.py`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
 - `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
 - `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
@@ -136,6 +142,21 @@ Prefer this self-contained route when the saved archive can lag the current
 branch-local helper surface and the follow-up commands should live inside the
 restored checkout instead of depending on a separate live helper root.
 
+If the restored checkout or live helper root sits deeper than the default
+sibling layout, surface the shared workspace roots before trusting the broader
+saved-memory, saved-Rust, build-readiness, or runtime follow-up commands:
+
+```bash
+bash ../browser-memory-snapshot/scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
+Use the live-helper-root version when the wrapper should keep discovering roots
+from the current branch checkout instead of the restored tree:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
 If `../browser-memory-snapshot` already exists and only the helper docs and
 route scripts are stale, refresh them in place without re-extracting the saved
 repo archive:
@@ -217,6 +238,15 @@ bash ../browser-memory-snapshot/scripts/linux/show_issue3_linux_build_readiness_
 bash ../browser-memory-snapshot/scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh --repo-root ../browser-memory-snapshot
 ```
 
+If the restored checkout or live helper root sits deeper than the default
+sibling layout, rerun the saved-memory preflight through the nested-workspace
+wrapper before broader saved-Rust, build-readiness, or runtime follow-up trusts
+inferred roots:
+
+```bash
+bash ../browser-memory-snapshot/scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
+
 Run the restored-checkout readiness check first so missing `build.zig.zon`,
 missing helper-surface files, or helper drift fail before the saved-Memory and
 saved-archive preflights.
@@ -255,10 +285,11 @@ destination, helper-root, optional helper-surface sync mode, and optional
 fallback Zig archive surface already filled in.
 
 That keeps the restored-helper sync route, the issue `#11` helper-contract
-checks, the restored-checkout readiness check, the saved-Memory preflight, the
-saved-archive integrity check, the saved Rust candidate bridge, the Linux
-build-readiness route, and the runtime re-entry route anchored to the restored
-checkout before the direct issue `#3` runtime lane is reopened again.
+checks, the restored-checkout readiness check, the nested-workspace saved-memory
+wrapper, the saved-Memory preflight, the saved-archive integrity check, the
+saved Rust candidate bridge, the Linux build-readiness route, and the runtime
+re-entry route anchored to the restored checkout before the direct issue `#3`
+runtime lane is reopened again.
 
 ## Working Rules
 
@@ -278,6 +309,10 @@ checkout before the direct issue `#3` runtime lane is reopened again.
   `check_issue11_reentry_inventory_consistency.py` after the narrower sync
   check when the restored checkout is expected to carry the broader issue `#11`
   helper surface, including saved-Rust and rerun-route follow-ups.
+- Prefer `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+  when the restored checkout or live helper root sits deeper than the default
+  sibling layout and broader saved-memory, saved-Rust, build-readiness, or
+  runtime follow-up would otherwise rely on guessed roots.
 - Prefer `--sync-helper-surface` when the restored checkout should be more
   self-contained for the next Linux or WSL route replay.
 - Prefer `--sync-only` when the restored checkout already exists and only the
