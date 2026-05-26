@@ -190,6 +190,25 @@ bash ./scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
 Only move back to issue `#3`-specific runtime commits after the environment
 gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
 
+## Comment Templates
+
+When issue `#11` is the active progress log, keep the start and completion
+updates compact so scheduled reruns leave the same fields the route printer and
+surface checker expect:
+
+```text
+Goal: <state the exact Linux/WSL re-entry helper or environment gate work>
+Started: <UTC timestamp>
+Next: <state the first concrete helper, validation check, or branch-safe change you are about to make>
+```
+
+```text
+Achieved: <state what route, helper, or branch-safe re-entry improvement landed>
+Completed: <UTC timestamp>
+Commit: <commit sha>
+Validation: <state the focused helper check, self-test, or follow-up route that now applies>
+```
+
 ## Fail Fast On The Route Surface
 
 From the browser repo root:
