@@ -13,7 +13,8 @@ Usage:
 
 Use the branch-local workspace-context helper to resolve the nearest practical
 helper, Memory, agent-files, and restored-checkout roots, then rerun the saved
-Memory preflight with those surfaced paths threaded through explicitly.
+Memory preflight plus the two issue #11 contract checks with those surfaced
+paths threaded through explicitly.
 EOUSAGE
 }
 
@@ -128,6 +129,12 @@ PREFLIGHT_CMD=(
     --restored-checkout-root "${RESTORED_CHECKOUT_ROOT}"
 )
 
+HELPER_CONTRACT_CMD=(
+    python3
+    "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py"
+    --repo-root "${HELPER_ROOT}"
+)
+
 REENTRY_INVENTORY_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py"
@@ -186,6 +193,13 @@ route_surface_command = [
     context["helper_root"],
 ]
 
+helper_contract_command = [
+    "python3",
+    f"{context['helper_root']}/scripts/check_issue11_saved_memory_helper_contract.py",
+    "--repo-root",
+    context["helper_root"],
+]
+
 reentry_inventory_command = [
     "python3",
     f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
@@ -202,6 +216,10 @@ print(json.dumps({
     "workspace_context_command": workspace_context_command,
     "workspace_context_command_shell": " ".join(
         shlex.quote(part) for part in workspace_context_command
+    ),
+    "helper_contract_command": helper_contract_command,
+    "helper_contract_command_shell": " ".join(
+        shlex.quote(part) for part in helper_contract_command
     ),
     "reentry_inventory_command": reentry_inventory_command,
     "reentry_inventory_command_shell": " ".join(
@@ -234,6 +252,9 @@ Saved-Memory route surface command:
 Workspace-context command:
   $(printf '%q ' "${SURFACED_WORKSPACE_CONTEXT_CMD[@]}")
 
+Issue #11 helper-contract command:
+  $(printf '%q ' "${HELPER_CONTRACT_CMD[@]}")
+
 Issue #11 re-entry inventory command:
   $(printf '%q ' "${REENTRY_INVENTORY_CMD[@]}")
 
@@ -242,4 +263,5 @@ Saved-Memory preflight command:
 EOF
 
 "${PREFLIGHT_CMD[@]}"
+"${HELPER_CONTRACT_CMD[@]}"
 "${REENTRY_INVENTORY_CMD[@]}"
