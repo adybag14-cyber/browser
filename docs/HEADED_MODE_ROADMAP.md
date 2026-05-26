@@ -39,10 +39,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validatio
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea google-shared-enter-order
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\check_google_issue3_enter_submit_runtime_revalidation_surface.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_google_issue3_enter_submit_runtime_revalidation.ps1
-bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
-bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
+bash ./scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
+bash ./scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh
+bash ./scripts/linux/show_issue3_saved_archive_integrity_route.sh
 bash ./scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh
 bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+bash ./scripts/linux/check_issue3_linux_build_readiness_route_surface.sh
+bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea rendering
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea network
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\show_headed_validation_suites.ps1 -ChangeArea browser-shell
@@ -63,12 +67,21 @@ note, reduced Google probe, shared Enter-order ladder, and focused file-level
 commands stay printed on one compact surface before the route widens back out
 again.
 
-When that same direct issue `#3` replay is blocked earlier on Linux or WSL
-saved-archive dependency staging or toolchain readiness, run the Linux surface
-check first and then the Linux build-readiness helper so the saved-archive
-restore path, offline-deps preflight, and Rust `1.79.0` recovery commands stay
-printed on one compact branch-local surface before the Windows runtime route is
-reopened.
+When that same direct issue `#3` replay is blocked earlier because the run
+still needs a saved-Memory presence check, workspace-root rediscovery, or the
+nested-workspace rerun surface before restore or build-readiness helpers are
+trusted, run the saved-memory surface check first and then the saved-memory
+route helper so the resolved Memory, agent-files, restored-checkout, issue
+`#11` helper-contract, and follow-up restore or build-readiness routes stay
+printed on one compact branch-local surface before the replay widens again.
+
+When that same direct issue `#3` replay already knows the saved repo snapshot
+and dependency bundles must be trusted as exact artifacts before restore or
+offline staging can continue, run the saved-archive-integrity surface check
+first and then the archive-integrity route helper so the checksum preflight,
+saved-snapshot archive-surface check, and the saved-browser-snapshot or Linux
+build-readiness follow-up helpers stay visible on one compact branch-local
+surface before the route opens broader staging work again.
 
 When that same direct issue `#3` replay is blocked even earlier because the
 next Linux or WSL follow-up still lacks a reusable checkout from the saved
@@ -77,6 +90,13 @@ the saved-browser-snapshot route helper so the restore command, saved-memory
 preflight, and follow-up Linux build-readiness and runtime re-entry helpers
 stay printed on one compact branch-local surface before the Windows runtime
 route is reopened.
+
+When that same direct issue `#3` replay is blocked earlier on Linux or WSL
+saved-archive dependency staging or toolchain readiness, run the Linux surface
+check first and then the Linux build-readiness helper so the saved-archive
+restore path, offline-deps preflight, and Rust `1.79.0` recovery commands stay
+printed on one compact branch-local surface before the Windows runtime route is
+reopened.
 
 When the replay is already narrowed to the attached-localhost lane, run the
 replay quickstart surface check first and then the replay quickstart helper so
@@ -93,8 +113,11 @@ Current validation truth on this branch:
 - the router now surfaces a dedicated `google-form-controls-enter-order` gate for the smallest issue #3 shared Enter-submit checkpoint on the real headed surface
 - the router now surfaces a broader `google-shared-enter-order` gate when issue #3 replay should stay on the reusable shared Enter-order ladder before widening back out to live Google or attached-page follow-up
 - `scripts/windows/check_google_issue3_enter_submit_runtime_revalidation_surface.ps1` and `scripts/windows/show_google_issue3_enter_submit_runtime_revalidation.ps1` are the fail-fast surface check and compact direct runtime route when issue #3 replay is already narrowed to the `Page.zig` plus `win32_backend.zig` boundary
-- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`, `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`, and `scripts/linux/show_issue3_linux_build_readiness_route.sh` are the read-first and fail-fast Linux or WSL surfaces when issue #3 replay is blocked on saved-archive dependency staging or toolchain readiness before the Windows runtime route can resume
+- `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`, `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`, and `scripts/linux/show_issue3_saved_memory_inputs_route.sh` are the read-first and fail-fast saved-input trust surfaces when issue #3 replay is blocked earlier on saved-Memory presence, nested checkout root discovery, or the issue #11 helper-contract layer before restore or Linux/WSL build-readiness resumes
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh` is the one-command saved-memory rerun for deeper restored or nested checkouts when the route needs surfaced helper, Memory, agent-files, restored-checkout, and fallback-Zig roots threaded through automatically
+- `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`, `scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh`, and `scripts/linux/show_issue3_saved_archive_integrity_route.sh` are the read-first and fail-fast exact-artifact trust surfaces when the saved repo snapshot or dependency bundles must be validated before restore or Linux/WSL staging can continue
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`, `scripts/linux/check_issue3_saved_browser_snapshot_route_surface.sh`, and `scripts/linux/show_issue3_saved_browser_snapshot_route.sh` are the read-first and fail-fast restore surfaces when issue #3 replay still needs a disposable checkout before the Linux or WSL build-readiness or runtime helper routes can resume
+- `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`, `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`, and `scripts/linux/show_issue3_linux_build_readiness_route.sh` are the read-first and fail-fast Linux or WSL surfaces when issue #3 replay is blocked on saved-archive dependency staging or toolchain readiness before the Windows runtime route can resume
 - the router now surfaces first-line `rendering` probes for shared layout, screenshot timing, and visible headed surface checks before attached-page replay
 - the router now surfaces first-line `network` probes for authenticated stylesheet and fetch-credentials regressions before attached-page replay
 - the router now surfaces checkout-portable `browser-shell` first-line probes for tabs and settings behavior on the real headed window
