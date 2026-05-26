@@ -367,6 +367,42 @@ def build_prepare_offline_command(repo_root: pathlib.Path, saved_archives: dict[
     return command
 
 
+def build_matching_zig_rerun_command(
+    *,
+    repo_root: pathlib.Path,
+    zig_path: pathlib.Path,
+    toolchains_root: pathlib.Path,
+    cargo_cmd: str,
+    rustc_cmd: str,
+    expect_saved_archives: bool,
+    saved_archives_root: pathlib.Path | None,
+    expect_offline_deps: bool,
+    offline_deps_root: pathlib.Path | None,
+    require_prebuilt_v8: bool,
+    fallback_zig_archive: pathlib.Path | None,
+) -> list[str]:
+    command = [
+        sys.executable,
+        str(repo_root / 'scripts' / 'check_linux_build_readiness.py'),
+        '--repo-root', str(repo_root),
+        '--zig', str(zig_path),
+        '--cargo', cargo_cmd,
+        '--rustc', rustc_cmd,
+        '--toolchains-root', str(toolchains_root),
+    ]
+    if expect_saved_archives and saved_archives_root is not None:
+        command.extend(('--expect-saved-archives', '--saved-archives-root', str(saved_archives_root)))
+    if (expect_offline_deps or require_prebuilt_v8) and offline_deps_root is not None:
+        command.extend(('--offline-deps-root', str(offline_deps_root)))
+    if expect_offline_deps:
+        command.append('--expect-offline-deps')
+    if require_prebuilt_v8:
+        command.append('--require-prebuilt-v8')
+    if fallback_zig_archive is not None:
+        command.extend(('--fallback-zig-archive', str(fallback_zig_archive)))
+    return command
+
+
 def format_shell_command(command: list[str]) -> str:
     return ' '.join(shlex.quote(part) for part in command)
 
@@ -381,7 +417,7 @@ def serialize_readiness_value(value: object) -> object:
     return value
 
 
-def build_readiness_report(*, repo_root: pathlib.Path, minimum_zig: str, zig_version: str | None, rust_versions: dict[str, str], path_deps: list[tuple[str, pathlib.Path]], discovered_zig_candidates: list[dict[str, pathlib.Path | str | None]], matching_zig_candidates: list[pathlib.Path], toolchains_root: pathlib.Path, offline_deps_root: pathlib.Path | None, staged_offline_dirs: list[tuple[str, pathlib.Path]], prebuilt_archives: list[pathlib.Path], saved_archives_root: pathlib.Path | None, discovered_saved_archives: dict[str, pathlib.Path], suggested_prepare_command: list[str] | None, fallback_zig_archive: pathlib.Path | None, fallback_zig_version: str | None, fallback_zig_status: str | None, url_deps: list[str], failures: list[str], suggested_next_step: str | None) -> dict[str, object]:
+def build_readiness_report(*, repo_root: pathlib.Path, minimum_zig: str, zig_version: str | None, rust_versions: dict[str, str], path_deps: list[tuple[str, pathlib.Path]], discovered_zig_candidates: list[dict[str, pathlib.Path | str | None]], matching_zig_candidates: list[pathlib.Path], suggested_matching_zig_rerun_command: list[str] | None, toolchains_root: pathlib.Path, offline_deps_root: pathlib.Path | None, staged_offline_dirs: list[tuple[str, pathlib.Path]], prebuilt_archives: list[pathlib.Path], saved_archives_root: pathlib.Path | None, discovered_saved_archives: dict[str, pathlib.Path], suggested_prepare_command: list[str] | None, fallback_zig_archive: pathlib.Path | None, fallback_zig_version: str | None, fallback_zig_status: str | None, url_deps: list[str], failures: list[str], suggested_next_step: str | None) -> dict[str, object]:
     return {
         'status': 'failed' if failures else 'passed',
         'repo_root': repo_root,
@@ -392,6 +428,7 @@ def build_readiness_report(*, repo_root: pathlib.Path, minimum_zig: str, zig_ver
         'toolchains_root': toolchains_root,
         'zig_candidates': discovered_zig_candidates,
         'matching_zig_candidates': matching_zig_candidates,
+        'suggested_matching_zig_rerun_command': suggested_matching_zig_rerun_command,
         'offline_deps_root': offline_deps_root,
         'offline_dependency_dirs': [{'name': name, 'path': dep_path} for name, dep_path in staged_offline_dirs],
         'prebuilt_v8_archives': prebuilt_archives,
@@ -492,6 +529,39 @@ class ReadinessHelperTests(unittest.TestCase):
             self.assertEqual(report['toolchains_root'], str((workspace_root / 'toolchains').resolve()))
             self.assertEqual(report['zig_candidates'], [])
             self.assertEqual(report['url_dependencies'], [])
+            self.assertIsNone(report['suggested_matching_zig_rerun_command'])
+
+    def test_build_matching_zig_rerun_command_preserves_resolved_roots_and_flags(self) -> None:
+        repo_root = pathlib.Path('/tmp/browser')
+        toolchains_root = pathlib.Path('/tmp/toolchains')
+        saved_archives_root = pathlib.Path('/tmp/memory/repo_archives/browser/dependencies')
+        offline_deps_root = pathlib.Path('/tmp/offline-deps')
+        fallback_zig_archive = pathlib.Path('/tmp/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz')
+        zig_path = toolchains_root / 'zig-0.15.7' / 'zig'
+
+        command = build_matching_zig_rerun_command(
+            repo_root=repo_root,
+            zig_path=zig_path,
+            toolchains_root=toolchains_root,
+            cargo_cmd='cargo',
+            rustc_cmd='rustc',
+            expect_saved_archives=True,
+            saved_archives_root=saved_archives_root,
+            expect_offline_deps=True,
+            offline_deps_root=offline_deps_root,
+            require_prebuilt_v8=True,
+            fallback_zig_archive=fallback_zig_archive,
+        )
+
+        self.assertEqual(command[0], sys.executable)
+        self.assertEqual(command[1], str(repo_root / 'scripts' / 'check_linux_build_readiness.py'))
+        self.assertIn(str(zig_path), command)
+        self.assertIn('--expect-saved-archives', command)
+        self.assertIn(str(saved_archives_root), command)
+        self.assertIn('--expect-offline-deps', command)
+        self.assertIn(str(offline_deps_root), command)
+        self.assertIn('--require-prebuilt-v8', command)
+        self.assertIn(str(fallback_zig_archive), command)
 
 
 def main() -> int:
@@ -526,8 +596,6 @@ def main() -> int:
         zig_candidate_reports.append({'path': candidate, 'version': candidate_version, 'status': candidate_status})
         if candidate_version is not None and candidate_status.startswith('matches expected'):
             matching_zig_candidates.append(candidate)
-    if not args.skip_zig_check and matching_zig_candidates and (zig_version is None or not same_version_line(minimum_zig, zig_version)):
-        failures.append('discovered a staged Zig candidate at ' f'{matching_zig_candidates[0]}; rerun with `--zig {matching_zig_candidates[0]}` to use the branch-compatible toolchain')
     offline_deps_root = None
     staged_offline_dirs: list[tuple[str, pathlib.Path]] = []
     prebuilt_archives: list[pathlib.Path] = []
@@ -558,8 +626,29 @@ def main() -> int:
         if not args.skip_zig_check and zig_version is None and fallback_zig_status is not None and fallback_zig_version is not None and fallback_zig_status.startswith('mismatched:'):
             expected_parts = parse_semver(minimum_zig)
             failures.append('fallback Zig archive ' f'{fallback_zig_archive.name} surfaces Zig {fallback_zig_version}, which does not match the branch\'s expected {expected_parts[0]}.{expected_parts[1]}.x line')
+    suggested_matching_zig_rerun_command = None
+    if matching_zig_candidates:
+        suggested_matching_zig_rerun_command = build_matching_zig_rerun_command(
+            repo_root=repo_root,
+            zig_path=matching_zig_candidates[0],
+            toolchains_root=toolchains_root,
+            cargo_cmd=args.cargo,
+            rustc_cmd=args.rustc,
+            expect_saved_archives=args.expect_saved_archives,
+            saved_archives_root=saved_archives_root,
+            expect_offline_deps=args.expect_offline_deps,
+            offline_deps_root=offline_deps_root,
+            require_prebuilt_v8=args.require_prebuilt_v8,
+            fallback_zig_archive=fallback_zig_archive,
+        )
+    mismatched_installed_zig = not args.skip_zig_check and (zig_version is None or not same_version_line(minimum_zig, zig_version))
+    if mismatched_installed_zig and matching_zig_candidates:
+        rerun_hint = format_shell_command(suggested_matching_zig_rerun_command) if suggested_matching_zig_rerun_command is not None else f'--zig {matching_zig_candidates[0]}'
+        failures.append('discovered a staged Zig candidate at ' f'{matching_zig_candidates[0]}; rerun with `{rerun_hint}` to use the branch-compatible toolchain')
     next_step = None
-    if failures:
+    if mismatched_installed_zig and suggested_matching_zig_rerun_command is not None:
+        next_step = f'rerun the readiness helper with the staged Zig candidate: `{format_shell_command(suggested_matching_zig_rerun_command)}`'
+    elif failures:
         next_step = (
             'run the saved-archive restore command above, use the saved Rust toolchain, and retry `zig build` with a Zig 0.15.2 toolchain.'
             if suggested_prepare_command is not None
@@ -573,6 +662,7 @@ def main() -> int:
         path_deps=path_deps,
         discovered_zig_candidates=zig_candidate_reports,
         matching_zig_candidates=matching_zig_candidates,
+        suggested_matching_zig_rerun_command=suggested_matching_zig_rerun_command,
         toolchains_root=toolchains_root,
         offline_deps_root=offline_deps_root,
         staged_offline_dirs=staged_offline_dirs,
@@ -615,6 +705,9 @@ def main() -> int:
             print(f"  - {candidate_report['path']} [{version_text}; {candidate_report['status']}]")
     else:
         print('Discovered Zig candidates: none')
+    if mismatched_installed_zig and suggested_matching_zig_rerun_command is not None:
+        print('Suggested branch-compatible Zig rerun command:')
+        print(f'  {format_shell_command(suggested_matching_zig_rerun_command)}')
     if offline_deps_root is not None:
         print(f'Offline dependency root: {offline_deps_root}')
         for name, dep_path in staged_offline_dirs:
