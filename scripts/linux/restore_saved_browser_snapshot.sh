@@ -176,6 +176,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh"
     "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh"
     "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
+    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
     "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh"
     "scripts/linux/show_issue3_linux_build_readiness_route.sh"
     "scripts/linux/check_issue3_enter_submit_runtime_revalidation_surface.sh"
