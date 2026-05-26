@@ -18,6 +18,10 @@ Companion helpers:
 - `scripts/linux/restore_issue3_fallback_zig_toolchain.sh`
 - `scripts/linux/restore_zig_toolchain_archive.sh`
 - `scripts/check_linux_build_readiness.py`
+- `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
+- `scripts/linux/check_issue3_progress_tracker_route_surface.sh`
+- `scripts/linux/show_issue3_progress_tracker_route.sh`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
 - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
 - `scripts/linux/show_issue3_workspace_context_route.sh`
@@ -41,6 +45,8 @@ Use this route when any of these are true:
 - the checkout sits deeper than the default sibling layout and the next recovery
   or archive-restore helper would otherwise guess the wrong `toolchains`,
   `saved-archives`, `offline-deps`, or fallback-archive roots
+- issue `#11` should stay visible as the active Linux or WSL re-entry status
+  lane while Zig recovery is still the blocker
 
 ## Run The Surface Check First
 
@@ -52,6 +58,20 @@ bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh
 
 Use `--json` when another helper wants the surface-check result as structured
 output.
+
+## Keep Issue #11 Visible Before Wider Recovery
+
+If the direct runtime patch is still gated on the Zig line, reopen the lower-
+volume tracker surface before broader Linux or WSL follow-up work is treated as
+its own status lane:
+
+```bash
+bash ./scripts/linux/check_issue3_progress_tracker_route_surface.sh
+bash ./scripts/linux/show_issue3_progress_tracker_route.sh
+```
+
+That keeps issue `#11`, the saved-memory follow-up, and the later Linux or WSL
+build-readiness handoff visible while Zig recovery remains the main blocker.
 
 ## Fail Fast On The Matching Line
 
@@ -87,6 +107,22 @@ Use the printed workspace-context output to decide whether the next Zig recovery
 or archive-restore command should keep its defaults or be rerun with explicit
 `--toolchains-root`, `--saved-archives-root`, `--offline-deps-root`, or
 `--fallback-zig-archive` overrides.
+
+If the checkout is nested enough that the run wants one routed command before it
+widens back into saved-memory, archive, or toolchain follow-up work, keep the
+issue `#11` nested-workspace wrapper visible too:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --skip-archive-integrity-check
+```
+
+Use the full variant when the surfaced roots should be threaded into the saved-
+archive integrity check before Zig recovery continues:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+```
 
 ## Surface Saved Archive Candidates Before Restore
 
@@ -174,6 +210,13 @@ The helper prints:
 - Run `bash ./scripts/linux/check_issue3_zig_toolchain_recovery_route_surface.sh`
   first so missing docs or helper drift fails before the route blames the
   fallback Zig bundle.
+- Reopen `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md` and its route surface before
+  wider Linux or WSL follow-up work is treated as the active status lane while
+  Zig recovery is still the blocker.
+- Keep `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+  visible when the checkout sits deeper than the default sibling layout and the
+  next rerun should surface the practical helper, Memory, agent-files, and
+  restored-checkout roots before Zig recovery widens again.
 - Run the workspace-context route first when the checkout sits deeper than the
   default sibling layout or the next recovery helper would otherwise guess the
   wrong `toolchains`, `saved-archives`, `offline-deps`, or fallback-archive
