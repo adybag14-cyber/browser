@@ -44,10 +44,7 @@ def missing_markers(text: str, markers: tuple[str, ...]) -> list[str]:
     return [marker for marker in markers if marker not in text]
 
 
-def verify_root(root: pathlib.Path) -> int:
-    page = root / PAGE_PATH
-    win32 = root / WIN32_PATH
-
+def verify_paths(page: pathlib.Path, win32: pathlib.Path) -> int:
     missing_inputs = [str(path) for path in (page, win32) if not path.is_file()]
     if missing_inputs:
         print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH=missing-inputs")
@@ -63,6 +60,8 @@ def verify_root(root: pathlib.Path) -> int:
 
     if page_missing or win32_missing:
         print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH=fail")
+        print(f"PAGE_PATH={page}")
+        print(f"WIN32_PATH={win32}")
         for marker in page_missing:
             print(f"PAGE_MISSING={marker}")
         for marker in win32_missing:
@@ -72,9 +71,15 @@ def verify_root(root: pathlib.Path) -> int:
         return 1
 
     print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH=pass")
+    print(f"PAGE_PATH={page}")
+    print(f"WIN32_PATH={win32}")
     print(f"PAGE_MARKER_COUNT={len(PAGE_MARKERS)}")
     print(f"WIN32_MARKER_COUNT={len(WIN32_MARKERS)}")
     return 0
+
+
+def verify_root(root: pathlib.Path) -> int:
+    return verify_paths(root / PAGE_PATH, root / WIN32_PATH)
 
 
 def write_sample_root(root: pathlib.Path) -> None:
@@ -92,8 +97,13 @@ def run_self_test() -> int:
         if result != 0:
             print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SELF_TEST=fail")
             return result
+
+        result = verify_paths(root / PAGE_PATH, root / WIN32_PATH)
+        if result != 0:
+            print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SELF_TEST=fail")
+            return result
     print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SELF_TEST=pass")
-    print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SELF_TEST_CASE_COUNT=1")
+    print("ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SELF_TEST_CASE_COUNT=2")
     return 0
 
 
@@ -102,9 +112,14 @@ def parse_args() -> argparse.Namespace:
         description="Check whether the issue #3 Enter-submit runtime patch markers are present."
     )
     parser.add_argument("--root", type=pathlib.Path, default=pathlib.Path.cwd())
+    parser.add_argument("--page", type=pathlib.Path)
+    parser.add_argument("--win32", type=pathlib.Path)
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--write-sample-root", type=pathlib.Path)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if (args.page is None) != (args.win32 is None):
+        parser.error("--page and --win32 must be provided together")
+    return args
 
 
 def main() -> int:
@@ -115,6 +130,8 @@ def main() -> int:
         write_sample_root(args.write_sample_root)
         print(f"ISSUE3_ENTER_SUBMIT_RUNTIME_PATCH_SAMPLE_ROOT={args.write_sample_root}")
         return 0
+    if args.page is not None and args.win32 is not None:
+        return verify_paths(args.page, args.win32)
     return verify_root(args.root)
 
 
