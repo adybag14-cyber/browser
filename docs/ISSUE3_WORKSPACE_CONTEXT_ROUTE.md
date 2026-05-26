@@ -20,14 +20,19 @@ than `/workspace/browser`.
 - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
 - `scripts/linux/show_issue3_workspace_context_route.sh`
 - `scripts/check_issue3_workspace_context.py`
+- `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+- `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
 - `scripts/check_issue3_staged_rust_toolchain_candidates.py`
+- `scripts/check_issue3_saved_zig_archive_candidates.py`
+- `scripts/check_issue3_staged_zig_toolchain_candidates.py`
 
 ## Run The Surface Check First
 
@@ -108,9 +113,17 @@ The helper prints:
 - Use the printed issue `#11` progress-tracker route command when the next rerun
   still needs a lower-volume status lane before reopening the direct runtime
   patch.
+- Use `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
+  when the next step is the saved-memory preflight from a nested or restored
+  checkout and the run wants the surfaced helper, Memory, agent-files, and
+  restored-checkout roots threaded through one branch-local wrapper before Rust
+  or Zig follow-up work widens again.
 - Use the printed saved Rust route and candidate commands when the next rerun
   still needs to restore or reuse Rust before the broader Linux build-readiness
   route is trusted.
+- Keep the staged Rust and staged Zig route notes visible beside the saved Rust
+  and saved Zig helper commands when the next rerun wants to prove a reusable
+  staged toolchain before falling back to archive restore.
 - Use the printed saved browser-snapshot, Zig recovery, and saved Zig archive
   candidates route commands when the next rerun still needs more than the raw
   readiness command.
