@@ -177,6 +177,10 @@ PROGRESS_TRACKER_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_p
 PROGRESS_TRACKER_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh"
 SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_archive_integrity_route_surface.sh"
 SAVED_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh"
+SAVED_RUST_ARCHIVE_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh"
+SAVED_RUST_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh"
+STAGED_RUST_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
+STAGED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh"
 STAGED_ZIG_ROUTE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh"
 STAGED_ZIG_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh"
 BUILD_READINESS_RERUN_SCRIPT="${REPO_ROOT}/scripts/check_issue3_build_readiness_rerun.py"
@@ -205,6 +209,10 @@ PROGRESS_TRACKER_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRAC
 PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRACKER_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ARCHIVE_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+STAGED_RUST_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${STAGED_RUST_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+STAGED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${STAGED_RUST_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 STAGED_ZIG_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${STAGED_ZIG_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 STAGED_ZIG_ROUTE_COMMAND="bash $(format_shell_arg "${STAGED_ZIG_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}")"
 BUILD_READINESS_RERUN_COMMAND="python $(format_shell_arg "${BUILD_READINESS_RERUN_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --offline-deps-root $(format_shell_arg "${OFFLINE_DEPS_ROOT}")"
@@ -276,6 +284,8 @@ print(json.dumps({
         "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md",
         "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
         "docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md",
+        "docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md",
+        "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
         "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
         "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
         "docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md",
@@ -299,6 +309,10 @@ print(json.dumps({
         "saved_archive_route_surface": ${SAVED_ARCHIVE_ROUTE_SURFACE_COMMAND@Q},
         "saved_archive_route": ${SAVED_ARCHIVE_ROUTE_COMMAND@Q},
         "saved_archive_integrity": ${SAVED_ARCHIVE_INTEGRITY_COMMAND@Q},
+        "saved_rust_archive_route_surface": ${SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND@Q},
+        "saved_rust_archive_route": ${SAVED_RUST_ARCHIVE_ROUTE_COMMAND@Q},
+        "staged_rust_route_surface": ${STAGED_RUST_ROUTE_SURFACE_COMMAND@Q},
+        "staged_rust_route": ${STAGED_RUST_ROUTE_COMMAND@Q},
         "staged_zig_route_surface": ${STAGED_ZIG_ROUTE_SURFACE_COMMAND@Q},
         "staged_zig_route": ${STAGED_ZIG_ROUTE_COMMAND@Q},
         "build_readiness_rerun": ${BUILD_READINESS_RERUN_COMMAND@Q},
@@ -330,6 +344,8 @@ print(json.dumps({
         "The saved_memory_inputs command now carries the surfaced memory, agent_files, and restored-checkout roots so nested checkouts do not silently fall back to brittle default siblings.",
         "Run the saved_archive_route_surface command and then the saved_archive_route command when the route needs the dedicated checksum route back on one compact helper surface before offline staging starts.",
         "Run the saved_archive_integrity command after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.",
+        "Run the saved_rust_archive_route_surface command and then the saved_rust_archive_route command when the route still needs the preferred saved Rust archive or the staged-Rust follow-up on one compact helper surface.",
+        "Run the staged_rust_route_surface command and then the staged_rust_route command before the saved Rust restore path when a reusable Rust 1.79.x toolchain may already be staged under ../toolchains.",
         "Run the staged_zig_route_surface command and then the staged_zig_route command when the run needs the branch-local staged-toolchain decision surface before a saved-archive restore or broader Zig recovery step.",
         "Use the build_readiness_rerun command after the staged Zig route when a matching 0.15.x candidate is already staged and the broader Linux or WSL readiness helper should be retried with aligned toolchains, saved-archives, offline-deps, and fallback Zig roots.",
         "Run the zig_toolchain_route command when the route still only sees the attached Zig 0.17 fallback or when multiple staged toolchains need a quick 0.15.x decision.",
@@ -337,7 +353,7 @@ print(json.dumps({
         "Run the saved_zig_archive_candidates command when a real 0.15.x archive may already be present under the saved archives root but the exact archive path is not known yet, so the archive-restore route can reuse the preferred surfaced candidate instead of a hand-built archive argument.",
         "A caller-provided rust_toolchain_dir now also defines the derived toolchains root used by the staged Zig route, the Zig recovery route, and the matching-line gate so those follow-up checks stay aligned with the same shared toolchain area.",
         "Run the zig_archive_restore_check command when a real 0.15.x archive exists but has not been staged under ../toolchains yet.",
-        "Run the saved_rust_surface_check command before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.",
+        "Run the saved_rust_surface_check command after the saved or staged Rust candidate routes when the doc and helper alignment should fail fast before the archive is blamed.",
         "Use the saved_rust_route command when the saved Rust archive and shell setup need to stay on one compact helper surface.",
         "Use the offline_build_inputs_route command when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.",
         "Keep a caller-provided offline_deps_root threaded through the offline-inputs route, the staged Zig rerun helper, and the final readiness rerun so all three commands point at the same staged dependency layout.",
@@ -374,6 +390,8 @@ Read first
   docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md
   docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md
   docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md
+  docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md
+  docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md
   docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md
   docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md
   docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md
@@ -433,6 +451,24 @@ Suggested route
   Saved archive integrity preflight:
     ${SAVED_ARCHIVE_INTEGRITY_COMMAND}
 
+  Saved Rust archive candidates route surface check:
+    ${SAVED_RUST_ARCHIVE_ROUTE_SURFACE_COMMAND}
+
+  Saved Rust archive candidates route:
+    ${SAVED_RUST_ARCHIVE_ROUTE_COMMAND}
+
+  Staged Rust toolchain candidates route surface check:
+    ${STAGED_RUST_ROUTE_SURFACE_COMMAND}
+
+  Staged Rust toolchain candidates route:
+    ${STAGED_RUST_ROUTE_COMMAND}
+
+  Saved Rust route surface check:
+    ${SAVED_RUST_SURFACE_COMMAND}
+
+  Saved Rust toolchain route:
+    ${SAVED_RUST_ROUTE_COMMAND}
+
   Staged Zig route surface check:
     ${STAGED_ZIG_ROUTE_SURFACE_COMMAND}
 
@@ -453,12 +489,6 @@ Suggested route
 
   Zig archive restore route when a real 0.15.x archive exists but is not staged yet:
     ${ZIG_ARCHIVE_RESTORE_CHECK_COMMAND}
-
-  Saved Rust route surface check:
-    ${SAVED_RUST_SURFACE_COMMAND}
-
-  Saved Rust toolchain route:
-    ${SAVED_RUST_ROUTE_COMMAND}
 
   Offline build-inputs route:
     ${OFFLINE_ROUTE_COMMAND}
@@ -500,6 +530,10 @@ Working rules
   - The saved Memory input preflight now keeps the surfaced memory, agent_files, and restored-checkout roots aligned so nested checkouts do not silently fall back to brittle default siblings.
   - Run the saved archive integrity route surface check and then the saved archive integrity route when the route needs the dedicated checksum helper chain surfaced before offline staging starts.
   - Run the saved archive integrity preflight after the saved archive route when the route needs to prove the saved repo and dependency bundles still match the expected exact artifacts before offline staging starts.
+  - Run the saved Rust archive candidates route surface check and then the saved Rust archive candidates route when the preferred saved Rust archive or the staged-Rust follow-up should stay on one compact helper surface.
+  - Run the staged Rust toolchain candidates route surface check and then the staged Rust toolchain candidates route before the saved Rust restore path when a reusable Rust 1.79.x toolchain may already be staged under ../toolchains.
+  - Run the saved Rust route surface check after the saved or staged Rust candidate routes when the doc and helper alignment should fail fast before the archive is blamed.
+  - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the staged Zig route surface check and then the staged Zig route when the run needs the branch-local staged-toolchain decision surface before a saved-archive restore or broader Zig recovery step.
   - Use the exact build-readiness rerun after the staged Zig route when a matching 0.15.x candidate is already staged and the broader Linux or WSL readiness helper should be retried with aligned toolchains, saved archives, offline deps, and fallback Zig roots.
   - Run the Zig toolchain recovery route when the route still only sees the attached Zig 0.17 fallback or when multiple staged Zig candidates need a quick 0.15.x decision.
@@ -507,8 +541,6 @@ Working rules
   - Run the saved Zig archive candidate discovery command when a real 0.15.x archive may already be present under the saved archives root but the exact archive path is not known yet, so the archive-restore route can reuse the preferred surfaced candidate instead of a hand-built archive argument.
   - A caller-provided Rust toolchain dir now also defines the derived toolchains root used by the staged Zig route, the Zig recovery route, and the matching-line gate, so those follow-up checks stay aligned with the same shared toolchain area.
   - Run the Zig archive restore route when a real 0.15.x archive exists but has not been staged under ../toolchains yet.
-  - Run the saved Rust route surface check before the saved Rust route when the doc and helper alignment should fail fast before the archive is blamed.
-  - Run the saved Rust toolchain route when the archive restore and shell setup need to stay on one compact helper surface.
   - Run the offline build-inputs route when the offline dependency restore and its immediate follow-up checks need to stay on one compact helper surface before the raw restore command is trusted.
   - Keep a caller-provided offline-deps root aligned across the offline build-inputs route, the staged Zig rerun helper, and the final readiness rerun so all three commands point at the same staged dependency layout.
   - The saved-archive preflight and the final readiness rerun now keep the same surfaced toolchains root threaded through the route printer, so staged Zig candidates stay aligned with the derived shared toolchain area.
