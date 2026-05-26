@@ -153,6 +153,9 @@ def collect_context(repo_root: Path, explicit_archive: Path | None) -> dict[str,
         str(saved_archives_root),
         "--offline-deps-root",
         str(offline_deps_root),
+        "--expect-saved-archives",
+        "--expect-offline-deps",
+        "--require-prebuilt-v8",
     ]
     saved_memory_preflight_command = [
         "python",
@@ -418,6 +421,9 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertEqual(context["fallback_zig_archive"], str(fallback.resolve()))
             self.assertTrue(context["fallback_zig_archive_found"])
             self.assertIn("--offline-deps-root", context["suggested_readiness_command"])
+            self.assertIn("--expect-saved-archives", context["suggested_readiness_command"])
+            self.assertIn("--expect-offline-deps", context["suggested_readiness_command"])
+            self.assertIn("--require-prebuilt-v8", context["suggested_readiness_command"])
             self.assertIn(
                 "scripts/check_issue3_saved_memory_inputs.py",
                 context["suggested_saved_memory_preflight_command"],
@@ -527,6 +533,9 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn("--agent-files-root", context["suggested_saved_memory_preflight_command"])
             self.assertIn("--restored-checkout-root", context["suggested_saved_memory_preflight_command"])
             self.assertIn("--skip-archive-integrity-check", context["suggested_quick_saved_memory_preflight_command"])
+            self.assertIn("--expect-saved-archives", context["suggested_readiness_command"])
+            self.assertIn("--expect-offline-deps", context["suggested_readiness_command"])
+            self.assertIn("--require-prebuilt-v8", context["suggested_readiness_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
                 context["suggested_progress_tracker_route_command"],
@@ -584,6 +593,10 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn(
                 str(explicit_archive.resolve()),
                 context["suggested_progress_tracker_route_command"],
+            )
+            self.assertIn(
+                str(explicit_archive.resolve()),
+                context["suggested_readiness_command"],
             )
 
     def test_missing_build_zon_fails_cleanly(self) -> None:
