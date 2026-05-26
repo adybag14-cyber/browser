@@ -48,11 +48,14 @@ that prepares the next honest runtime attempt without reopening the direct
 - `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
 - `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
+- `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
 - `scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh`
 - `scripts/linux/show_issue3_saved_rust_toolchain_route.sh`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
@@ -93,6 +96,12 @@ own helper root, keep `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 visible, fail fast on its route surface, run the narrower sync check before
 saved-memory or build-readiness follow-up helpers are trusted from the restored
 root, and use the `--sync-only` refresh route when the helper surface is stale.
+
+If the immediate slice is about choosing the exact saved Rust archive before
+toolchain restore, keep `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
+visible, fail fast on its route surface, surface the staged-toolchain candidate
+helper before unpacking the archive again, and print the saved-Rust archive
+candidate route before falling back to the raw restore ladder.
 
 If the immediate slice is about reusing or restoring the saved Rust `1.79.0`
 toolchain, keep `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md` visible,
@@ -257,27 +266,3 @@ Use `--fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.t
 when the attached archive is not sitting beside the repo workspace and the
 saved-Rust, saved-Memory, saved-Zig, build-readiness, and Zig recovery follow-up
 routes all need to inspect the same surfaced archive path.
-
-Use `--json` when another helper wants the issue number, issue URL, staged Zig
-candidate command, build-readiness rerun command, start template, completion
-template, and follow-up route commands as structured output.
-
-## Compact Comment Shapes
-
-Use this start format when the run is about to begin a Linux or WSL re-entry
-helper slice:
-
-```text
-Goal: <state the exact Linux/WSL re-entry helper or environment gate work>
-Started: <UTC timestamp>
-Next: <state the first concrete helper, validation check, or branch-safe change you are about to make>
-```
-
-Use this completion format only after the branch commit exists:
-
-```text
-Achieved: <state what route, helper, or branch-safe re-entry improvement landed>
-Completed: <UTC timestamp>
-Commit: <commit sha>
-Validation: <state the focused helper check, self-test, or follow-up route that now applies>
-```
