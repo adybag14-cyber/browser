@@ -33,6 +33,22 @@ normalize_saved_archives_root() {
     printf '%s\n' "${raw_root}"
 }
 
+resolve_first_existing_path() {
+    local start="$1"
+    local relative_path="$2"
+    local current="$start"
+    while true; do
+        if [[ -e "${current}/${relative_path}" ]]; then
+            printf '%s\n' "${current}/${relative_path}"
+            return 0
+        fi
+        if [[ "${current}" == "/" ]]; then
+            return 1
+        fi
+        current="$(dirname "${current}")"
+    done
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_ROOT="${DEFAULT_REPO_ROOT}"
@@ -77,14 +93,23 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser"
+    fi
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "toolchains" || true)"
+    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    fi
 fi
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
-    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz" || true)"
+    if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
+        CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz"
+    fi
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
