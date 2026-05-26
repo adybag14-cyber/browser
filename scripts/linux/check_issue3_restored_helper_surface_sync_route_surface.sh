@@ -62,6 +62,8 @@ declare -a REFERENCE_PATHS=(
     "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the restored-helper sync route on the environment-readiness side of issue #3."
     "scripts/check_issue3_restored_helper_surface_sync.py|file|Narrower restored-helper comparison helper that reports missing or drifted issue #11 route files."
     "scripts/check_issue3_restored_checkout.py|file|Broader restored-checkout readiness helper that should stay paired with the narrower sync helper."
+    "scripts/check_issue11_saved_memory_helper_contract.py|file|Issue #11 saved-memory helper contract checker that should stay in the restored-helper sync lane before broader follow-up helpers run."
+    "scripts/check_issue11_reentry_inventory_consistency.py|file|Issue #11 re-entry inventory checker that should stay in the restored-helper sync lane before broader follow-up helpers run."
     "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|file|Fail-fast surface checker for this restored-helper sync route."
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|file|Compact route printer for this restored-helper sync route."
     "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper that should stay visible when the next fix is a --sync-only refresh."
@@ -71,10 +73,16 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue3_restored_helper_surface_sync_route_surface.sh|The route note keeps the dedicated route surface checker visible."
     "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|show_issue3_restored_helper_surface_sync_route.sh|The route note keeps the compact route printer visible."
     "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue3_restored_helper_surface_sync.py|The route note keeps the narrower sync helper visible."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue11_saved_memory_helper_contract.py|The route note keeps the issue #11 saved-memory helper contract checker visible before broader follow-up helpers run."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue11_reentry_inventory_consistency.py|The route note keeps the issue #11 re-entry inventory checker visible before broader follow-up helpers run."
     "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|restore_saved_browser_snapshot.sh|The route note keeps the helper-surface refresh path visible."
     "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|check_issue3_restored_helper_surface_sync.py|The broader restored-checkout route still points runs at the narrower sync helper."
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|check_issue3_restored_helper_surface_sync.py|The route printer keeps the narrower sync helper visible."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|check_issue11_saved_memory_helper_contract.py|The route printer keeps the issue #11 saved-memory helper contract checker visible."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|check_issue11_reentry_inventory_consistency.py|The route printer keeps the issue #11 re-entry inventory checker visible."
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|restore_saved_browser_snapshot.sh|The route printer keeps the sync-only refresh helper visible."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|issue11_saved_memory_contract|The route printer JSON output exposes the issue #11 saved-memory contract command explicitly."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|issue11_reentry_inventory|The route printer JSON output exposes the issue #11 re-entry inventory command explicitly."
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|sync_check|The route printer JSON output exposes the sync-check command explicitly."
     "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|sync_refresh|The route printer JSON output exposes the sync-refresh command explicitly."
 )
@@ -177,4 +185,5 @@ if [[ "${missing_count}" -gt 0 ]]; then
 fi
 
 echo
+
 echo "All restored-helper-surface sync route surfaces are present."
