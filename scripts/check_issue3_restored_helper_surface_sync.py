@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -23,17 +24,11 @@ import unittest
 
 ISSUE_LABEL = "Issue #11 Linux/WSL restored helper-surface sync route for issue #3 re-entry"
 JSON_PROFILE = "issue11-restored-helper-surface-sync"
+RESTORE_HELPER_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
+HELPER_SURFACE_LINE_RE = re.compile(r'^\s*"([^"]+)"\s*$')
 
-REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
+BASE_REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md", "issue #11 tracker route"),
-    (
-        "docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md",
-        "saved Zig archive candidates route",
-    ),
-    (
-        "docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md",
-        "saved Rust toolchain route",
-    ),
     (
         "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
         "restored helper-surface sync route note",
@@ -42,42 +37,7 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
         "scripts/check_issue3_restored_helper_surface_sync.py",
         "restored helper-surface sync helper",
     ),
-    (
-        "scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh",
-        "saved-memory route surface checker",
-    ),
-    (
-        "scripts/linux/show_issue3_saved_memory_inputs_route.sh",
-        "saved-memory route helper",
-    ),
-    (
-        "scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh",
-        "saved Zig archive candidates surface checker",
-    ),
-    (
-        "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
-        "saved Zig archive candidates route helper",
-    ),
-    (
-        "scripts/check_issue3_saved_zig_archive_candidates.py",
-        "saved Zig archive candidates helper",
-    ),
-    (
-        "scripts/check_issue3_saved_rust_archive_candidates.py",
-        "saved Rust archive candidates helper",
-    ),
-    (
-        "scripts/check_issue3_staged_rust_toolchain_candidates.py",
-        "staged Rust toolchain candidates helper",
-    ),
-    (
-        "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
-        "saved Rust toolchain route surface checker",
-    ),
-    (
-        "scripts/linux/show_issue3_saved_rust_toolchain_route.sh",
-        "saved Rust toolchain route helper",
-    ),
+    ("scripts/check_issue3_restored_checkout.py", "restored-checkout readiness helper"),
     (
         "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
         "restored helper-surface sync route surface checker",
@@ -87,12 +47,8 @@ REQUIRED_REENTRY_ROUTE_FILES: tuple[tuple[str, str], ...] = (
         "restored helper-surface sync route helper",
     ),
     (
-        "scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh",
-        "Zig archive restore route helper",
-    ),
-    (
-        "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
-        "Linux-to-Windows runtime handoff helper",
+        RESTORE_HELPER_PATH,
+        "saved snapshot restore helper that defines the current helper-surface copy set",
     ),
 )
 
@@ -103,6 +59,58 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def extract_helper_surface_paths(script_text: str) -> list[str]:
+    marker = "declare -a HELPER_SURFACE_PATHS=("
+    in_block = False
+    paths: list[str] = []
+
+    for line in script_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        match = HELPER_SURFACE_LINE_RE.match(line)
+        if match is not None:
+            paths.append(match.group(1))
+
+    if not in_block:
+        raise ValueError(
+            f"Could not find HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH}"
+        )
+    if not paths:
+        raise ValueError(f"HELPER_SURFACE_PATHS in {RESTORE_HELPER_PATH} is empty")
+    return paths
+
+
+def load_required_reentry_route_files(helper_root: Path) -> list[tuple[str, str]]:
+    required = list(BASE_REQUIRED_REENTRY_ROUTE_FILES)
+    known_paths = {path for path, _label in required}
+    restore_helper = helper_root / RESTORE_HELPER_PATH
+    if not restore_helper.is_file():
+        return required
+
+    helper_paths = extract_helper_surface_paths(restore_helper.read_text(encoding="utf-8"))
+    for helper_path in helper_paths:
+        if helper_path in known_paths:
+            continue
+        required.append(
+            (
+                helper_path,
+                "Current helper-surface path mirrored from "
+                f"{RESTORE_HELPER_PATH} so the narrower sync check cannot "
+                "silently miss a newer follow-up helper.",
+            )
+        )
+        known_paths.add(helper_path)
+
+    return required
 
 
 def collect_file_state(root: Path, relative_path: str, label: str) -> dict[str, object]:
@@ -118,13 +126,14 @@ def collect_file_state(root: Path, relative_path: str, label: str) -> dict[str, 
 
 
 def compare_helper_surfaces(helper_root: Path, restored_root: Path) -> dict[str, object]:
+    required_files = load_required_reentry_route_files(helper_root)
     helper_rows: list[dict[str, object]] = []
     restored_rows: list[dict[str, object]] = []
     drifted: list[str] = []
     missing_in_helper: list[str] = []
     missing_in_restored: list[str] = []
 
-    for relative_path, label in REQUIRED_REENTRY_ROUTE_FILES:
+    for relative_path, label in required_files:
         helper_row = collect_file_state(helper_root, relative_path, label)
         restored_row = collect_file_state(restored_root, relative_path, label)
         helper_rows.append(helper_row)
@@ -144,6 +153,7 @@ def compare_helper_surfaces(helper_root: Path, restored_root: Path) -> dict[str,
         "ok": ok,
         "helper_root": str(helper_root),
         "restored_root": str(restored_root),
+        "required_path_count": len(required_files),
         "helper_files": helper_rows,
         "restored_files": restored_rows,
         "missing_in_helper": missing_in_helper,
@@ -213,7 +223,68 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def make_restore_helper_script(*helper_surface_paths: str) -> str:
+    lines = ["#!/usr/bin/env bash", "", "declare -a HELPER_SURFACE_PATHS=("]
+    lines.extend(f'    "{path}"' for path in helper_surface_paths)
+    lines.append(")")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_required_files(
+    helper_root: Path,
+    restored_root: Path,
+    required_files: list[tuple[str, str]],
+    restore_helper_text: str,
+) -> None:
+    for relative_path, _label in required_files:
+        for base in (helper_root, restored_root):
+            target = base / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if relative_path == RESTORE_HELPER_PATH:
+                target.write_text(restore_helper_text, encoding="utf-8")
+            else:
+                target.write_text(relative_path, encoding="utf-8")
+
+
 class RestoredHelperSurfaceSyncTests(unittest.TestCase):
+    def test_extract_helper_surface_paths_parses_restore_helper_array(self) -> None:
+        script_text = make_restore_helper_script(
+            "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+            "scripts/check_issue3_workspace_context.py",
+        )
+
+        self.assertEqual(
+            extract_helper_surface_paths(script_text),
+            [
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+            ],
+        )
+
+    def test_load_required_reentry_route_files_includes_dynamic_restore_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            helper_root = Path(tmpdir)
+            restore_helper = helper_root / RESTORE_HELPER_PATH
+            restore_helper.parent.mkdir(parents=True, exist_ok=True)
+            restore_helper.write_text(
+                make_restore_helper_script(
+                    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                    "scripts/check_issue3_workspace_context.py",
+                    "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+                ),
+                encoding="utf-8",
+            )
+
+            required = load_required_reentry_route_files(helper_root)
+            required_paths = {path for path, _label in required}
+
+            self.assertIn("scripts/check_issue3_workspace_context.py", required_paths)
+            self.assertIn(
+                "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+                required_paths,
+            )
+
     def test_compare_passes_when_roots_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -221,11 +292,21 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
             restored_root = root / "restored"
             helper_root.mkdir()
             restored_root.mkdir()
-            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
-                for base in (helper_root, restored_root):
-                    target = base / relative_path
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text(relative_path, encoding="utf-8")
+            restore_helper_text = make_restore_helper_script(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+                "scripts/check_issue3_workspace_context.py",
+                "scripts/linux/show_issue3_saved_rust_build_readiness_route.sh",
+                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+            )
+            (helper_root / RESTORE_HELPER_PATH).parent.mkdir(parents=True, exist_ok=True)
+            (helper_root / RESTORE_HELPER_PATH).write_text(
+                restore_helper_text, encoding="utf-8"
+            )
+            required_files = load_required_reentry_route_files(helper_root)
+            write_required_files(
+                helper_root, restored_root, required_files, restore_helper_text
+            )
 
             report = compare_helper_surfaces(helper_root, restored_root)
 
@@ -233,42 +314,38 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
             self.assertEqual(report["missing_in_restored"], [])
             self.assertEqual(report["drifted_files"], [])
 
-    def test_compare_reports_missing_and_drifted_files(self) -> None:
+    def test_compare_reports_dynamic_missing_and_drifted_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             helper_root = root / "helper"
             restored_root = root / "restored"
             helper_root.mkdir()
             restored_root.mkdir()
+            restore_helper_text = make_restore_helper_script(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+                "scripts/check_issue3_saved_zig_archive_candidates.py",
+                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
+            )
+            (helper_root / RESTORE_HELPER_PATH).parent.mkdir(parents=True, exist_ok=True)
+            (helper_root / RESTORE_HELPER_PATH).write_text(
+                restore_helper_text, encoding="utf-8"
+            )
+            required_files = load_required_reentry_route_files(helper_root)
+            write_required_files(
+                helper_root, restored_root, required_files, restore_helper_text
+            )
 
-            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
-                helper_target = helper_root / relative_path
-                helper_target.parent.mkdir(parents=True, exist_ok=True)
-                helper_target.write_text("live", encoding="utf-8")
-
-                if relative_path == "scripts/check_issue3_saved_zig_archive_candidates.py":
-                    continue
-
-                restored_target = restored_root / relative_path
-                restored_target.parent.mkdir(parents=True, exist_ok=True)
-                restored_target.write_text(
-                    "drifted"
-                    if relative_path == "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
-                    else "live",
-                    encoding="utf-8",
-                )
+            missing_path = "scripts/check_issue3_saved_zig_archive_candidates.py"
+            drifted_path = "scripts/linux/show_issue3_windows_runtime_handoff_route.sh"
+            (restored_root / missing_path).unlink()
+            (restored_root / drifted_path).write_text("drifted", encoding="utf-8")
 
             report = compare_helper_surfaces(helper_root, restored_root)
 
             self.assertFalse(report["ok"])
-            self.assertIn(
-                "scripts/check_issue3_saved_zig_archive_candidates.py",
-                report["missing_in_restored"],
-            )
-            self.assertIn(
-                "scripts/linux/show_issue3_windows_runtime_handoff_route.sh",
-                report["drifted_files"],
-            )
+            self.assertIn(missing_path, report["missing_in_restored"])
+            self.assertIn(drifted_path, report["drifted_files"])
 
     def test_restored_helper_route_note_is_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -277,26 +354,26 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
             restored_root = root / "restored"
             helper_root.mkdir()
             restored_root.mkdir()
+            restore_helper_text = make_restore_helper_script(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
+            )
+            (helper_root / RESTORE_HELPER_PATH).parent.mkdir(parents=True, exist_ok=True)
+            (helper_root / RESTORE_HELPER_PATH).write_text(
+                restore_helper_text, encoding="utf-8"
+            )
+            required_files = load_required_reentry_route_files(helper_root)
+            write_required_files(
+                helper_root, restored_root, required_files, restore_helper_text
+            )
 
-            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
-                helper_target = helper_root / relative_path
-                helper_target.parent.mkdir(parents=True, exist_ok=True)
-                helper_target.write_text("live", encoding="utf-8")
-
-                if relative_path == "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md":
-                    continue
-
-                restored_target = restored_root / relative_path
-                restored_target.parent.mkdir(parents=True, exist_ok=True)
-                restored_target.write_text("live", encoding="utf-8")
+            missing_note = "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md"
+            (restored_root / missing_note).unlink()
 
             report = compare_helper_surfaces(helper_root, restored_root)
 
             self.assertFalse(report["ok"])
-            self.assertIn(
-                "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md",
-                report["missing_in_restored"],
-            )
+            self.assertIn(missing_note, report["missing_in_restored"])
 
     def test_restored_helper_route_surface_checker_is_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -305,26 +382,28 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
             restored_root = root / "restored"
             helper_root.mkdir()
             restored_root.mkdir()
+            restore_helper_text = make_restore_helper_script(
+                "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
+            )
+            (helper_root / RESTORE_HELPER_PATH).parent.mkdir(parents=True, exist_ok=True)
+            (helper_root / RESTORE_HELPER_PATH).write_text(
+                restore_helper_text, encoding="utf-8"
+            )
+            required_files = load_required_reentry_route_files(helper_root)
+            write_required_files(
+                helper_root, restored_root, required_files, restore_helper_text
+            )
 
-            for relative_path, _label in REQUIRED_REENTRY_ROUTE_FILES:
-                helper_target = helper_root / relative_path
-                helper_target.parent.mkdir(parents=True, exist_ok=True)
-                helper_target.write_text("live", encoding="utf-8")
-
-                if relative_path == "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh":
-                    continue
-
-                restored_target = restored_root / relative_path
-                restored_target.parent.mkdir(parents=True, exist_ok=True)
-                restored_target.write_text("live", encoding="utf-8")
+            missing_surface = (
+                "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh"
+            )
+            (restored_root / missing_surface).unlink()
 
             report = compare_helper_surfaces(helper_root, restored_root)
 
             self.assertFalse(report["ok"])
-            self.assertIn(
-                "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh",
-                report["missing_in_restored"],
-            )
+            self.assertIn(missing_surface, report["missing_in_restored"])
 
     def test_serialize_report_adds_issue11_context(self) -> None:
         serialized = serialize_report(
@@ -332,6 +411,7 @@ class RestoredHelperSurfaceSyncTests(unittest.TestCase):
                 "ok": True,
                 "helper_root": "/tmp/helper",
                 "restored_root": "/tmp/restored",
+                "required_path_count": 7,
                 "helper_files": [],
                 "restored_files": [],
                 "missing_in_helper": [],
