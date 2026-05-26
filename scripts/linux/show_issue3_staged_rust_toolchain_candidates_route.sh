@@ -115,7 +115,7 @@ STAGED_CANDIDATES_COMMAND="python $(format_shell_arg "${REPO_ROOT}/scripts/check
 SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_RUST_TOOLCHAIN_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-parent $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_RUST_BUILD_BRIDGE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_build_readiness_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
-PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${REPO_ROOT}/scripts/linux/show_issue3_progress_tracker_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 
 if [[ "${JSON}" -eq 1 ]]; then
     python3 - <<PY
@@ -142,6 +142,7 @@ print(json.dumps({
         "If a matching staged candidate already exists, keep the saved Rust toolchain route visible only when the exact restore or export ladder is still needed.",
         "If no matching staged candidate exists, hand off to the saved Rust archive route or the saved-Rust build-readiness bridge instead of rebuilding restore commands by hand.",
         "Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain reuse, or Linux or WSL readiness gates.",
+        "Thread the surfaced saved-archives and toolchains roots through the issue #11 handoff so nested or restored follow-up runs keep the same practical workspace layout.",
         "Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory and toolchains roots without hand overrides."
     ]
 }, indent=2))
@@ -193,5 +194,6 @@ Working rules
   - If a matching staged candidate already exists, keep the saved Rust toolchain route visible only when the exact restore or export ladder is still needed.
   - If no matching staged candidate exists, hand off to the saved Rust archive route or the saved-Rust build-readiness bridge instead of rebuilding restore commands by hand.
   - Use the issue #11 progress-tracker route when this slice is still about saved inputs, toolchain reuse, or Linux or WSL readiness gates.
+  - Thread the surfaced saved-archives and toolchains roots through the issue #11 handoff so nested or restored follow-up runs keep the same practical workspace layout.
   - Default root discovery walks up ancestor directories first, so restored nested checkouts can reuse the nearest memory and toolchains roots without hand overrides.
 EOF
