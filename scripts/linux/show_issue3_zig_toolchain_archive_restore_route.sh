@@ -19,13 +19,37 @@ WSL headed-mode recovery work.
 EOF
 }
 
+canonicalize_path() {
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+}
+
+normalize_saved_archives_root() {
+    local raw_root="$1"
+    if [[ -d "${raw_root}/dependencies" ]]; then
+        raw_root="${raw_root}/dependencies"
+    fi
+    if [[ -d "${raw_root}" ]]; then
+        (
+            cd "${raw_root}"
+            pwd
+        )
+        return 0
+    fi
+    printf '%s\n' "${raw_root}"
+}
+
 resolve_first_existing_path() {
     local start="$1"
     local relative_path="$2"
     local current="$start"
     while true; do
         if [[ -e "${current}/${relative_path}" ]]; then
-            printf '%s\n' "${current}/${relative_path}"
+            canonicalize_path "${current}/${relative_path}"
             return 0
         fi
         if [[ "${current}" == "/" ]]; then
@@ -87,26 +111,44 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
     esac
-done
+ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
+    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "toolchains" || true)"
+    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
+        TOOLCHAINS_ROOT="$(canonicalize_path "${REPO_ROOT}/../toolchains")"
+    fi
+else
+    TOOLCHAINS_ROOT="$(canonicalize_path "${TOOLCHAINS_ROOT}")"
 fi
 if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
-    OFFLINE_DEPS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/offline-deps"
+    OFFLINE_DEPS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "offline-deps" || true)"
+    if [[ -z "${OFFLINE_DEPS_ROOT}" ]]; then
+        OFFLINE_DEPS_ROOT="$(canonicalize_path "${REPO_ROOT}/../offline-deps")"
+    fi
+else
+    OFFLINE_DEPS_ROOT="$(canonicalize_path "${OFFLINE_DEPS_ROOT}")"
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
-    SAVED_ARCHIVES_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/memory/repo_archives/browser/dependencies"
+    SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
+    if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
+        SAVED_ARCHIVES_ROOT="$(canonicalize_path "${REPO_ROOT}/../memory/repo_archives/browser")"
+    fi
+else
+    SAVED_ARCHIVES_ROOT="$(canonicalize_path "${SAVED_ARCHIVES_ROOT}")"
 fi
+SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${FALLBACK_ZIG_ARCHIVE}" ]]; then
     CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(resolve_first_existing_path "${REPO_ROOT}" "agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}" || true)"
     if [[ -z "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
-        CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(cd "${REPO_ROOT}/.." && pwd)/agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}"
+        CANDIDATE_FALLBACK_ZIG_ARCHIVE="$(canonicalize_path "${REPO_ROOT}/../agent_files/${DEFAULT_FALLBACK_ZIG_ARCHIVE_NAME}")"
     fi
     if [[ -f "${CANDIDATE_FALLBACK_ZIG_ARCHIVE}" ]]; then
         FALLBACK_ZIG_ARCHIVE="${CANDIDATE_FALLBACK_ZIG_ARCHIVE}"
     fi
+else
+    FALLBACK_ZIG_ARCHIVE="$(canonicalize_path "${FALLBACK_ZIG_ARCHIVE}")"
 fi
 
 SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_zig_toolchain_archive_restore_route_surface.sh"
