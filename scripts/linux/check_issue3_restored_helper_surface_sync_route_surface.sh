@@ -5,15 +5,23 @@ set -euo pipefail
 usage() {
     cat <<'EOF'
 Usage:
-  bash check_issue3_restored_helper_surface_sync_route_surface.sh \
+  bash scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh \
     [--repo-root /path/to/browser-repo] \
     [--json]
 
-Verify that the branch-local helper-surface sync route for the blocked
-issue #3 restored-checkout path still has its required docs, helpers, and
-route printer surface in place before a run refreshes a restored checkout in
-place with `--sync-only`.
+Verify that the branch-local restored-helper-surface sync route for the issue #11
+Linux or WSL re-entry lane still has its required note, helper, and route
+printer in place before a run trusts a restored checkout as its own helper root.
 EOF
+}
+
+json_escape() {
+    python3 - "$1" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1]))
+PY
 }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -47,55 +55,29 @@ done
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 
 declare -a REFERENCE_PATHS=(
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|file|Read-first helper-surface sync note for the restored-checkout recovery path."
-    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|file|Companion restored-checkout route note that the sync route should hand back into."
-    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Saved snapshot restore note that should stay paired with the sync-only helper refresh path."
-    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the helper-sync route in the broader issue #3 ladder."
-    "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper that already owns the --sync-only behavior."
-    "scripts/check_issue3_restored_checkout.py|file|Restored-checkout readiness helper that should prove the refreshed helper surface is trustworthy."
-    "scripts/check_issue3_saved_memory_inputs.py|file|Saved-memory preflight that should run after the refreshed restored checkout passes."
-    "scripts/check_issue3_saved_archive_integrity.py|file|Saved-archive integrity helper that should stay visible after the helper refresh."
-    "scripts/linux/show_issue3_linux_build_readiness_route.sh|file|Linux build-readiness route that should remain the next hop after a successful helper refresh."
-    "scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh|file|Direct runtime re-entry route that should remain the final narrowed handoff."
-    "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|file|Fail-fast helper-surface sync route surface checker."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|file|Compact helper-surface sync route printer."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|file|Read-first note for comparing a restored checkout helper surface against the live issue #11 helper root."
+    "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md|file|Saved snapshot restore note that should keep the sync-check route visible after restore."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|file|Broader restored-checkout re-entry note that should hand runs into this narrower sync route."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|file|Issue #11 tracker note that explains why this narrower sync route matters."
+    "docs/ISSUE3_RUNTIME_REENTRY_GATES.md|file|Gate note that should keep the restored-helper sync route on the environment-readiness side of issue #3."
+    "scripts/check_issue3_restored_helper_surface_sync.py|file|Narrower restored-helper comparison helper that reports missing or drifted issue #11 route files."
+    "scripts/check_issue3_restored_checkout.py|file|Broader restored-checkout readiness helper that should stay paired with the narrower sync helper."
+    "scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh|file|Fail-fast surface checker for this restored-helper sync route."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|file|Compact route printer for this restored-helper sync route."
+    "scripts/linux/restore_saved_browser_snapshot.sh|file|Restore helper that should stay visible when the next fix is a --sync-only refresh."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|restore_saved_browser_snapshot.sh|The sync route note still points at the restore helper."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|--sync-only|The sync route note still centers the in-place helper refresh."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|scripts/check_issue3_restored_checkout.py|The sync route note still requires the restored-checkout helper after refresh."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|scripts/check_issue3_saved_memory_inputs.py|The sync route note still points at the saved-memory preflight."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|scripts/check_issue3_saved_archive_integrity.py|The sync route note still points at the saved-archive integrity helper."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|show_issue3_linux_build_readiness_route.sh|The sync route note still points at Linux build readiness."
-    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|show_issue3_enter_submit_runtime_revalidation_route.sh|The sync route note still points at the narrowed runtime handoff."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|The route printer keeps the helper-surface sync note in its read-first list."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|--sync-only|The route printer still emits the sync-only helper refresh command."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|--sync-helper-surface|The route printer still emits the full synced restore fallback."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|STALE_SURFACE_DIAGNOSIS_COMMAND|The route printer still emits a dedicated stale-surface diagnosis step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|SYNC_ONLY_ROUTE_COMMAND|The route printer still builds an explicit sync-only command."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|FULL_SYNC_RESTORE_CHECK_COMMAND|The route printer still emits a full synced restore fallback check."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|FULL_SYNC_RESTORE_COMMAND|The route printer still emits a full synced restore fallback command."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|RESTORED_CHECK_COMMAND|The route printer still emits the restored-checkout verification step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|SAVED_MEMORY_PREFLIGHT_COMMAND|The route printer still emits the saved-memory preflight step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|SAVED_ARCHIVE_INTEGRITY_COMMAND|The route printer still emits the saved-archive integrity step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|LINUX_BUILD_ROUTE_COMMAND|The route printer still emits the Linux build-readiness handoff."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|RUNTIME_ROUTE_COMMAND|The route printer still emits the direct runtime handoff."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|Snapshot archive:|The route printer still prints the snapshot archive path."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|Current stale-surface diagnosis:|The route printer still prints a human-readable stale-surface diagnosis step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|Sync-only helper-surface refresh:|The route printer still prints a human-readable sync-only step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|Full synced restore fallback:|The route printer still prints a human-readable full fallback step."
-    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|Restored-checkout verification after refresh:|The route printer still prints a human-readable restored-checkout verification step."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue3_restored_helper_surface_sync_route_surface.sh|The route note keeps the dedicated route surface checker visible."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|show_issue3_restored_helper_surface_sync_route.sh|The route note keeps the compact route printer visible."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|check_issue3_restored_helper_surface_sync.py|The route note keeps the narrower sync helper visible."
+    "docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md|restore_saved_browser_snapshot.sh|The route note keeps the helper-surface refresh path visible."
+    "docs/ISSUE3_RESTORED_CHECKOUT_REENTRY_ROUTE.md|check_issue3_restored_helper_surface_sync.py|The broader restored-checkout route still points runs at the narrower sync helper."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|check_issue3_restored_helper_surface_sync.py|The route printer keeps the narrower sync helper visible."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|restore_saved_browser_snapshot.sh|The route printer keeps the sync-only refresh helper visible."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|sync_check|The route printer JSON output exposes the sync-check command explicitly."
+    "scripts/linux/show_issue3_restored_helper_surface_sync_route.sh|sync_refresh|The route printer JSON output exposes the sync-refresh command explicitly."
 )
-
-json_escape() {
-    python3 - "$1" <<'PY'
-import json
-import sys
-
-print(json.dumps(sys.argv[1]))
-PY
-}
 
 reference_rows=()
 content_rows=()
@@ -165,7 +147,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     exit 0
 fi
 
-echo "Issue #3 restored helper-surface sync route surface check"
+echo "Issue #3 restored-helper-surface sync route surface check"
 echo
 echo "Repo root: ${REPO_ROOT}"
 echo
@@ -195,5 +177,4 @@ if [[ "${missing_count}" -gt 0 ]]; then
 fi
 
 echo
-
-echo "All restored helper-surface sync route surfaces are present."
+echo "All restored-helper-surface sync route surfaces are present."
