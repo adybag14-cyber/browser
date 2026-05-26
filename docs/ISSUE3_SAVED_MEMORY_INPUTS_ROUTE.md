@@ -7,15 +7,21 @@ readiness, or the direct issue `#3` runtime lane.
 This route keeps the saved repo snapshot, notes, blocker file, dependency
 archives, optional fallback Zig bundle, the low-volume progress-tracker handoff,
 the dedicated saved-archive integrity handoff, the saved Zig archive candidate
-handoff, the workspace-context handoff, and the immediate next helper routes on
-one compact branch-local surface.
+handoff, the saved Rust toolchain, saved Rust build-readiness, and saved Rust
+archive-candidate handoffs, the workspace-context handoff, the restored-helper
+surface sync handoff, and the immediate next helper routes on one compact
+branch-local surface.
 
 Companion helpers:
 
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md`
+- `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `docs/ISSUE3_RESTORED_HELPER_SURFACE_SYNC_ROUTE.md`
 - `scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh`
 - `scripts/linux/show_issue3_saved_memory_inputs_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
@@ -25,9 +31,20 @@ Companion helpers:
 - `scripts/linux/check_issue3_saved_zig_archive_candidates_route_surface.sh`
 - `scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh`
 - `scripts/check_issue3_saved_zig_archive_candidates.py`
+- `scripts/check_issue3_saved_rust_archive_candidates.py`
+- `scripts/check_issue3_staged_rust_toolchain_candidates.py`
+- `scripts/check_issue3_staged_zig_toolchain_candidates.py`
+- `scripts/check_issue3_build_readiness_rerun.py`
 - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
 - `scripts/linux/show_issue3_workspace_context_route.sh`
 - `scripts/check_issue3_workspace_context.py`
+- `scripts/check_issue3_restored_helper_surface_sync.py`
+- `scripts/linux/check_issue3_restored_helper_surface_sync_route_surface.sh`
+- `scripts/linux/show_issue3_restored_helper_surface_sync_route.sh`
+- `scripts/linux/check_issue3_saved_rust_build_readiness_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_build_readiness_route.sh`
+- `scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh`
+- `scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh`
 - `scripts/linux/show_issue3_saved_browser_snapshot_route.sh`
 - `scripts/linux/show_issue3_linux_build_readiness_route.sh`
 - `scripts/linux/show_issue3_enter_submit_runtime_revalidation_route.sh`
@@ -51,8 +68,9 @@ Use this route when any of these are true:
   wrong workspace roots
 - the direct issue `#3` runtime patch is still blocked and the run needs the
   progress-tracker handoff, the dedicated saved-archive integrity handoff, the
-  saved Zig archive candidate handoff, and the workspace-context route back on
-  one compact helper surface before it widens into restore or build-readiness
+  saved Zig archive candidate handoff, the saved Rust follow-up helpers, and
+  the workspace-context plus restored-helper-surface sync routes back on one
+  compact helper surface before it widens into restore or build-readiness
   follow-up
 
 ## Run The Surface Check First
@@ -231,6 +249,20 @@ before wider toolchain recovery or build-readiness work:
 bash ./scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh
 ```
 
+If the next blocker is restoring or validating the saved Rust toolchain before
+offline dependency staging or broader build-readiness reruns:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_rust_build_readiness_route.sh
+```
+
+If the next blocker is narrowing which saved Rust archive candidate should be
+restored into the staged toolchain surface:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh
+```
+
 If there is still no reusable checkout beside the workspace:
 
 ```bash
@@ -288,6 +320,12 @@ Memory, restored-checkout, and optional fallback Zig paths already filled in.
 - Use the saved Zig archive candidates route when the next question is which
   saved `0.15.x` archive should be restored before wider Zig recovery or Linux
   build-readiness work resumes.
+- Use the saved Rust build-readiness route when the next blocker is still the
+  staged Rust toolchain, rerun surface, or saved Rust restore flow that the
+  Linux or WSL build-readiness lane depends on next.
+- Use the saved Rust archive candidates route when the next question is which
+  saved Rust archive should repopulate the staged toolchain surface before
+  wider restore or rerun work resumes.
 - Use the saved-browser-snapshot route when the saved archive exists but there
   is still no reusable checkout for Linux or WSL follow-up.
 - Use the Linux build-readiness route after the saved-input preflight passes
