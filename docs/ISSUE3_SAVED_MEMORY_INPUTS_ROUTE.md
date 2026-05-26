@@ -262,6 +262,24 @@ python ./scripts/check_issue3_saved_memory_inputs.py \
 That path catches stale restored snapshots before a run tries to invoke newer
 route notes or helper scripts from the extracted archive itself.
 
+## Restored-Checkout-Only Follow-ups
+
+The saved-memory route printer keeps the restored-helper sync, issue `#11`
+helper-contract, re-entry inventory, and live-helper restored-checkout preflight
+commands visible even before a reusable checkout exists. Treat those commands as
+post-restore follow-ups, not as the first step in a fresh workspace.
+
+If `../browser-memory-snapshot` or the chosen `--restored-checkout-root` does
+not exist yet, go to the saved-browser-snapshot route first:
+
+```bash
+bash ./scripts/linux/show_issue3_saved_browser_snapshot_route.sh
+```
+
+After that restore succeeds, rerun the nested-workspace saved-memory preflight
+or the restored-checkout preflight before trusting the issue `#11` helper-
+contract and re-entry inventory commands from the restored tree.
+
 ## Keep The Progress Tracker Visible
 
 If this run is still working in the Linux or WSL re-entry lane and the direct
