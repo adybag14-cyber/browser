@@ -20,6 +20,8 @@ than `/workspace/browser`.
 - `scripts/linux/check_issue3_workspace_context_route_surface.sh`
 - `scripts/linux/show_issue3_workspace_context_route.sh`
 - `scripts/check_issue3_workspace_context.py`
+- `scripts/linux/check_issue11_toolchains_root_candidates_route_surface.sh`
+- `scripts/linux/show_issue11_toolchains_root_candidates_route.sh`
 - `scripts/check_issue11_toolchains_root_candidates.py`
 - `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
@@ -80,8 +82,17 @@ python scripts/check_issue3_workspace_context.py \
 ## Surface Toolchains-Root Candidates Before Rebuilding Overrides
 
 If both visible `toolchains/` and hidden `.toolchains/` roots may exist above
-the checkout, run the dedicated issue `#11` helper before broader Linux or WSL
-reruns trust a guessed staged-toolchains path:
+the checkout, run the dedicated issue `#11` route surface first and then print
+the compact handoff before broader Linux or WSL reruns trust a guessed
+staged-toolchains path:
+
+```bash
+bash ./scripts/linux/check_issue11_toolchains_root_candidates_route_surface.sh
+bash ./scripts/linux/show_issue11_toolchains_root_candidates_route.sh
+```
+
+If the next rerun only needs the raw helper output, call the Python helper
+directly:
 
 ```bash
 python scripts/check_issue11_toolchains_root_candidates.py --repo-root .
@@ -115,9 +126,10 @@ The helper prints:
 12. a ready-to-rerun saved Rust archive candidates command
 13. a ready-to-rerun staged Rust toolchain candidates command
 14. a ready-to-rerun saved browser-snapshot route command
-15. a ready-to-rerun Zig recovery route command
-16. a ready-to-rerun Zig matching-line gate command
-17. a ready-to-rerun saved Zig archive candidates command
+15. a ready-to-rerun issue `#11` toolchains-root route command
+16. a ready-to-rerun Zig recovery route command
+17. a ready-to-rerun Zig matching-line gate command
+18. a ready-to-rerun saved Zig archive candidates command
 
 ## Working Rules
 
@@ -132,10 +144,10 @@ The helper prints:
 - Use the printed issue `#11` progress-tracker route command when the next rerun
   still needs a lower-volume status lane before reopening the direct runtime
   patch.
-- Use `scripts/check_issue11_toolchains_root_candidates.py` before broader
-  Linux or WSL readiness, nested-workspace saved-Memory preflight, matching-line,
-  or Zig recovery reruns when both `toolchains/` and `.toolchains/` may be
-  visible above the checkout.
+- Use the dedicated issue `#11` toolchains-root route surface and route printer
+  before broader Linux or WSL readiness, nested-workspace saved-Memory
+  preflight, matching-line, or Zig recovery reruns when both `toolchains/` and
+  `.toolchains/` may be visible above the checkout.
 - Use `scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh`
   when the next step is the saved-memory preflight from a nested or restored
   checkout and the run wants the surfaced helper, Memory, agent-files, and
@@ -147,8 +159,8 @@ The helper prints:
 - Keep the staged Rust and staged Zig route notes visible beside the saved Rust
   and saved Zig helper commands when the next rerun wants to prove a reusable
   staged toolchain before falling back to archive restore.
-- Use the printed saved browser-snapshot, Zig recovery, and saved Zig archive
-  candidates route commands when the next rerun still needs more than the raw
-  readiness command.
+- Use the printed saved browser-snapshot, issue `#11` toolchains-root, Zig
+  recovery, and saved Zig archive candidates route commands when the next rerun
+  still needs more than the raw readiness command.
 - Keep using explicit overrides when the desired roots are outside the current
   workspace ancestry.
