@@ -49,6 +49,26 @@ resolve_first_existing_path() {
     done
 }
 
+resolve_toolchains_root() {
+    local repo_root="$1"
+    local hidden_root=""
+    local visible_root=""
+
+    hidden_root="$(resolve_first_existing_path "${repo_root}" ".toolchains" || true)"
+    if [[ -n "${hidden_root}" ]]; then
+        printf '%s\n' "${hidden_root}"
+        return 0
+    fi
+
+    visible_root="$(resolve_first_existing_path "${repo_root}" "toolchains" || true)"
+    if [[ -n "${visible_root}" ]]; then
+        printf '%s\n' "${visible_root}"
+        return 0
+    fi
+
+    printf '%s\n' "$(cd "${repo_root}/.." && pwd)/toolchains"
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -99,10 +119,7 @@ done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "toolchains" || true)"
-    if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-        TOOLCHAINS_ROOT="$(cd "${REPO_ROOT}/.." && pwd)/toolchains"
-    fi
+    TOOLCHAINS_ROOT="$(resolve_toolchains_root "${REPO_ROOT}")"
 fi
 if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
     SAVED_ARCHIVES_ROOT="$(resolve_first_existing_path "${REPO_ROOT}" "memory/repo_archives/browser" || true)"
