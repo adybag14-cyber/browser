@@ -257,7 +257,7 @@ RUST_TOOLCHAIN_DIR="${TOOLCHAINS_ROOT}/rust-1.79.0"
 OFFLINE_DEPS_ROOT="$(resolve_discovered_or_default_root "${HELPER_ROOT}" "offline-deps" "${HELPER_WORKSPACE_ROOT}/offline-deps")"
 PROGRESS_TRACKER_ROUTE_PATH="${HELPER_ROOT}/docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md"
 
-ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
+ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_saved_memory_inputs_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/check_issue3_workspace_context_route_surface.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_workspace_context_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_workspace_context.py") --repo-root $(format_shell_arg "${REPO_ROOT}")"
@@ -267,6 +267,7 @@ QUICK_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --skip-archive-integrity-check
 RESTORED_SAVED_INPUT_COMMAND="${SAVED_INPUT_COMMAND} --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 LIVE_HELPER_RESTORED_CHECKOUT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue3_saved_memory_inputs.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --helper-root $(format_shell_arg "${HELPER_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 RESTORED_HELPER_SURFACE_SYNC_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_restored_helper_surface_sync_route.sh") --helper-root $(format_shell_arg "${HELPER_ROOT}") --restored-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}")"
+ISSUE11_SAVED_MEMORY_HELPER_SURFACE_INVENTORY_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_surface_inventory.py") --repo-root $(format_shell_arg "${HELPER_ROOT}")"
 ISSUE11_SAVED_MEMORY_HELPER_CONTRACT_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 ISSUE11_REENTRY_INVENTORY_CONSISTENCY_COMMAND="python $(format_shell_arg "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py") --repo-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
 SAVED_ARCHIVE_INTEGRITY_ROUTE_COMMAND="bash $(format_shell_arg "${HELPER_ROOT}/scripts/linux/show_issue3_saved_archive_integrity_route.sh") --repo-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --agent-files-root $(format_shell_arg "${AGENT_FILES_ROOT}")"
@@ -326,6 +327,7 @@ print(json.dumps({
         "quick_saved_input_preflight": ${QUICK_SAVED_INPUT_COMMAND@Q},
         "restored_checkout_saved_input_preflight": ${RESTORED_SAVED_INPUT_COMMAND@Q},
         "restored_helper_surface_sync_route": ${RESTORED_HELPER_SURFACE_SYNC_ROUTE_COMMAND@Q},
+        "issue11_saved_memory_helper_surface_inventory": ${ISSUE11_SAVED_MEMORY_HELPER_SURFACE_INVENTORY_COMMAND@Q},
         "issue11_saved_memory_helper_contract": ${ISSUE11_SAVED_MEMORY_HELPER_CONTRACT_COMMAND@Q},
         "issue11_reentry_inventory_consistency": ${ISSUE11_REENTRY_INVENTORY_CONSISTENCY_COMMAND@Q},
         "live_helper_restored_checkout_preflight": ${LIVE_HELPER_RESTORED_CHECKOUT_COMMAND@Q},
@@ -344,6 +346,7 @@ print(json.dumps({
         "Use quick_saved_input_preflight only for a fast branch decision when archive integrity is not the question.",
         "Use restored_checkout_saved_input_preflight when a reusable checkout already exists and the route should confirm both saved inputs and the restored helper surface together.",
         "Use restored_helper_surface_sync_route before the issue #11 contract checks and the live-helper restored-checkout preflight when the extracted snapshot may lag the live issue #11 helper surface or is missing the newer helper-sync route files.",
+        "Use issue11_saved_memory_helper_surface_inventory when the route itself needs focused proof that the explicit saved-memory helper inventory still matches restore_saved_browser_snapshot.sh before restored-checkout contract checks are trusted.",
         "Run issue11_saved_memory_helper_contract and issue11_reentry_inventory_consistency against the restored checkout before treating live_helper_restored_checkout_preflight as trustworthy from that restored tree.",
         "Use live_helper_restored_checkout_preflight when the restored snapshot itself needs to be checked against the newer live helper surface before running follow-up route commands from that restored tree.",
         "Point helper_root at the live branch-local helper surface when repo_root is a restored checkout that should reuse newer route helpers.",
@@ -419,6 +422,9 @@ Suggested route
   Restored helper-surface sync route:
     ${RESTORED_HELPER_SURFACE_SYNC_ROUTE_COMMAND}
 
+  Issue #11 saved-memory helper-surface inventory check for the live helper root:
+    ${ISSUE11_SAVED_MEMORY_HELPER_SURFACE_INVENTORY_COMMAND}
+
   Issue #11 saved-memory helper-contract check for the restored checkout:
     ${ISSUE11_SAVED_MEMORY_HELPER_CONTRACT_COMMAND}
 
@@ -452,6 +458,7 @@ Working rules
   - Use the quick presence-only command for branch selection only; it is not honest archive validation.
   - Use the restored-checkout preflight when a reusable checkout already exists and the route should confirm that surface before broader helper output is trusted.
   - Use the restored-helper-surface sync route when the extracted snapshot may lag behind the live helper surface or the restored tree is missing the newer issue #11 helper-sync files.
+  - Use the issue #11 saved-memory helper-surface inventory check when the run needs focused proof that the explicit saved-memory preflight inventory still matches restore_saved_browser_snapshot.sh before restored-checkout contract checks are trusted.
   - Run the issue #11 saved-memory helper-contract and re-entry inventory checks against the restored checkout before treating the live-helper restored-checkout preflight as trustworthy from that restored tree.
   - Use the live-helper restored-checkout preflight when the extracted snapshot may lag behind the live helper surface and the run needs that drift to fail before it starts calling route commands from the restored tree.
   - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
