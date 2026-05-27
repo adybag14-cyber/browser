@@ -66,6 +66,9 @@ def locate_first_existing(start: Path, relative_path: str) -> Path | None:
 
 
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, ".toolchains")
+    if located is not None and located.is_dir():
+        return located
     located = locate_first_existing(repo_root, "toolchains")
     if located is not None and located.is_dir():
         return located
@@ -203,7 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the shared toolchains directory (default: nearest ancestor toolchains root or ../toolchains)",
+        help="Path to the shared toolchains directory (default: nearest hidden .toolchains root, then nearest visible toolchains root, then ../toolchains)",
     )
     parser.add_argument("--json", action="store_true", help="Emit JSON output")
     parser.add_argument("--self-test", action="store_true", help="Run focused unit tests and exit")
@@ -282,15 +285,27 @@ class StagedZigToolchainCandidateTests(unittest.TestCase):
         path = Path("/tmp/toolchains/zig-linux-x86_64-0.15.2/bin/zig")
         self.assertEqual(infer_toolchain_root(path), Path("/tmp/toolchains/zig-linux-x86_64-0.15.2"))
 
-    def test_default_toolchains_root_discovers_ancestor_workspace_root(self) -> None:
+    def test_default_toolchains_root_prefers_hidden_ancestor_workspace_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace_root = Path(tmpdir)
             repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
             repo_root.mkdir(parents=True)
-            toolchains_root = workspace_root / "toolchains"
-            toolchains_root.mkdir()
+            hidden_toolchains_root = workspace_root / ".toolchains"
+            hidden_toolchains_root.mkdir()
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
 
-            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), hidden_toolchains_root.resolve())
+
+    def test_default_toolchains_root_falls_back_to_visible_ancestor_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), visible_toolchains_root.resolve())
 
 
 def main() -> int:
