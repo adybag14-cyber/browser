@@ -204,7 +204,7 @@ saved-Zig, or broader build-readiness follow-ups, keep the nested-workspace
 rerun helper visible on the same issue `#11` handoff:
 
 ```bash
-bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+bash ./scripts/linux/run_issue11_nested_workspace_saved_MEMORY_preflight.sh
 ```
 
 Use the quick-presence variant when the route only needs the surfaced saved-
@@ -224,6 +224,26 @@ bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh
 bash ./scripts/linux/show_issue3_linux_build_readiness_route.sh
 bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh
 ```
+
+If the attached fallback Zig archive is not beside the repo workspace and the
+route needs one explicit surfaced archive path across nested saved-memory,
+build-readiness rerun, matching-line, and Zig recovery helpers, thread the same
+override through the issue `#11` handoff directly:
+
+```bash
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh \
+  --fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
+
+bash ./scripts/linux/show_issue3_saved_memory_inputs_route.sh \
+  --fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
+
+bash ./scripts/linux/show_issue3_zig_toolchain_recovery_route.sh \
+  --fallback-zig-archive /path/to/zig-x86_64-linux-0.17.0-dev.299+a76ce7710.tar.xz
+```
+
+That keeps the same surfaced fallback archive path visible across the nested
+workspace preflight, the saved-memory route, and the later Zig recovery handoff
+instead of letting each helper rediscover a different default.
 
 If the immediate slice is about picking or restoring a saved Zig `0.15.x`
 archive, keep `docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md` visible,
@@ -250,3 +270,11 @@ gates in `docs/ISSUE3_RUNTIME_REENTRY_GATES.md` are actually green.
 When issue `#11` is the active progress log, keep the start and completion
 updates compact so scheduled reruns leave the same fields the route printer and
 surface checker expect:
+
+- `Goal: <state the exact Linux/WSL re-entry helper or environment gate work>`
+- `Started: <UTC timestamp>`
+- `Next: <state the first concrete helper, validation check, or branch-safe change you are about to make>`
+- `Achieved: <state what route, helper, or branch-safe re-entry improvement landed>`
+- `Completed: <UTC timestamp>`
+- `Commit: <commit sha>`
+- `Validation: <state the focused helper check, self-test, or follow-up route that now applies>`
