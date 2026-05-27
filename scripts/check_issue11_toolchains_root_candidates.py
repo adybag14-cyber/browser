@@ -85,15 +85,28 @@ def path_has_live_helper_surface(path: Path) -> bool:
     )
 
 
+def locate_sibling_live_helper_root(repo_root: Path) -> Path | None:
+    repo_root = repo_root.resolve()
+    for ancestor in ancestor_chain(repo_root.parent):
+        for sibling in sorted(ancestor.iterdir()):
+            if sibling.resolve() == repo_root:
+                continue
+            if sibling.name == DEFAULT_RESTORED_CHECKOUT_NAME:
+                continue
+            if path_has_live_helper_surface(sibling):
+                return sibling.resolve()
+    return None
+
+
 def resolve_default_helper_root(repo_root: Path) -> Path:
     repo_root = repo_root.resolve()
     cwd = Path.cwd().resolve()
-    if (
-        repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME
-        and cwd != repo_root
-        and path_has_live_helper_surface(cwd)
-    ):
-        return cwd
+    if repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME:
+        if cwd != repo_root and path_has_live_helper_surface(cwd):
+            return cwd
+        sibling_live_root = locate_sibling_live_helper_root(repo_root)
+        if sibling_live_root is not None:
+            return sibling_live_root
     return repo_root
 
 
@@ -270,6 +283,36 @@ class ToolchainsRootCandidateTests(unittest.TestCase):
             original_cwd = Path.cwd()
             try:
                 os.chdir(live_root)
+                self.assertEqual(resolve_default_helper_root(restored_root), live_root.resolve())
+            finally:
+                os.chdir(original_cwd)
+
+    def test_default_helper_root_finds_sibling_live_helper_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_root.mkdir()
+            (live_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (live_root / "scripts" / "linux").mkdir(parents=True)
+            (live_root / "scripts" / "check_issue3_workspace_context.py").write_text("pass\n", encoding="utf-8")
+            (live_root / "scripts" / "check_linux_build_readiness.py").write_text("pass\n", encoding="utf-8")
+            (live_root / "scripts" / "linux" / "run_issue11_nested_workspace_saved_memory_preflight.sh").write_text(
+                "#!/usr/bin/env bash\n",
+                encoding="utf-8",
+            )
+            (live_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").write_text(
+                "#!/usr/bin/env bash\n",
+                encoding="utf-8",
+            )
+
+            original_cwd = Path.cwd()
+            outside_root = root / "outside"
+            outside_root.mkdir()
+            try:
+                os.chdir(outside_root)
                 self.assertEqual(resolve_default_helper_root(restored_root), live_root.resolve())
             finally:
                 os.chdir(original_cwd)
