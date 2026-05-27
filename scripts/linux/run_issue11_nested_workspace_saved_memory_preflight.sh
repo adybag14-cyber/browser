@@ -13,8 +13,8 @@ Usage:
 
 Use the branch-local workspace-context helper to resolve the nearest practical
 helper, Memory, agent-files, and restored-checkout roots, then rerun the saved
-Memory preflight plus the two issue #11 contract checks with those surfaced
-paths threaded through explicitly.
+Memory preflight. The restored-checkout-only issue #11 contract checks run only
+after a reusable snapshot exists.
 EOUSAGE
 }
 
@@ -103,8 +103,12 @@ SURFACED_FALLBACK_ZIG="${SURFACED_VALUES[4]}"
 
 if [[ -d "${RESTORED_CHECKOUT_ROOT}" ]]; then
     CONTRACT_TARGET_ROOT="${RESTORED_CHECKOUT_ROOT}"
+    CONTRACT_CHECKS_SKIPPED=0
+    CONTRACT_SKIP_REASON=""
 else
-    CONTRACT_TARGET_ROOT="${HELPER_ROOT}"
+    CONTRACT_TARGET_ROOT=""
+    CONTRACT_CHECKS_SKIPPED=1
+    CONTRACT_SKIP_REASON="Restored checkout root does not exist yet; run the saved-browser-snapshot route first, then rerun this wrapper for the restored-checkout-only issue #11 contract checks."
 fi
 
 SURFACED_WORKSPACE_CONTEXT_SCRIPT="${HELPER_ROOT}/scripts/check_issue3_workspace_context.py"
@@ -135,6 +139,16 @@ PREFLIGHT_CMD=(
     --restored-checkout-root "${RESTORED_CHECKOUT_ROOT}"
 )
 
+SAVED_SNAPSHOT_ROUTE_CMD=(
+    bash
+    "${HELPER_ROOT}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh"
+    --repo-root "${REPO_ROOT}"
+    --helper-root "${HELPER_ROOT}"
+    --memory-root "${MEMORY_ROOT}"
+    --destination "${RESTORED_CHECKOUT_ROOT}"
+    --sync-helper-surface
+)
+
 HELPER_CONTRACT_CMD=(
     python3
     "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py"
@@ -149,6 +163,7 @@ REENTRY_INVENTORY_CMD=(
 
 if [[ -n "${SURFACED_FALLBACK_ZIG}" ]]; then
     PREFLIGHT_CMD+=(--fallback-zig-archive "${SURFACED_FALLBACK_ZIG}")
+    SAVED_SNAPSHOT_ROUTE_CMD+=(--fallback-zig-archive "${SURFACED_FALLBACK_ZIG}")
 fi
 if [[ "${SKIP_ARCHIVE_INTEGRITY_CHECK}" -eq 1 ]]; then
     PREFLIGHT_CMD+=(--skip-archive-integrity-check)
@@ -157,7 +172,7 @@ fi
 if [[ "${JSON}" -eq 1 ]]; then
     CONTEXT_JSON="${CONTEXT_JSON}" PREFLIGHT_JSON="$(
         "${PREFLIGHT_CMD[@]}" --json
-    )" python3 - "$SKIP_ARCHIVE_INTEGRITY_CHECK" "$CONTRACT_TARGET_ROOT" <<'PY'
+    )" python3 - "$SKIP_ARCHIVE_INTEGRITY_CHECK" "$CONTRACT_CHECKS_SKIPPED" "$CONTRACT_TARGET_ROOT" "$CONTRACT_SKIP_REASON" <<'PY'
 import json
 import os
 import shlex
@@ -165,7 +180,10 @@ import sys
 
 context = json.loads(os.environ["CONTEXT_JSON"])
 preflight = json.loads(os.environ["PREFLIGHT_JSON"])
-contract_target_root = sys.argv[2]
+skip_archive_integrity = sys.argv[1] == "1"
+contract_checks_skipped = sys.argv[2] == "1"
+contract_target_root = sys.argv[3]
+contract_skip_reason = sys.argv[4]
 
 command = [
     "python3",
@@ -179,7 +197,7 @@ command = [
 fallback = context.get("fallback_zig_archive")
 if fallback:
     command.extend(["--fallback-zig-archive", fallback])
-if sys.argv[1] == "1":
+if skip_archive_integrity:
     command.append("--skip-archive-integrity-check")
 
 workspace_context_command = [
@@ -189,9 +207,8 @@ workspace_context_command = [
     context["repo_root"],
     "--json",
 ]
-surfaced_fallback = context.get("fallback_zig_archive")
-if surfaced_fallback:
-    workspace_context_command.extend(["--fallback-zig-archive", surfaced_fallback])
+if fallback:
+    workspace_context_command.extend(["--fallback-zig-archive", fallback])
 
 route_surface_command = [
     "bash",
@@ -200,19 +217,46 @@ route_surface_command = [
     context["helper_root"],
 ]
 
-helper_contract_command = [
-    "python3",
-    f"{context['helper_root']}/scripts/check_issue11_saved_memory_helper_contract.py",
+saved_snapshot_route_command = [
+    "bash",
+    f"{context['helper_root']}/scripts/linux/show_issue3_saved_browser_snapshot_route.sh",
     "--repo-root",
-    contract_target_root,
+    context["repo_root"],
+    "--helper-root",
+    context["helper_root"],
+    "--memory-root",
+    context["memory_root"],
+    "--destination",
+    context["restored_checkout_root"],
+    "--sync-helper-surface",
 ]
+if fallback:
+    saved_snapshot_route_command.extend(["--fallback-zig-archive", fallback])
 
-reentry_inventory_command = [
-    "python3",
-    f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
-    "--repo-root",
-    contract_target_root,
-]
+if contract_checks_skipped:
+    helper_contract_command = []
+    helper_contract_command_shell = ""
+    reentry_inventory_command = []
+    reentry_inventory_command_shell = ""
+else:
+    helper_contract_command = [
+        "python3",
+        f"{context['helper_root']}/scripts/check_issue11_saved_memory_helper_contract.py",
+        "--repo-root",
+        contract_target_root,
+    ]
+    helper_contract_command_shell = " ".join(
+        shlex.quote(part) for part in helper_contract_command
+    )
+    reentry_inventory_command = [
+        "python3",
+        f"{context['helper_root']}/scripts/check_issue11_reentry_inventory_consistency.py",
+        "--repo-root",
+        contract_target_root,
+    ]
+    reentry_inventory_command_shell = " ".join(
+        shlex.quote(part) for part in reentry_inventory_command
+    )
 
 print(json.dumps({
     "profile": "issue11-nested-workspace-saved-memory-preflight",
@@ -224,17 +268,19 @@ print(json.dumps({
     "workspace_context_command_shell": " ".join(
         shlex.quote(part) for part in workspace_context_command
     ),
+    "saved_snapshot_route_command": saved_snapshot_route_command,
+    "saved_snapshot_route_command_shell": " ".join(
+        shlex.quote(part) for part in saved_snapshot_route_command
+    ),
     "helper_contract_command": helper_contract_command,
-    "helper_contract_command_shell": " ".join(
-        shlex.quote(part) for part in helper_contract_command
-    ),
+    "helper_contract_command_shell": helper_contract_command_shell,
     "reentry_inventory_command": reentry_inventory_command,
-    "reentry_inventory_command_shell": " ".join(
-        shlex.quote(part) for part in reentry_inventory_command
-    ),
+    "reentry_inventory_command_shell": reentry_inventory_command_shell,
     "workspace_context": context,
     "preflight": preflight,
-    "contract_target_root": contract_target_root,
+    "contract_target_root": contract_target_root or None,
+    "contract_checks_skipped": contract_checks_skipped,
+    "contract_skip_reason": contract_skip_reason if contract_checks_skipped else None,
     "command": command,
     "command_shell": " ".join(shlex.quote(part) for part in command),
 }, indent=2))
@@ -252,7 +298,7 @@ Live helper root:       ${HELPER_ROOT}
 Memory root:            ${MEMORY_ROOT}
 Agent files root:       ${AGENT_FILES_ROOT}
 Restored checkout root: ${RESTORED_CHECKOUT_ROOT}
-Contract target root:   ${CONTRACT_TARGET_ROOT}
+Contract target root:   ${CONTRACT_TARGET_ROOT:-not available until a restored checkout exists}
 Fallback Zig archive:   ${SURFACED_FALLBACK_ZIG:-not surfaced}
 
 Saved-Memory route surface command:
@@ -261,16 +307,35 @@ Saved-Memory route surface command:
 Workspace-context command:
   $(printf '%q ' "${SURFACED_WORKSPACE_CONTEXT_CMD[@]}")
 
+Saved-browser-snapshot route command:
+  $(printf '%q ' "${SAVED_SNAPSHOT_ROUTE_CMD[@]}")
+
 Issue #11 helper-contract command:
-  $(printf '%q ' "${HELPER_CONTRACT_CMD[@]}")
+  $(
+    if [[ "${CONTRACT_CHECKS_SKIPPED}" -eq 1 ]]; then
+        printf '%s' "skipped until the restored checkout exists"
+    else
+        printf '%q ' "${HELPER_CONTRACT_CMD[@]}"
+    fi
+  )
 
 Issue #11 re-entry inventory command:
-  $(printf '%q ' "${REENTRY_INVENTORY_CMD[@]}")
+  $(
+    if [[ "${CONTRACT_CHECKS_SKIPPED}" -eq 1 ]]; then
+        printf '%s' "skipped until the restored checkout exists"
+    else
+        printf '%q ' "${REENTRY_INVENTORY_CMD[@]}"
+    fi
+  )
 
 Saved-Memory preflight command:
   $(printf '%q ' "${PREFLIGHT_CMD[@]}")
 EOF
 
 "${PREFLIGHT_CMD[@]}"
-"${HELPER_CONTRACT_CMD[@]}"
-"${REENTRY_INVENTORY_CMD[@]}"
+if [[ "${CONTRACT_CHECKS_SKIPPED}" -eq 0 ]]; then
+    "${HELPER_CONTRACT_CMD[@]}"
+    "${REENTRY_INVENTORY_CMD[@]}"
+else
+    echo "${CONTRACT_SKIP_REASON}" >&2
+fi
