@@ -140,6 +140,7 @@ fi
 ARCHIVE_PATH="$(resolve_path "${ARCHIVE_PATH}")"
 
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
+TOOLCHAINS_ROOT_CANDIDATE_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_issue11_toolchains_root_candidates.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}")"
 SAVED_ARCHIVE_CANDIDATES_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_issue3_saved_rust_archive_candidates.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --saved-archives-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAIN_PARENT}")"
 STAGED_TOOLCHAIN_CANDIDATES_COMMAND="python $(format_shell_arg "${BROWSER_ROOT}/scripts/check_issue3_staged_rust_toolchain_candidates.py") --repo-root $(format_shell_arg "${BROWSER_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAIN_PARENT}")"
 CHECK_ONLY_COMMAND="bash $(format_shell_arg "${BROWSER_ROOT}/scripts/linux/restore_saved_rust_toolchain.sh") --browser-root $(format_shell_arg "${BROWSER_ROOT}") --dependencies-root $(format_shell_arg "${DEPENDENCIES_ROOT}") --toolchain-root $(format_shell_arg "${TOOLCHAIN_ROOT}") --archive $(format_shell_arg "${ARCHIVE_PATH}") --check-only"
@@ -162,6 +163,7 @@ print(json.dumps({
     "archive_path": ${ARCHIVE_PATH@Q},
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
+        "toolchains_root_candidates": ${TOOLCHAINS_ROOT_CANDIDATE_COMMAND@Q},
         "saved_archive_candidates": ${SAVED_ARCHIVE_CANDIDATES_COMMAND@Q},
         "staged_toolchain_candidates": ${STAGED_TOOLCHAIN_CANDIDATES_COMMAND@Q},
         "check_only": ${CHECK_ONLY_COMMAND@Q},
@@ -173,6 +175,7 @@ print(json.dumps({
     },
     "notes": [
         "Run the surface_check command first so missing route docs or helper drift fails before the saved archive itself is blamed.",
+        "Run the toolchains_root_candidates command next when a nested checkout or mixed toolchains/ versus .toolchains/ workspace could make the broader Rust rerun guess the wrong shared root.",
         "Run the saved_archive_candidates command next when the run needs the preferred saved Rust archive and restore commands surfaced before manual shell work.",
         "Run the staged_toolchain_candidates command before restore so a matching staged Rust 1.79.0 toolchain can be reused instead of unpacked again.",
         "Run the check_only command next when the archive or destination path may have drifted.",
@@ -205,6 +208,9 @@ Suggested route
   Surface check:
     ${SURFACE_CHECK_COMMAND}
 
+  Issue #11 toolchains-root candidate helper:
+    ${TOOLCHAINS_ROOT_CANDIDATE_COMMAND}
+
   Saved archive candidate discovery:
     ${SAVED_ARCHIVE_CANDIDATES_COMMAND}
 
@@ -222,12 +228,13 @@ Suggested route
     ${CARGO_COMMAND}
     ${RUSTC_COMMAND}
 
-  Quick readiness preflight after restore or staged reuse:
+  Quick readiness preflight after restore:
     ${PREFLIGHT_COMMAND}
 
 Working rules
 =============
   - Run the surface check first so missing route docs or helper drift fails before the saved archive itself is blamed.
+  - Run the issue #11 toolchains-root candidate helper before the saved or staged Rust helpers when a nested checkout or mixed toolchains/ versus .toolchains/ workspace could make later reruns guess the wrong shared root.
   - Run the saved archive candidate helper before hand-picking the restore archive or rebuilding restore commands by hand.
   - Run the staged toolchain candidate helper before restore so a matching Rust 1.79.0 candidate under ../toolchains can be reused.
   - If the staged helper surfaces a preferred candidate, reuse its PATH/CARGO/RUSTC exports before unpacking the archive again.
