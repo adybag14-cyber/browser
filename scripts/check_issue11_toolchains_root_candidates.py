@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -19,6 +20,8 @@ import unittest
 
 
 DEFAULT_REPO_ROOT = "."
+DEFAULT_RESTORED_CHECKOUT_NAME = "browser-memory-snapshot"
+REQUIRED_REPO_ROOT_FILE = "build.zig.zon"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,6 +32,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--repo-root",
         default=DEFAULT_REPO_ROOT,
         help="Path to the browser checkout root (default: current directory)",
+    )
+    parser.add_argument(
+        "--helper-root",
+        default=None,
+        help=(
+            "Path to the live helper checkout that should supply follow-up scripts "
+            "(default: repo root, or the current live helper checkout when "
+            "repo-root is a restored snapshot)"
+        ),
     )
     parser.add_argument(
         "--json",
@@ -62,7 +74,38 @@ def locate_first_existing(start: Path, relative_path: str) -> Path | None:
     return None
 
 
-def collect_candidates(repo_root: Path) -> dict[str, object]:
+def path_has_live_helper_surface(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / REQUIRED_REPO_ROOT_FILE).is_file()
+        and (path / "scripts" / "check_issue3_workspace_context.py").is_file()
+        and (path / "scripts" / "check_linux_build_readiness.py").is_file()
+        and (path / "scripts" / "linux" / "run_issue11_nested_workspace_saved_memory_preflight.sh").is_file()
+        and (path / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").is_file()
+    )
+
+
+def resolve_default_helper_root(repo_root: Path) -> Path:
+    repo_root = repo_root.resolve()
+    cwd = Path.cwd().resolve()
+    if (
+        repo_root.name == DEFAULT_RESTORED_CHECKOUT_NAME
+        and cwd != repo_root
+        and path_has_live_helper_surface(cwd)
+    ):
+        return cwd
+    return repo_root
+
+
+def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, "toolchains")
+    if located is not None and located.is_dir():
+        return located
+    return (repo_root.parent / "toolchains").resolve()
+
+
+def collect_candidates(repo_root: Path, helper_root: Path | None = None) -> dict[str, object]:
+    helper_root = repo_root.resolve() if helper_root is None else helper_root.resolve()
     hidden_root = locate_first_existing(repo_root, ".toolchains")
     visible_root = locate_first_existing(repo_root, "toolchains")
 
@@ -89,13 +132,13 @@ def collect_candidates(repo_root: Path) -> dict[str, object]:
 
     workspace_context_command = [
         "python",
-        "scripts/check_issue3_workspace_context.py",
+        str(helper_root / "scripts" / "check_issue3_workspace_context.py"),
         "--repo-root",
         str(repo_root),
     ]
     readiness_command = [
         "python",
-        "scripts/check_linux_build_readiness.py",
+        str(helper_root / "scripts" / "check_linux_build_readiness.py"),
         "--repo-root",
         str(repo_root),
         "--toolchains-root",
@@ -103,13 +146,13 @@ def collect_candidates(repo_root: Path) -> dict[str, object]:
     ]
     nested_preflight_command = [
         "bash",
-        "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        str(helper_root / "scripts" / "linux" / "run_issue11_nested_workspace_saved_memory_preflight.sh"),
         "--repo-root",
         str(repo_root),
     ]
     zig_recovery_command = [
         "bash",
-        "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
+        str(helper_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh"),
         "--repo-root",
         str(repo_root),
         "--toolchains-root",
@@ -121,6 +164,7 @@ def collect_candidates(repo_root: Path) -> dict[str, object]:
     return {
         "status": status,
         "repo_root": str(repo_root),
+        "helper_root": str(helper_root),
         "hidden_toolchains_root": None if hidden_root is None else str(hidden_root),
         "visible_toolchains_root": None if visible_root is None else str(visible_root),
         "preferred_toolchains_root": str(preferred_root),
@@ -135,6 +179,7 @@ def collect_candidates(repo_root: Path) -> dict[str, object]:
 
 def emit_text(report: dict[str, object]) -> None:
     print(f"Repo root: {report['repo_root']}")
+    print(f"Helper root: {report['helper_root']}")
     print(f"Hidden .toolchains root: {report['hidden_toolchains_root'] or 'not found'}")
     print(f"Visible toolchains root: {report['visible_toolchains_root'] or 'not found'}")
     print(f"Preferred toolchains root: {report['preferred_toolchains_root']}")
@@ -201,6 +246,65 @@ class ToolchainsRootCandidateTests(unittest.TestCase):
             self.assertEqual(report["status"], "attention")
             self.assertEqual(len(report["warnings"]), 1)
 
+    def test_default_helper_root_prefers_live_helper_cwd_for_restored_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            live_root = root / "browser"
+            restored_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            live_root.mkdir()
+            restored_root.mkdir()
+            (live_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (restored_root / REQUIRED_REPO_ROOT_FILE).write_text("{}", encoding="utf-8")
+            (live_root / "scripts" / "linux").mkdir(parents=True)
+            (live_root / "scripts" / "check_issue3_workspace_context.py").write_text("pass\n", encoding="utf-8")
+            (live_root / "scripts" / "check_linux_build_readiness.py").write_text("pass\n", encoding="utf-8")
+            (live_root / "scripts" / "linux" / "run_issue11_nested_workspace_saved_memory_preflight.sh").write_text(
+                "#!/usr/bin/env bash\n",
+                encoding="utf-8",
+            )
+            (live_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").write_text(
+                "#!/usr/bin/env bash\n",
+                encoding="utf-8",
+            )
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(live_root)
+                self.assertEqual(resolve_default_helper_root(restored_root), live_root.resolve())
+            finally:
+                os.chdir(original_cwd)
+
+    def test_explicit_helper_root_supplies_live_followup_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            helper_root = root / "browser"
+            repo_root = root / DEFAULT_RESTORED_CHECKOUT_NAME
+            helper_root.mkdir()
+            repo_root.mkdir()
+            (helper_root / "scripts" / "linux").mkdir(parents=True)
+
+            report = collect_candidates(repo_root, helper_root=helper_root)
+
+            self.assertEqual(report["helper_root"], str(helper_root.resolve()))
+            self.assertEqual(
+                report["suggested_workspace_context_command"][1],
+                str((helper_root / "scripts" / "check_issue3_workspace_context.py").resolve()),
+            )
+            self.assertEqual(
+                report["suggested_readiness_command"][1],
+                str((helper_root / "scripts" / "check_linux_build_readiness.py").resolve()),
+            )
+            self.assertEqual(
+                report["suggested_nested_preflight_command"][1],
+                str((helper_root / "scripts" / "linux" / "run_issue11_nested_workspace_saved_memory_preflight.sh").resolve()),
+            )
+            self.assertEqual(
+                report["suggested_zig_recovery_command"][1],
+                str((helper_root / "scripts" / "linux" / "show_issue3_zig_toolchain_recovery_route.sh").resolve()),
+            )
+            self.assertIn(str(repo_root.resolve()), report["suggested_workspace_context_command"])
+            self.assertIn(str(repo_root.resolve()), report["suggested_readiness_command"])
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -212,7 +316,8 @@ def main() -> int:
         return 0 if result.wasSuccessful() else 1
 
     repo_root = Path(args.repo_root).resolve()
-    report = collect_candidates(repo_root)
+    helper_root = Path(args.helper_root).resolve() if args.helper_root else resolve_default_helper_root(repo_root)
+    report = collect_candidates(repo_root, helper_root=helper_root)
     if args.json:
         print(json.dumps(report, indent=2))
     else:
