@@ -86,7 +86,7 @@ def path_has_live_helper_surface(path: Path) -> bool:
 
 
 def infer_toolchains_root(repo_root: Path) -> tuple[Path, bool]:
-    for relative_path in ("toolchains", ".toolchains"):
+    for relative_path in (".toolchains", "toolchains"):
         located = locate_first_existing(repo_root, relative_path)
         if located is not None and located.is_dir():
             return located, True
@@ -527,7 +527,7 @@ class WorkspaceContextTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/check_issue3_saved_zig_archive_candidates.py",
-                context["suggested_saved_zig_archive_candidates_command"],
+                context["suggested_saved_zig_archive_candidates_command"]
             )
 
     def test_locates_hidden_toolchains_root_above_nested_checkout(self) -> None:
@@ -585,7 +585,7 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn("--require-prebuilt-v8", context["suggested_readiness_command"])
             self.assertIn(
                 "scripts/linux/show_issue3_progress_tracker_route.sh",
-                context["suggested_progress_tracker_route_command"],
+                context["suggested_progress_tracker_route_command"]
             )
             self.assertIn("--helper-root", context["suggested_progress_tracker_route_command"])
             self.assertIn("--memory-root", context["suggested_progress_tracker_route_command"])
@@ -596,19 +596,19 @@ class WorkspaceContextTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/check_issue3_saved_rust_archive_candidates.py",
-                context["suggested_saved_rust_archive_candidates_command"],
+                context["suggested_saved_rust_archive_candidates_command"]
             )
             self.assertIn(
                 "scripts/check_issue3_staged_rust_toolchain_candidates.py",
-                context["suggested_staged_rust_toolchain_candidates_command"],
+                context["suggested_staged_rust_toolchain_candidates_command"]
             )
             self.assertIn(
                 "scripts/linux/show_issue3_zig_toolchain_recovery_route.sh",
-                context["suggested_zig_recovery_route_command"],
+                context["suggested_zig_recovery_route_command"]
             )
             self.assertIn(
                 "scripts/linux/check_issue3_zig_toolchain_match.sh",
-                context["suggested_zig_match_command"],
+                context["suggested_zig_match_command"]
             )
             self.assertIn("--helper-root", context["suggested_saved_snapshot_route_command"])
             self.assertIn(str(repo_root.resolve()), context["suggested_saved_snapshot_route_command"])
@@ -669,15 +669,15 @@ class WorkspaceContextTests(unittest.TestCase):
             self.assertIn(str(explicit_archive.resolve()), context["suggested_zig_match_command"])
             self.assertIn(
                 str(explicit_archive.resolve()),
-                context["suggested_saved_zig_archive_candidates_command"],
+                context["suggested_saved_zig_archive_candidates_command"]
             )
             self.assertIn(
                 str(explicit_archive.resolve()),
-                context["suggested_progress_tracker_route_command"],
+                context["suggested_progress_tracker_route_command"]
             )
             self.assertIn(
                 str(explicit_archive.resolve()),
-                context["suggested_readiness_command"],
+                context["suggested_readiness_command"]
             )
 
     def test_missing_build_zon_fails_cleanly(self) -> None:
