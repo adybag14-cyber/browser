@@ -54,6 +54,7 @@ helpers:
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_issue3_restored_helper_surface_sync.py`
 - `scripts/check_issue3_workspace_context.py`
+- `scripts/check_issue11_toolchains_root_candidates.py`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_issue3_saved_rust_archive_candidates.py`
@@ -72,6 +73,9 @@ Give the next writable checkout one branch-local route for:
   expected exact artifacts before a restore or offline staging step trusts them
 - surfacing the practical workspace roots for nested or restored checkouts
   before the next readiness rerun or explicit route override is rebuilt by hand
+- surfacing the preferred toolchains root when both `toolchains/` and
+  `.toolchains/` are visible before Rust, Zig, or rerun helpers inherit the
+  wrong path
 - checking that the Linux build-readiness note and helper surfaces still line up
 - surfacing saved Rust archive candidates under the saved archive area before a
   hand-built restore path is guessed
@@ -119,6 +123,21 @@ Use `--json` when another helper needs the surfaced paths as structured output.
 That helper prints a ready-to-rerun `scripts/check_linux_build_readiness.py`
 command with the discovered `toolchains`, `memory/repo_archives/browser`, and
 fallback Zig paths already filled in.
+
+## Surface The Toolchains Root Before Rust Or Zig Helpers Guess It
+
+When both `toolchains/` and `.toolchains/` may be visible above the checkout,
+stop guessing before saved-Rust, staged-Rust, staged-Zig, build-readiness
+rerun, matching-line, or broader Linux build-readiness helpers inherit the
+wrong root:
+
+```bash
+python scripts/check_issue11_toolchains_root_candidates.py --repo-root .
+```
+
+Use its preferred `--toolchains-root` override before rerunning the saved Rust
+archive, staged Rust, staged Zig, build-readiness rerun, matching-line, or
+Linux build-readiness helpers from the same workspace layout.
 
 ## Restore A Checkout First When Needed
 
@@ -406,6 +425,14 @@ If the repo checkout is not sitting beside the saved Memory folder, run the
 workspace-context helper first so the next readiness command or explicit route
 overrides use surfaced roots instead of hand-built guesses.
 
+When both `toolchains/` and `.toolchains/` may be visible, run the
+toolchains-root candidate helper before staged-toolchain or readiness reruns so
+the next command can reuse an explicit `--toolchains-root` override:
+
+```bash
+python scripts/check_issue11_toolchains_root_candidates.py --repo-root .
+```
+
 When explicit overrides are still needed, the route helper supports them:
 
 ```bash
@@ -423,7 +450,10 @@ Use `--json` when another helper needs the command set as structured output.
 
 ## What The Route Surfaces
 
-The Linux route now stays short and ordered:
+The Linux route now stays short and ordered. When `toolchains/` and
+`.toolchains/` are both visible, run `scripts/check_issue11_toolchains_root_candidates.py`
+before the staged-toolchain and readiness commands below so the later route uses
+one explicit `--toolchains-root` choice.
 
 1. A fail-fast surface check using
    `scripts/linux/check_issue3_linux_build_readiness_route_surface.sh`
