@@ -21,6 +21,8 @@ REQUIRED_PATHS = (
     "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
     "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+    "scripts/check_issue11_saved_memory_helper_contract.py",
+    "scripts/check_issue11_reentry_inventory_consistency.py",
 )
 REQUIRED_MEMORY_SYNC_SNIPPETS = (
     "repo_archives/browser/",
@@ -38,6 +40,12 @@ REQUIRED_ROUTE_PRINTER_SNIPPETS = (
     "quick_nested_workspace_saved_memory_preflight",
     "Issue #11 nested-workspace saved-Memory preflight:",
     "Quick nested-workspace saved-Memory presence check:",
+    "scripts/check_issue11_saved_memory_helper_contract.py",
+    "scripts/check_issue11_reentry_inventory_consistency.py",
+    "issue11_saved_memory_helper_contract",
+    "issue11_reentry_inventory_consistency",
+    "Issue #11 saved-memory helper-contract check for the restored checkout:",
+    "Issue #11 re-entry inventory consistency check for the restored checkout:",
     "check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
     "show_issue3_staged_zig_toolchain_candidates_route.sh",
     "check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
@@ -55,6 +63,8 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh", "fixture"),
     ("scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh", "fixture"),
     ("scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh", "fixture"),
+    ("scripts/check_issue11_saved_memory_helper_contract.py", "fixture"),
+    ("scripts/check_issue11_reentry_inventory_consistency.py", "fixture"),
 )
 """
 
@@ -68,6 +78,8 @@ FIXTURE_ROUTE_NOTE = """
 - scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
 - scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
 - scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+- scripts/check_issue11_saved_memory_helper_contract.py
+- scripts/check_issue11_reentry_inventory_consistency.py
 - repo_archives/browser/
 - fix Memory sync first
 - restore route still depends on the same saved snapshot and dependency bundles
@@ -78,6 +90,12 @@ nested_workspace_saved_memory_preflight
 quick_nested_workspace_saved_memory_preflight
 Issue #11 nested-workspace saved-Memory preflight:
 Quick nested-workspace saved-Memory presence check:
+scripts/check_issue11_saved_memory_helper_contract.py
+scripts/check_issue11_reentry_inventory_consistency.py
+issue11_saved_memory_helper_contract
+issue11_reentry_inventory_consistency
+Issue #11 saved-memory helper-contract check for the restored checkout:
+Issue #11 re-entry inventory consistency check for the restored checkout:
 check_issue3_staged_zig_toolchain_candidates_route_surface.sh
 show_issue3_staged_zig_toolchain_candidates_route.sh
 check_issue3_staged_rust_toolchain_candidates_route_surface.sh
@@ -98,6 +116,8 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh"
     "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+    "scripts/check_issue11_saved_memory_helper_contract.py"
+    "scripts/check_issue11_reentry_inventory_consistency.py"
 )
 """
 
