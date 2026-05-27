@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import shlex
 import tempfile
 import unittest
 import zipfile
@@ -22,6 +23,7 @@ import zipfile
 ARCHIVE_RELATIVE_PATH = "memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip"
 RESTORE_HELPER_RELATIVE_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
 EXPECTED_ARCHIVE_PREFIX = "browser-fork-headed-mode-foundation/"
+DEFAULT_DESTINATION_NAME = "browser-memory-snapshot"
 ISSUE11_REENTRY_HINT_FRAGMENTS = (
     "issue11",
     "ISSUE3_PROGRESS_TRACKER_ROUTE",
@@ -95,6 +97,49 @@ def resolve_default_memory_root(repo_root: Path) -> Path:
     return (repo_root.parent / "memory").resolve()
 
 
+def resolve_default_destination(repo_root: Path) -> Path:
+    located = locate_first_existing_dir(repo_root, DEFAULT_DESTINATION_NAME)
+    if located is not None:
+        return located
+    return (repo_root.parent / DEFAULT_DESTINATION_NAME).resolve()
+
+
+def format_shell_arg(raw: str) -> str:
+    return shlex.quote(raw)
+
+
+def build_restore_command(
+    repo_root: Path,
+    memory_root: Path,
+    archive_path: Path,
+    destination: Path,
+    *,
+    sync_only: bool,
+    check_only: bool,
+) -> str:
+    command = [
+        "bash",
+        str(repo_root / RESTORE_HELPER_RELATIVE_PATH),
+        "--browser-root",
+        str(repo_root),
+        "--helper-root",
+        str(repo_root),
+        "--memory-root",
+        str(memory_root),
+        "--archive",
+        str(archive_path),
+        "--destination",
+        str(destination),
+    ]
+    if sync_only:
+        command.append("--sync-only")
+    else:
+        command.append("--sync-helper-surface")
+    if check_only:
+        command.append("--check-only")
+    return " ".join(format_shell_arg(part) for part in command)
+
+
 def extract_restore_helper_paths(script_text: str) -> list[str]:
     marker = "declare -a HELPER_SURFACE_PATHS=("
     in_block = False
@@ -141,6 +186,7 @@ def collect_results(repo_root: Path, memory_root: Path, archive_path: Path) -> d
     restore_helper_exists = restore_helper_path.is_file()
     restore_helper_paths: list[str] = []
     restore_helper_error: str | None = None
+    restored_destination = resolve_default_destination(repo_root)
 
     if restore_helper_exists:
         try:
@@ -208,6 +254,39 @@ def collect_results(repo_root: Path, memory_root: Path, archive_path: Path) -> d
         "archived_helper_count": len(archived_helper_paths),
         "missing_helper_paths": missing_helper_paths,
         "missing_issue11_paths": missing_issue11_paths,
+        "restored_destination": str(restored_destination),
+        "suggested_sync_surface_check_command": build_restore_command(
+            repo_root,
+            memory_root,
+            archive_path,
+            restored_destination,
+            sync_only=False,
+            check_only=True,
+        ),
+        "suggested_sync_restore_command": build_restore_command(
+            repo_root,
+            memory_root,
+            archive_path,
+            restored_destination,
+            sync_only=False,
+            check_only=False,
+        ),
+        "suggested_sync_only_check_command": build_restore_command(
+            repo_root,
+            memory_root,
+            archive_path,
+            restored_destination,
+            sync_only=True,
+            check_only=True,
+        ),
+        "suggested_sync_only_command": build_restore_command(
+            repo_root,
+            memory_root,
+            archive_path,
+            restored_destination,
+            sync_only=True,
+            check_only=False,
+        ),
     }
 
 
@@ -218,6 +297,7 @@ def emit_text(result: dict[str, object]) -> None:
     print(f"Status: {result['status']}")
     print(f"Restore helper paths: {result['helper_surface_count']}")
     print(f"Archived helper paths: {result['archived_helper_count']}")
+    print(f"Default restore destination: {result['restored_destination']}")
 
     if result["restore_helper_error"]:
         print(f"Restore helper error: {result['restore_helper_error']}")
@@ -237,9 +317,23 @@ def emit_text(result: dict[str, object]) -> None:
 
     print("Saved snapshot archive helper-surface check failed.")
     if result["missing_issue11_paths"]:
-        print("Suggested next step: restore with --sync-helper-surface before trusting the issue #11 helper stack from the restored checkout.")
+        print(
+            "Suggested next step: use the synced restore path before trusting "
+            "the issue #11 helper stack from the restored checkout."
+        )
+        print("Suggested synced restore surface check:")
+        print(f"  {result['suggested_sync_surface_check_command']}")
+        print("Suggested synced restore command:")
+        print(f"  {result['suggested_sync_restore_command']}")
+        print("Suggested in-place helper refresh check for an existing restore:")
+        print(f"  {result['suggested_sync_only_check_command']}")
+        print("Suggested in-place helper refresh command for an existing restore:")
+        print(f"  {result['suggested_sync_only_command']}")
     elif result["missing_helper_paths"]:
-        print("Suggested next step: refresh the restored checkout helper surface or widen the archive before future restore-based reruns.")
+        print(
+            "Suggested next step: refresh the restored checkout helper surface "
+            "or widen the archive before future restore-based reruns."
+        )
 
 
 def make_restore_helper_script(*helper_surface_paths: str) -> str:
@@ -323,6 +417,10 @@ class Issue11SavedSnapshotHelperSurfaceTests(unittest.TestCase):
                 "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
                 result["missing_issue11_paths"],
             )
+            self.assertIn("--sync-helper-surface", result["suggested_sync_surface_check_command"])
+            self.assertIn("--sync-helper-surface", result["suggested_sync_restore_command"])
+            self.assertIn("--sync-only", result["suggested_sync_only_check_command"])
+            self.assertIn("--sync-only", result["suggested_sync_only_command"])
 
     def test_passes_when_archive_contains_current_helper_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
