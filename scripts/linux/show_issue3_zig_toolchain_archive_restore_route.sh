@@ -111,7 +111,7 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
     esac
- done
+done
 
 REPO_ROOT="$(cd "${REPO_ROOT}" && pwd)"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
@@ -164,6 +164,8 @@ import json
 import pathlib
 import shlex
 import sys
+import tarfile
+import zipfile
 
 repo_root = pathlib.Path(sys.argv[1]).resolve()
 toolchains_root = pathlib.Path(sys.argv[2]).resolve()
@@ -183,12 +185,45 @@ def quote(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
-def archive_top_level_name(path: pathlib.Path) -> str:
-    name = path.name
+def strip_archive_suffix(name: str) -> str:
     for suffix in (".tar.gz", ".tar.xz", ".tgz", ".zip", ".tar"):
         if name.endswith(suffix):
             return name[: -len(suffix)]
-    return path.stem
+    return pathlib.Path(name).stem
+
+
+def first_top_level(entries: list[str]) -> str | None:
+    names: list[str] = []
+    for raw_name in entries:
+        if not raw_name or raw_name.startswith("__MACOSX/"):
+            continue
+        normalized = raw_name[2:] if raw_name.startswith("./") else raw_name
+        if normalized:
+            names.append(normalized)
+    if not names:
+        return None
+    top_levels = sorted({name.rstrip("/").split("/", 1)[0] for name in names if name.rstrip("/")})
+    if len(top_levels) != 1:
+        return None
+    top_level = top_levels[0]
+    if not any(name.startswith(f"{top_level}/") for name in names):
+        return None
+    return top_level
+
+
+def archive_top_level_name(path: pathlib.Path) -> str:
+    try:
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path) as zf:
+                top_level = first_top_level(zf.namelist())
+        elif tarfile.is_tarfile(path):
+            with tarfile.open(path) as tf:
+                top_level = first_top_level(tf.getnames())
+        else:
+            top_level = None
+    except (OSError, tarfile.TarError, zipfile.BadZipFile):
+        top_level = None
+    return top_level or strip_archive_suffix(path.name)
 
 
 archive_path = pathlib.Path(archive_arg).expanduser().resolve() if archive_arg else None
