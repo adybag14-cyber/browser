@@ -88,6 +88,9 @@ def resolve_default_saved_archives_root(repo_root: pathlib.Path) -> pathlib.Path
 
 
 def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, ".toolchains")
+    if located is not None and located.is_dir():
+        return located
     located = locate_first_existing(repo_root, "toolchains")
     if located is not None and located.is_dir():
         return located
@@ -359,7 +362,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--toolchains-root",
         default=None,
-        help="Path to the shared toolchains directory (default: nearest ancestor toolchains root or ../toolchains)",
+        help="Path to the shared toolchains directory (default: nearest hidden .toolchains root, then nearest visible toolchains root, then ../toolchains)",
     )
     parser.add_argument(
         "--fallback-zig-archive",
@@ -561,7 +564,7 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
         )
         self.assertEqual(command[-1], "--check-only")
 
-    def test_defaults_discover_ancestor_workspace_roots(self) -> None:
+    def test_defaults_discover_hidden_toolchains_root_before_visible_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace_root = pathlib.Path(tmpdir)
             repo_root = workspace_root / "restored" / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME / "browser"
@@ -570,15 +573,27 @@ class SavedZigArchiveHelperTests(unittest.TestCase):
 
             saved_archives_root = workspace_root / "memory" / "repo_archives" / "browser"
             saved_archives_root.mkdir(parents=True)
-            toolchains_root = workspace_root / "toolchains"
-            toolchains_root.mkdir()
+            hidden_toolchains_root = workspace_root / ".toolchains"
+            hidden_toolchains_root.mkdir()
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
             fallback_archive = workspace_root / "agent_files" / DEFAULT_FALLBACK_ZIG_ARCHIVE
             fallback_archive.parent.mkdir()
             fallback_archive.write_text("zig", encoding="utf-8")
 
             self.assertEqual(resolve_default_saved_archives_root(repo_root), saved_archives_root.resolve())
-            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), hidden_toolchains_root.resolve())
             self.assertEqual(resolve_default_fallback_archive(repo_root), fallback_archive.resolve())
+
+    def test_defaults_fall_back_to_visible_toolchains_root_when_hidden_root_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = pathlib.Path(tmpdir)
+            repo_root = workspace_root / "restored" / DEFAULT_RESTORED_CHECKOUT_ROOT_NAME / "browser"
+            repo_root.mkdir(parents=True)
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), visible_toolchains_root.resolve())
 
     def test_build_report_fails_without_matching_archive(self) -> None:
         search_roots = [
