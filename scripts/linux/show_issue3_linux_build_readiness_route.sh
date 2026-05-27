@@ -194,6 +194,7 @@ SAVED_RUST_SURFACE_SCRIPT_PATH="${REPO_ROOT}/scripts/linux/check_issue3_saved_ru
 SAVED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
 OFFLINE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_offline_build_inputs_route.sh"
 WORKSPACE_CONTEXT_SCRIPT="${REPO_ROOT}/scripts/check_issue3_workspace_context.py"
+TOOLCHAINS_ROOT_CANDIDATE_SCRIPT="${REPO_ROOT}/scripts/check_issue11_toolchains_root_candidates.py"
 SAVED_MEMORY_INPUTS_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_memory_inputs.py"
 SAVED_ARCHIVE_INTEGRITY_SCRIPT="${REPO_ROOT}/scripts/check_issue3_saved_archive_integrity.py"
 LINUX_BUILD_READINESS_SCRIPT="${REPO_ROOT}/scripts/check_linux_build_readiness.py"
@@ -202,6 +203,7 @@ RESTORE_SAVED_RUST_SCRIPT="${REPO_ROOT}/scripts/linux/restore_saved_rust_toolcha
 
 SURFACE_CHECK_COMMAND="bash $(format_shell_arg "${LINUX_BUILD_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 WORKSPACE_CONTEXT_COMMAND="python $(format_shell_arg "${WORKSPACE_CONTEXT_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
+TOOLCHAINS_ROOT_CANDIDATE_COMMAND="python $(format_shell_arg "${TOOLCHAINS_ROOT_CANDIDATE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SNAPSHOT_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_BROWSER_SNAPSHOT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROUTE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 RESTORED_CHECKOUT_ROUTE_COMMAND="bash $(format_shell_arg "${RESTORED_CHECKOUT_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}") --helper-root $(format_shell_arg "${REPO_ROOT}") --memory-root $(format_shell_arg "${MEMORY_ROOT}") --restored-checkout-root $(format_shell_arg "${RESTORED_CHECKOUT_ROOT}")"
@@ -302,6 +304,7 @@ print(json.dumps({
     "commands": {
         "surface_check": ${SURFACE_CHECK_COMMAND@Q},
         "workspace_context": ${WORKSPACE_CONTEXT_COMMAND@Q},
+        "toolchains_root_candidates": ${TOOLCHAINS_ROOT_CANDIDATE_COMMAND@Q},
         "saved_browser_snapshot_route": ${SNAPSHOT_ROUTE_COMMAND@Q},
         "saved_browser_snapshot_route_synced": ${SNAPSHOT_SYNC_ROUTE_COMMAND@Q},
         "restored_checkout_route_surface": ${RESTORED_CHECKOUT_ROUTE_SURFACE_COMMAND@Q},
@@ -342,6 +345,7 @@ print(json.dumps({
     "notes": [
         "Run the surface_check command first so missing branch-local docs or helper paths fail fast before offline staging starts.",
         "Run the workspace_context command first when the checkout sits deeper than the default sibling layout so later route overrides reuse surfaced roots instead of hand-built guesses.",
+        "Run the toolchains_root_candidates command next when a nested checkout or mixed toolchains/ versus .toolchains/ workspace could make the broader Rust or Zig rerun guess the wrong shared toolchains root.",
         "Use the saved_browser_snapshot_route command when no reusable checkout exists yet and the restore plus first follow-up commands need to stay on one surface.",
         "Prefer the saved_browser_snapshot_route_synced command when the restored checkout should become its own follow-up root because the saved archive helper surface may be stale.",
         "Run the restored_checkout_route_surface command and then the restored_checkout_route command when a reusable checkout already exists or immediately after the snapshot restore completes.",
@@ -424,6 +428,9 @@ Suggested route
 
   Workspace-context helper when the checkout sits deeper than the default sibling layout:
     ${WORKSPACE_CONTEXT_COMMAND}
+
+  Issue #11 toolchains-root candidate helper when the workspace may expose both toolchains/ and .toolchains/:
+    ${TOOLCHAINS_ROOT_CANDIDATE_COMMAND}
 
   Saved-browser-snapshot route when no reusable checkout exists yet:
     ${SNAPSHOT_ROUTE_COMMAND}
@@ -537,6 +544,7 @@ Working rules
 =============
   - Run the surface check first so missing docs or helper drift fails fast before offline staging starts.
   - Run the workspace-context helper first when the checkout sits deeper than the default sibling layout so the next readiness command or explicit route overrides reuse surfaced roots instead of hand-built guesses.
+  - Run the issue #11 toolchains-root candidate helper before the saved Rust or Zig route printers when a nested checkout or mixed toolchains/ versus .toolchains/ workspace could make later reruns guess the wrong shared toolchains root.
   - If no reusable checkout exists yet, print the saved-browser-snapshot route before the broader readiness helper so the restore and immediate follow-up commands stay on one surface.
   - Prefer the synced saved-browser-snapshot route when the restored checkout should become its own follow-up root because the saved archive can lag the current branch-local helper surface.
   - Run the restored-checkout route surface check and then the restored-checkout route when a reusable checkout already exists or immediately after the restore route finishes.
