@@ -92,6 +92,9 @@ def resolve_default_helper_root(repo_root: Path) -> Path:
 
 
 def resolve_default_toolchains_root(repo_root: Path) -> Path:
+    located = locate_first_existing(repo_root, ".toolchains")
+    if located is not None and located.is_dir():
+        return located
     located = locate_first_existing(repo_root, "toolchains")
     if located is not None and located.is_dir():
         return located
@@ -420,8 +423,10 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             repo_root.mkdir(parents=True)
             (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
 
-            toolchains_root = workspace_root / "toolchains"
-            toolchains_root.mkdir()
+            hidden_toolchains_root = workspace_root / ".toolchains"
+            hidden_toolchains_root.mkdir()
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
             saved_archives_root = workspace_root / "memory" / "repo_archives" / "browser"
             (saved_archives_root / "dependencies").mkdir(parents=True)
             offline_deps_root = workspace_root / "offline-deps"
@@ -431,13 +436,25 @@ class BranchCompatibleZigRerunTests(unittest.TestCase):
             fallback_archive = agent_files_root / DEFAULT_FALLBACK_ZIG_ARCHIVE
             fallback_archive.write_text("zig", encoding="utf-8")
 
-            self.assertEqual(resolve_default_toolchains_root(repo_root), toolchains_root.resolve())
+            self.assertEqual(resolve_default_toolchains_root(repo_root), hidden_toolchains_root.resolve())
             self.assertEqual(
                 resolve_default_saved_archives_root(repo_root),
                 (saved_archives_root / "dependencies").resolve(),
             )
             self.assertEqual(resolve_default_offline_deps_root(repo_root), offline_deps_root.resolve())
             self.assertEqual(resolve_fallback_zig_archive(repo_root, None), fallback_archive.resolve())
+
+    def test_default_toolchains_root_falls_back_to_visible_root_without_hidden_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir)
+            repo_root = workspace_root / "restored" / "browser-memory-snapshot" / "browser"
+            repo_root.mkdir(parents=True)
+            (repo_root / "build.zig.zon").write_text('.minimum_zig_version = "0.15.2"', encoding="utf-8")
+
+            visible_toolchains_root = workspace_root / "toolchains"
+            visible_toolchains_root.mkdir()
+
+            self.assertEqual(resolve_default_toolchains_root(repo_root), visible_toolchains_root.resolve())
 
     def test_default_helper_root_prefers_live_helper_cwd_for_restored_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
