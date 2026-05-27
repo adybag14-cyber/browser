@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import os
 import pathlib
+import re
 import tempfile
 import unittest
 
@@ -11,6 +12,7 @@ TARGET_FILE = "scripts/check_issue3_saved_memory_inputs.py"
 TARGET_ROUTE_NOTE = "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md"
 TARGET_ROUTE_PRINTER = "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
 TARGET_RESTORE_HELPER = "scripts/linux/restore_saved_browser_snapshot.sh"
+TARGET_NESTED_RUNNER = "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
 REQUIRED_PATHS = (
     "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
     "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
@@ -88,6 +90,24 @@ declare -a HELPER_SURFACE_PATHS=(
 )
 """
 
+FIXTURE_NESTED_RUNNER = """
+#!/usr/bin/env bash
+
+CONTRACT_TARGET_ROOT="${RESTORED_CHECKOUT_ROOT}"
+
+HELPER_CONTRACT_CMD=(
+    python3
+    "${HELPER_ROOT}/scripts/check_issue11_saved_memory_helper_contract.py"
+    --repo-root "${CONTRACT_TARGET_ROOT}"
+)
+
+REENTRY_INVENTORY_CMD=(
+    python3
+    "${HELPER_ROOT}/scripts/check_issue11_reentry_inventory_consistency.py"
+    --repo-root "${CONTRACT_TARGET_ROOT}"
+)
+"""
+
 
 def build_fixture_repo() -> pathlib.Path:
     root = pathlib.Path(
@@ -108,6 +128,10 @@ def build_fixture_repo() -> pathlib.Path:
     restore_helper = root / TARGET_RESTORE_HELPER
     restore_helper.parent.mkdir(parents=True, exist_ok=True)
     restore_helper.write_text(FIXTURE_RESTORE_HELPER.lstrip("\n"), encoding="utf-8")
+
+    nested_runner = root / TARGET_NESTED_RUNNER
+    nested_runner.parent.mkdir(parents=True, exist_ok=True)
+    nested_runner.write_text(FIXTURE_NESTED_RUNNER.lstrip("\n"), encoding="utf-8")
     return root
 
 
@@ -146,7 +170,7 @@ def extract_base_required_helper_paths(source_text: str) -> set[str]:
 
 
 def extract_restore_helper_paths(source_text: str) -> set[str]:
-    marker = 'declare -a HELPER_SURFACE_PATHS=(' 
+    marker = 'declare -a HELPER_SURFACE_PATHS=('
     in_block = False
     paths: set[str] = set()
 
@@ -168,6 +192,27 @@ def extract_restore_helper_paths(source_text: str) -> set[str]:
     return paths
 
 
+def extract_command_repo_root(source_text: str, command_name: str) -> str:
+    marker = f"{command_name}=("
+    in_block = False
+
+    for line in source_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        match = re.search(r'--repo-root\s+"([^"]+)"', stripped)
+        if match:
+            return match.group(1)
+
+    raise AssertionError(f"{command_name} repo root target is missing")
+
+
 class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -179,6 +224,9 @@ class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
             encoding="utf-8"
         )
         cls.restore_helper = (cls.repo_root / TARGET_RESTORE_HELPER).read_text(
+            encoding="utf-8"
+        )
+        cls.nested_runner = (cls.repo_root / TARGET_NESTED_RUNNER).read_text(
             encoding="utf-8"
         )
 
@@ -210,6 +258,19 @@ class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
         helper_paths = extract_restore_helper_paths(self.restore_helper)
         for relative_path in REQUIRED_PATHS:
             self.assertIn(relative_path, helper_paths)
+
+    def test_nested_runner_helper_contract_targets_restored_checkout(self) -> None:
+        self.assertIn('CONTRACT_TARGET_ROOT="${RESTORED_CHECKOUT_ROOT}"', self.nested_runner)
+        self.assertEqual(
+            extract_command_repo_root(self.nested_runner, "HELPER_CONTRACT_CMD"),
+            "${CONTRACT_TARGET_ROOT}",
+        )
+
+    def test_nested_runner_reentry_inventory_targets_restored_checkout(self) -> None:
+        self.assertEqual(
+            extract_command_repo_root(self.nested_runner, "REENTRY_INVENTORY_CMD"),
+            "${CONTRACT_TARGET_ROOT}",
+        )
 
 
 if __name__ == "__main__":
