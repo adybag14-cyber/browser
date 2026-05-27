@@ -22,12 +22,17 @@ REQUIRED_PATHS = (
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
     "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
 )
+REQUIRED_MEMORY_SYNC_SNIPPETS = (
+    "repo_archives/browser/",
+    "fix Memory sync first",
+    "restore route still depends on the same saved snapshot and dependency bundles",
+)
 REQUIRED_ROUTE_NOTE_SNIPPETS = REQUIRED_PATHS + (
     "check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
     "show_issue3_staged_zig_toolchain_candidates_route.sh",
     "check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
     "show_issue3_staged_rust_toolchain_candidates_route.sh",
-)
+) + REQUIRED_MEMORY_SYNC_SNIPPETS
 REQUIRED_ROUTE_PRINTER_SNIPPETS = (
     "nested_workspace_saved_memory_preflight",
     "quick_nested_workspace_saved_memory_preflight",
@@ -37,7 +42,7 @@ REQUIRED_ROUTE_PRINTER_SNIPPETS = (
     "show_issue3_staged_zig_toolchain_candidates_route.sh",
     "check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
     "show_issue3_staged_rust_toolchain_candidates_route.sh",
-)
+) + REQUIRED_MEMORY_SYNC_SNIPPETS
 
 FIXTURE_SOURCE = """
 from __future__ import annotations
@@ -63,6 +68,9 @@ FIXTURE_ROUTE_NOTE = """
 - scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
 - scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
 - scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+- repo_archives/browser/
+- fix Memory sync first
+- restore route still depends on the same saved snapshot and dependency bundles
 """
 
 FIXTURE_ROUTE_PRINTER = """
@@ -74,6 +82,9 @@ check_issue3_staged_zig_toolchain_candidates_route_surface.sh
 show_issue3_staged_zig_toolchain_candidates_route.sh
 check_issue3_staged_rust_toolchain_candidates_route_surface.sh
 show_issue3_staged_rust_toolchain_candidates_route.sh
+repo_archives/browser/
+fix Memory sync first
+restore route still depends on the same saved snapshot and dependency bundles
 """
 
 FIXTURE_RESTORE_HELPER = """
@@ -86,7 +97,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh"
     "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh"
-    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+    "scripts/linux/run_issue11_nested_workspace_saved_MEMORY_preflight.sh"
 )
 """
 
