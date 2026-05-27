@@ -160,9 +160,9 @@ if [[ -z "${SAVED_ARCHIVES_ROOT}" ]]; then
 fi
 SAVED_ARCHIVES_ROOT="$(normalize_saved_archives_root "${SAVED_ARCHIVES_ROOT}")"
 if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "toolchains" || true)"
+    TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" ".toolchains" || true)"
     if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
-        TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" ".toolchains" || true)"
+        TOOLCHAINS_ROOT="$(resolve_first_existing_path "${HELPER_ROOT}" "toolchains" || true)"
     fi
     if [[ -z "${TOOLCHAINS_ROOT}" ]]; then
         TOOLCHAINS_ROOT="${HELPER_WORKSPACE_ROOT}/toolchains"
@@ -303,7 +303,7 @@ if [[ "${JSON}" -eq 1 ]]; then
     printf '    %s,\n' "$(json_escape "When a matching staged Zig candidate already exists, surface the exact build-readiness rerun helper before broader Linux or WSL readiness is retried.")"
     printf '    %s,\n' "$(json_escape "Thread helper-root plus the surfaced Memory, restored-checkout, saved-archives, toolchains, and offline-deps roots through this route so nested follow-up helpers keep pointing at the same practical workspace layout.")"
     printf '    %s,\n' "$(json_escape "Thread --fallback-zig-archive through this route when the attached archive is not beside the repo workspace so nested workspace-context, nested-workspace saved-memory preflight, saved-memory, saved-archive-integrity, saved-Zig, staged-Zig, build-readiness-rerun, matching-line, and Zig recovery helpers all inspect the same surfaced path.")"
-    printf '    %s,\n' "$(json_escape "Run the matching-line gate after any saved Zig restore so the staged toolchains root proves a branch-compatible 0.15.x executable exists before broader readiness is trusted again.")"
+    printf '    %s,\n' "$(json_escape "Run the matching-line gate after any saved Zig restore so the staged toolchains root has to prove a real branch-compatible 0.15.x executable exists.")"
     printf '    %s,\n' "$(json_escape "Run the archive-restore surface check before staging a chosen saved Zig archive under ../toolchains.")"
     printf '    %s,\n' "$(json_escape "Keep the start comment compact with Goal, Started, and Next.")"
     printf '    %s,\n' "$(json_escape "Post the completion comment only after the branch commit exists, and keep it compact with Achieved, Completed, Commit, and Validation.")"
