@@ -17,10 +17,13 @@ FIXTURE_TEXT = """
 - `docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`
 - `docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`
 - `docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`
+- `docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`
+- `scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`
 - `scripts/check_issue3_saved_memory_inputs.py`
 - `scripts/check_issue3_saved_archive_integrity.py`
 - `scripts/check_issue3_restored_checkout.py`
 - `scripts/check_linux_build_readiness.py`
+- `--fallback-zig-archive`
 - progress update on issue `#11`
 - comments on issue `#2` or issue `#3`
 - `Page.zig`
@@ -63,10 +66,13 @@ class Issue3ProgressTrackerRouteTest(unittest.TestCase):
             "`docs/ISSUE3_SAVED_ARCHIVE_INTEGRITY_ROUTE.md`",
             "`docs/ISSUE3_LINUX_BUILD_READINESS_ROUTE.md`",
             "`docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md`",
+            "`docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md`",
+            "`scripts/linux/show_issue3_zig_toolchain_archive_restore_route.sh`",
             "`scripts/check_issue3_saved_memory_inputs.py`",
             "`scripts/check_issue3_saved_archive_integrity.py`",
             "`scripts/check_issue3_restored_checkout.py`",
             "`scripts/check_linux_build_readiness.py`",
+            "`--fallback-zig-archive`",
             "`Page.zig`",
             "`win32_backend.zig`",
         ):
