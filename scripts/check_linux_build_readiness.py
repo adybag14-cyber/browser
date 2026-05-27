@@ -137,6 +137,9 @@ def resolve_default_agent_files_root(repo_root: pathlib.Path) -> pathlib.Path:
 
 
 def resolve_default_toolchains_root(repo_root: pathlib.Path) -> pathlib.Path:
+    located = locate_first_existing(repo_root, '.toolchains')
+    if located is not None and located.is_dir():
+        return located
     located = locate_first_existing(repo_root, 'toolchains')
     if located is not None and located.is_dir():
         return located
