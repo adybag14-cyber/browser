@@ -8,6 +8,8 @@ import unittest
 
 
 TARGET_FILE = "scripts/check_issue3_saved_memory_inputs.py"
+TARGET_ROUTE_NOTE = "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md"
+TARGET_ROUTE_PRINTER = "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
 REQUIRED_PATHS = (
     "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
     "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
@@ -16,6 +18,22 @@ REQUIRED_PATHS = (
     "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
     "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+)
+REQUIRED_ROUTE_NOTE_SNIPPETS = REQUIRED_PATHS + (
+    "check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+    "show_issue3_staged_zig_toolchain_candidates_route.sh",
+    "check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+    "show_issue3_staged_rust_toolchain_candidates_route.sh",
+)
+REQUIRED_ROUTE_PRINTER_SNIPPETS = (
+    "nested_workspace_saved_memory_preflight",
+    "quick_nested_workspace_saved_memory_preflight",
+    "Issue #11 nested-workspace saved-Memory preflight:",
+    "Quick nested-workspace saved-Memory presence check:",
+    "check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+    "show_issue3_staged_zig_toolchain_candidates_route.sh",
+    "check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+    "show_issue3_staged_rust_toolchain_candidates_route.sh",
 )
 
 FIXTURE_SOURCE = """
@@ -32,6 +50,29 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
 )
 """
 
+FIXTURE_ROUTE_NOTE = """
+# Fixture saved-memory route
+
+- docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md
+- docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md
+- scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh
+- scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh
+- scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+- scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh
+- scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
+"""
+
+FIXTURE_ROUTE_PRINTER = """
+nested_workspace_saved_memory_preflight
+quick_nested_workspace_saved_memory_preflight
+Issue #11 nested-workspace saved-Memory preflight:
+Quick nested-workspace saved-Memory presence check:
+check_issue3_staged_zig_toolchain_candidates_route_surface.sh
+show_issue3_staged_zig_toolchain_candidates_route.sh
+check_issue3_staged_rust_toolchain_candidates_route_surface.sh
+show_issue3_staged_rust_toolchain_candidates_route.sh
+"""
+
 
 def build_fixture_repo() -> pathlib.Path:
     root = pathlib.Path(
@@ -40,6 +81,14 @@ def build_fixture_repo() -> pathlib.Path:
     target = root / TARGET_FILE
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(FIXTURE_SOURCE.lstrip("\n"), encoding="utf-8")
+
+    route_note = root / TARGET_ROUTE_NOTE
+    route_note.parent.mkdir(parents=True, exist_ok=True)
+    route_note.write_text(FIXTURE_ROUTE_NOTE.lstrip("\n"), encoding="utf-8")
+
+    route_printer = root / TARGET_ROUTE_PRINTER
+    route_printer.parent.mkdir(parents=True, exist_ok=True)
+    route_printer.write_text(FIXTURE_ROUTE_PRINTER.lstrip("\n"), encoding="utf-8")
     return root
 
 
@@ -83,14 +132,32 @@ class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
         env_root = os.environ.get("LIGHTPANDA_REPO_ROOT", "").strip()
         cls.repo_root = pathlib.Path(env_root).resolve() if env_root else build_fixture_repo()
         cls.source = (cls.repo_root / TARGET_FILE).read_text(encoding="utf-8")
+        cls.route_note = (cls.repo_root / TARGET_ROUTE_NOTE).read_text(encoding="utf-8")
+        cls.route_printer = (cls.repo_root / TARGET_ROUTE_PRINTER).read_text(
+            encoding="utf-8"
+        )
 
     def test_base_required_helper_tuple_is_present(self) -> None:
         self.assertIn("BASE_REQUIRED_RESTORED_HELPER_FILES", self.source)
 
-    def test_base_required_helper_tuple_keeps_issue11_staged_followups_explicit(self) -> None:
+    def test_base_required_helper_tuple_keeps_issue11_staged_followups_explicit(
+        self,
+    ) -> None:
         base_paths = extract_base_required_helper_paths(self.source)
         for relative_path in REQUIRED_PATHS:
             self.assertIn(relative_path, base_paths)
+
+    def test_saved_memory_route_note_keeps_issue11_staged_followups_visible(
+        self,
+    ) -> None:
+        for snippet in REQUIRED_ROUTE_NOTE_SNIPPETS:
+            self.assertIn(snippet, self.route_note)
+
+    def test_saved_memory_route_printer_keeps_issue11_staged_followups_visible(
+        self,
+    ) -> None:
+        for snippet in REQUIRED_ROUTE_PRINTER_SNIPPETS:
+            self.assertIn(snippet, self.route_printer)
 
 
 if __name__ == "__main__":
