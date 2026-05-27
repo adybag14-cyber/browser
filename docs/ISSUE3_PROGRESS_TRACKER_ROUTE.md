@@ -204,7 +204,7 @@ saved-Zig, or broader build-readiness follow-ups, keep the nested-workspace
 rerun helper visible on the same issue `#11` handoff:
 
 ```bash
-bash ./scripts/linux/run_issue11_nested_workspace_saved_MEMORY_preflight.sh
+bash ./scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh
 ```
 
 Use the quick-presence variant when the route only needs the surfaced saved-
