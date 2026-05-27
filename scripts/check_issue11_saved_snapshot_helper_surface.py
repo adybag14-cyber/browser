@@ -22,6 +22,16 @@ import zipfile
 ARCHIVE_RELATIVE_PATH = "memory/repo_archives/browser/01-browser-fork-headed-mode-foundation.zip"
 RESTORE_HELPER_RELATIVE_PATH = "scripts/linux/restore_saved_browser_snapshot.sh"
 EXPECTED_ARCHIVE_PREFIX = "browser-fork-headed-mode-foundation/"
+ISSUE11_REENTRY_HINT_FRAGMENTS = (
+    "issue11",
+    "ISSUE3_PROGRESS_TRACKER_ROUTE",
+    "ISSUE3_STAGED_ZIG_TOOLCHAIN",
+    "ISSUE3_STAGED_RUST_TOOLCHAIN",
+    "check_issue3_staged_zig_toolchain",
+    "check_issue3_staged_rust_toolchain",
+    "show_issue3_staged_zig_toolchain",
+    "show_issue3_staged_rust_toolchain",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -122,6 +132,10 @@ def determine_archive_prefix(names: list[str]) -> str:
     raise ValueError("Could not determine the archive top-level folder")
 
 
+def is_issue11_reentry_helper_path(relative_path: str) -> bool:
+    return any(fragment in relative_path for fragment in ISSUE11_REENTRY_HINT_FRAGMENTS)
+
+
 def collect_results(repo_root: Path, memory_root: Path, archive_path: Path) -> dict[str, object]:
     restore_helper_path = repo_root / RESTORE_HELPER_RELATIVE_PATH
     restore_helper_exists = restore_helper_path.is_file()
@@ -166,7 +180,7 @@ def collect_results(repo_root: Path, memory_root: Path, archive_path: Path) -> d
     missing_issue11_paths = [
         relative_path
         for relative_path in missing_helper_paths
-        if "issue11" in relative_path or "ISSUE3_PROGRESS_TRACKER_ROUTE" in relative_path
+        if is_issue11_reentry_helper_path(relative_path)
     ]
 
     if restore_helper_error is not None:
@@ -257,6 +271,23 @@ class Issue11SavedSnapshotHelperSurfaceTests(unittest.TestCase):
             ],
         )
 
+    def test_classifies_staged_toolchain_route_paths_as_issue11_reentry_hints(self) -> None:
+        self.assertTrue(
+            is_issue11_reentry_helper_path(
+                "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md"
+            )
+        )
+        self.assertTrue(
+            is_issue11_reentry_helper_path(
+                "scripts/check_issue3_staged_rust_toolchain_candidates.py"
+            )
+        )
+        self.assertFalse(
+            is_issue11_reentry_helper_path(
+                "docs/ISSUE3_SAVED_BROWSER_SNAPSHOT_ROUTE.md"
+            )
+        )
+
     def test_reports_stale_archive_when_issue11_helper_paths_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -268,6 +299,7 @@ class Issue11SavedSnapshotHelperSurfaceTests(unittest.TestCase):
             restore_helper.write_text(
                 make_restore_helper_script(
                     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md",
+                    "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
                     "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
                     "scripts/check_issue11_saved_memory_helper_contract.py",
                 ),
@@ -285,6 +317,10 @@ class Issue11SavedSnapshotHelperSurfaceTests(unittest.TestCase):
             )
             self.assertIn(
                 "scripts/check_issue11_saved_memory_helper_contract.py",
+                result["missing_issue11_paths"],
+            )
+            self.assertIn(
+                "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
                 result["missing_issue11_paths"],
             )
 
