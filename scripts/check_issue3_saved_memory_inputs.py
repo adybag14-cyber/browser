@@ -70,10 +70,12 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     ("docs/ISSUE3_ZIG_TOOLCHAIN_RECOVERY_ROUTE.md", "Zig toolchain recovery guide"),
     ("docs/ISSUE3_ZIG_TOOLCHAIN_ARCHIVE_RESTORE_ROUTE.md", "Zig toolchain archive restore guide"),
     ("docs/ISSUE3_SAVED_ZIG_ARCHIVE_CANDIDATES_ROUTE.md", "saved Zig archive candidate guide"),
+    ("docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md", "staged Zig toolchain candidate guide"),
     ("docs/ISSUE3_OFFLINE_BUILD_INPUTS_ROUTE.md", "offline build inputs guide"),
     ("docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md", "saved Rust toolchain guide"),
     ("docs/ISSUE3_SAVED_RUST_BUILD_READINESS_ROUTE.md", "saved Rust build-readiness guide"),
     ("docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md", "saved Rust archive candidates guide"),
+    ("docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md", "staged Rust toolchain candidate guide"),
     ("docs/ISSUE3_GOOGLE_ATTACHED_HTML_VALIDATION_FLOW.md", "Google-shaped attached-page validation flow guide"),
     ("scripts/check_issue3_saved_memory_inputs.py", "saved-memory preflight helper"),
     ("scripts/check_issue3_saved_archive_integrity.py", "saved-archive integrity helper"),
@@ -119,6 +121,14 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "scripts/linux/show_issue3_saved_zig_archive_candidates_route.sh",
         "saved Zig archive candidate route helper",
     ),
+    (
+        "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+        "staged Zig toolchain candidate route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
+        "staged Zig toolchain candidate route helper",
+    ),
     ("scripts/linux/check_issue3_workspace_context_route_surface.sh", "workspace-context route surface checker"),
     ("scripts/linux/show_issue3_workspace_context_route.sh", "workspace-context route helper"),
     (
@@ -147,6 +157,7 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
         "saved-memory inputs route surface checker",
     ),
     ("scripts/linux/show_issue3_saved_memory_inputs_route.sh", "saved-memory inputs route helper"),
+    ("scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh", "issue #11 nested-workspace saved-memory preflight wrapper"),
     (
         "scripts/linux/check_issue3_linux_build_readiness_route_surface.sh",
         "Linux build-readiness surface checker",
@@ -187,6 +198,14 @@ BASE_REQUIRED_RESTORED_HELPER_FILES: tuple[tuple[str, str], ...] = (
     (
         "scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh",
         "saved Rust archive candidates route helper",
+    ),
+    (
+        "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+        "staged Rust toolchain candidate route surface checker",
+    ),
+    (
+        "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+        "staged Rust toolchain candidate route helper",
     ),
     (
         "scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh",
@@ -746,6 +765,19 @@ class SavedMemoryInputsTests(unittest.TestCase):
             paths = {path for path, _label in load_required_restored_helper_files(helper_root)}
             self.assertIn("scripts/check_issue11_saved_memory_helper_contract.py", paths)
             self.assertIn("scripts/linux/show_issue3_saved_rust_build_readiness_route.sh", paths)
+
+    def test_base_required_restored_helper_files_keep_issue11_staged_followups_explicit(self) -> None:
+        required_paths = {
+            "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
+            "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh",
+            "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh",
+            "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh",
+            "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh",
+        }
+        base_paths = {path for path, _label in BASE_REQUIRED_RESTORED_HELPER_FILES}
+        self.assertTrue(required_paths.issubset(base_paths))
 
     def test_collect_results_passes_with_required_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
