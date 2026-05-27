@@ -97,7 +97,7 @@ declare -a HELPER_SURFACE_PATHS=(
     "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh"
     "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
     "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh"
-    "scripts/linux/run_issue11_nested_workspace_saved_MEMORY_preflight.sh"
+    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
 )
 """
 
