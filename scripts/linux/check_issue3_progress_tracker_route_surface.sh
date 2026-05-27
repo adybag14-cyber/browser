@@ -89,6 +89,7 @@ declare -a REFERENCE_PATHS=(
     "scripts/check_linux_build_readiness.py|file|Linux build-readiness helper used before the narrowed runtime lane is reopened."
     "scripts/check_issue11_saved_memory_helper_contract.py|file|Issue #11 saved-memory helper-contract checker used before the broader saved-memory preflight widens the route."
     "scripts/check_issue11_reentry_inventory_consistency.py|file|Issue #11 helper-inventory consistency checker used when newer tracker-specific helpers should still be present."
+    "scripts/check_issue11_toolchains_root_candidates.py|file|Issue #11 toolchains-root candidate helper used when both toolchains/ and .toolchains/ may be visible and later reruns need one explicit surfaced root."
 )
 
 declare -a CONTENT_EXPECTATIONS=(
@@ -101,6 +102,7 @@ declare -a CONTENT_EXPECTATIONS=(
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue3_workspace_context.py|The progress-tracker note keeps the workspace-context helper visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_saved_memory_helper_contract.py|The progress-tracker note keeps the narrower saved-memory helper-contract checker visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_reentry_inventory_consistency.py|The progress-tracker note keeps the tracker-specific inventory checker visible."
+    "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/check_issue11_toolchains_root_candidates.py|The progress-tracker note keeps the toolchains-root candidate helper visible before later reruns trust a guessed toolchains root."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|Use the saved-memory helper-contract checker before the broader saved-memory|The progress-tracker note explains the narrower saved-memory contract check before the broader preflight."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh|The progress-tracker note keeps the nested-workspace saved-Memory rerun helper visible."
     "docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md|skip-archive-integrity-check|The progress-tracker note keeps the nested-workspace quick-presence variant visible."
@@ -179,6 +181,9 @@ declare -a CONTENT_EXPECTATIONS=(
     "scripts/linux/show_issue3_progress_tracker_route.sh|Staged Zig candidates route:|The route printer keeps the staged-Zig route visible in the human-readable handoff."
     "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_staged_zig_toolchain_candidates.py|The route printer still exposes the staged-Zig candidate helper."
     "scripts/linux/show_issue3_progress_tracker_route.sh|staged_zig_toolchain_candidates|The route printer JSON output exposes the staged-Zig candidate helper explicitly."
+    "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue11_toolchains_root_candidates.py|The route printer still exposes the toolchains-root candidate helper."
+    "scripts/linux/show_issue3_progress_tracker_route.sh|toolchains_root_candidates|The route printer JSON output exposes the toolchains-root candidate helper explicitly."
+    "scripts/linux/show_issue3_progress_tracker_route.sh|Toolchains-root candidates:|The route printer keeps the toolchains-root candidate helper visible in the human-readable handoff."
     "scripts/linux/show_issue3_progress_tracker_route.sh|check_issue3_build_readiness_rerun.py|The route printer still exposes the build-readiness rerun helper."
     "scripts/linux/show_issue3_progress_tracker_route.sh|build_readiness_rerun_helper|The route printer JSON output exposes the build-readiness rerun helper explicitly."
     "scripts/linux/show_issue3_progress_tracker_route.sh|Build-readiness rerun helper:|The route printer keeps the rerun helper visible in the human-readable handoff."
