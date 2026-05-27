@@ -6,16 +6,17 @@ compact bridge back into the broader issue `#11` build-readiness route.
 
 This route keeps the lower-volume issue `#11` status lane, the saved-memory
 preflight handoff, the nested-workspace saved-memory rerun helper, the
-workspace-context root-discovery handoff, the saved Rust archive-selection
-helpers, the staged Rust route note and route-surface helpers, the staged Rust
-candidate helper, the saved Rust restore route, and the broader Linux
-build-readiness route on one branch-local surface.
+workspace-context root-discovery handoff, the toolchains-root candidate helper,
+the saved Rust archive-selection helpers, the staged Rust route note and
+route-surface helpers, the staged Rust candidate helper, the saved Rust restore
+route, and the broader Linux build-readiness route on one branch-local surface.
 
 Companion helpers:
 
 - `docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md`
 - `docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md`
 - `docs/ISSUE3_WORKSPACE_CONTEXT_ROUTE.md`
+- `scripts/check_issue11_toolchains_root_candidates.py`
 - `docs/ISSUE3_SAVED_RUST_ARCHIVE_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md`
 - `docs/ISSUE3_SAVED_RUST_TOOLCHAIN_ROUTE.md`
@@ -113,6 +114,20 @@ bash ./scripts/linux/check_issue3_workspace_context_route_surface.sh
 bash ./scripts/linux/show_issue3_workspace_context_route.sh
 python ./scripts/check_issue3_workspace_context.py --repo-root .
 ```
+
+## Surface The Toolchains Root Before Rust Helpers Guess It
+
+When both `toolchains/` and `.toolchains/` may be visible above the checkout,
+stop guessing before the saved-Rust archive, staged-Rust, or broader Linux
+build-readiness helpers inherit the wrong root:
+
+```bash
+python ./scripts/check_issue11_toolchains_root_candidates.py --repo-root .
+```
+
+Use its preferred `--toolchains-root` override before rerunning the saved-Rust
+archive helper, staged-Rust helper, or Linux build-readiness helper from the
+same workspace layout.
 
 ## Surface Saved Rust Archive Candidates
 
