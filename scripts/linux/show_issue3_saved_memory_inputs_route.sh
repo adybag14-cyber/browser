@@ -348,6 +348,7 @@ print(json.dumps({
         "Use live_helper_restored_checkout_preflight when the restored snapshot itself needs to be checked against the newer live helper surface before running follow-up route commands from that restored tree.",
         "Point helper_root at the live branch-local helper surface when repo_root is a restored checkout that should reuse newer route helpers.",
         "Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane so issue #11 remains the practical progress-update target.",
+        "If the surfaced memory root exists but repo_archives/browser/ is missing or empty, fix Memory sync first; the restore route still depends on the same saved snapshot and dependency bundles.",
         "Use saved_archive_integrity_route when the saved-input preflight passes but the next question is still whether the exact saved bundles and snapshot helper surface are trustworthy enough for restore or staging.",
         "Use saved_zig_archive_candidates_route when the next question is which saved 0.15.x archive should be staged before broader Zig recovery or Linux build-readiness work resumes.",
         "Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots threaded into the nested Linux build-readiness route so restored follow-up runs do not fall back to guessed sibling paths; toolchain discovery now prefers a hidden .toolchains root but still accepts a visible toolchains root.",
@@ -455,6 +456,7 @@ Working rules
   - Use the live-helper restored-checkout preflight when the extracted snapshot may lag behind the live helper surface and the run needs that drift to fail before it starts calling route commands from the restored tree.
   - Point --helper-root at the live branch-local helper surface when repo_root is a restored checkout that should still reuse newer helper notes and scripts.
   - Keep docs/ISSUE3_PROGRESS_TRACKER_ROUTE.md visible when the run is still blocked in the Linux or WSL re-entry lane and needs a safe issue #11 progress-update handoff before wider follow-up work.
+  - If the surfaced memory root exists but repo_archives/browser/ is missing or empty, fix Memory sync first; the restore route still depends on the same saved snapshot and dependency bundles.
   - Use the saved-archive integrity route when the saved-Memory preflight passes but the next question is still whether the exact saved bundles and snapshot helper surface are trustworthy enough for restore or staging.
   - Use the saved Zig archive candidates route when the next question is which saved 0.15.x archive should be staged before wider Zig recovery or Linux build-readiness work resumes.
   - Keep the caller-provided Memory, restored-checkout, Rust toolchain, and offline-deps roots aligned when handing off to the Linux or WSL build-readiness route, and prefer a hidden .toolchains root while still accepting a visible toolchains root when discovering staged toolchains.
