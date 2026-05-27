@@ -102,6 +102,7 @@ PROGRESS_TRACKER_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_progress_t
 SAVED_RUST_ARCHIVE_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_rust_archive_candidates_route_surface.sh"
 SAVED_RUST_ARCHIVE_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_archive_candidates_route.sh"
 SAVED_RUST_ARCHIVE_HELPER="${REPO_ROOT}/scripts/check_issue3_saved_rust_archive_candidates.py"
+TOOLCHAINS_ROOT_CANDIDATES_HELPER="${REPO_ROOT}/scripts/check_issue11_toolchains_root_candidates.py"
 STAGED_RUST_HELPER="${REPO_ROOT}/scripts/check_issue3_staged_rust_toolchain_candidates.py"
 SAVED_RUST_SURFACE_SCRIPT="${REPO_ROOT}/scripts/linux/check_issue3_saved_rust_toolchain_route_surface.sh"
 SAVED_RUST_ROUTE_SCRIPT="${REPO_ROOT}/scripts/linux/show_issue3_saved_rust_toolchain_route.sh"
@@ -115,6 +116,7 @@ PROGRESS_TRACKER_ROUTE_COMMAND="bash $(format_shell_arg "${PROGRESS_TRACKER_ROUT
 SAVED_RUST_ARCHIVE_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ARCHIVE_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ARCHIVE_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ARCHIVE_ROUTE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ARCHIVE_HELPER_COMMAND="python $(format_shell_arg "${SAVED_RUST_ARCHIVE_HELPER}") --repo-root $(format_shell_arg "${REPO_ROOT}") --saved-archives-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
+TOOLCHAINS_ROOT_CANDIDATES_COMMAND="python $(format_shell_arg "${TOOLCHAINS_ROOT_CANDIDATES_HELPER}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 STAGED_RUST_HELPER_COMMAND="python $(format_shell_arg "${STAGED_RUST_HELPER}") --repo-root $(format_shell_arg "${REPO_ROOT}") --toolchains-root $(format_shell_arg "${TOOLCHAINS_ROOT}")"
 SAVED_RUST_SURFACE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_SURFACE_SCRIPT}") --repo-root $(format_shell_arg "${REPO_ROOT}")"
 SAVED_RUST_ROUTE_COMMAND="bash $(format_shell_arg "${SAVED_RUST_ROUTE_SCRIPT}") --browser-root $(format_shell_arg "${REPO_ROOT}") --dependencies-root $(format_shell_arg "${SAVED_ARCHIVES_ROOT}") --toolchain-root $(format_shell_arg "${RUST_TOOLCHAIN_DIR}")"
@@ -146,6 +148,7 @@ print(json.dumps({
         "saved_rust_archive_surface": ${SAVED_RUST_ARCHIVE_SURFACE_COMMAND@Q},
         "saved_rust_archive_route": ${SAVED_RUST_ARCHIVE_ROUTE_COMMAND@Q},
         "saved_rust_archive_helper": ${SAVED_RUST_ARCHIVE_HELPER_COMMAND@Q},
+        "toolchains_root_candidates": ${TOOLCHAINS_ROOT_CANDIDATES_COMMAND@Q},
         "staged_rust_helper": ${STAGED_RUST_HELPER_COMMAND@Q},
         "saved_rust_surface": ${SAVED_RUST_SURFACE_COMMAND@Q},
         "saved_rust_route": ${SAVED_RUST_ROUTE_COMMAND@Q},
@@ -194,6 +197,9 @@ Suggested route
   Saved Rust archive candidates:
     ${SAVED_RUST_ARCHIVE_HELPER_COMMAND}
 
+  Issue #11 toolchains-root candidates:
+    ${TOOLCHAINS_ROOT_CANDIDATES_COMMAND}
+
   Staged Rust toolchain candidates:
     ${STAGED_RUST_HELPER_COMMAND}
 
@@ -217,6 +223,7 @@ Working rules
   - Run the surface check first so missing branch-local route files fail fast before the Rust handoff is trusted.
   - Run the progress-tracker surface and route first when issue #11 should stay visible as the current status lane.
   - Run the saved Rust archive-candidate surface and route before choosing a saved archive by hand.
+  - Run the issue #11 toolchains-root helper before the staged Rust helper when nested or restored reruns could see both .toolchains and toolchains so later commands can pass --toolchains-root explicitly.
   - Run the staged Rust toolchain helper before restoring the saved archive again so a reusable Rust 1.79.x toolchain can be reused first.
   - Reopen the saved Rust route after candidate discovery when the exact restore and shell-export surface is still needed.
   - Hand back to the broader Linux build-readiness route as soon as the Rust toolchain stops being the main blocker.
