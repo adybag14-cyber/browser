@@ -10,6 +10,7 @@ import unittest
 TARGET_FILE = "scripts/check_issue3_saved_memory_inputs.py"
 TARGET_ROUTE_NOTE = "docs/ISSUE3_SAVED_MEMORY_INPUTS_ROUTE.md"
 TARGET_ROUTE_PRINTER = "scripts/linux/show_issue3_saved_memory_inputs_route.sh"
+TARGET_RESTORE_HELPER = "scripts/linux/restore_saved_browser_snapshot.sh"
 REQUIRED_PATHS = (
     "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md",
     "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md",
@@ -73,6 +74,20 @@ check_issue3_staged_rust_toolchain_candidates_route_surface.sh
 show_issue3_staged_rust_toolchain_candidates_route.sh
 """
 
+FIXTURE_RESTORE_HELPER = """
+#!/usr/bin/env bash
+
+declare -a HELPER_SURFACE_PATHS=(
+    "docs/ISSUE3_STAGED_ZIG_TOOLCHAIN_CANDIDATES_ROUTE.md"
+    "docs/ISSUE3_STAGED_RUST_TOOLCHAIN_CANDIDATES_ROUTE.md"
+    "scripts/linux/check_issue3_staged_zig_toolchain_candidates_route_surface.sh"
+    "scripts/linux/show_issue3_staged_zig_toolchain_candidates_route.sh"
+    "scripts/linux/check_issue3_staged_rust_toolchain_candidates_route_surface.sh"
+    "scripts/linux/show_issue3_staged_rust_toolchain_candidates_route.sh"
+    "scripts/linux/run_issue11_nested_workspace_saved_memory_preflight.sh"
+)
+"""
+
 
 def build_fixture_repo() -> pathlib.Path:
     root = pathlib.Path(
@@ -89,6 +104,10 @@ def build_fixture_repo() -> pathlib.Path:
     route_printer = root / TARGET_ROUTE_PRINTER
     route_printer.parent.mkdir(parents=True, exist_ok=True)
     route_printer.write_text(FIXTURE_ROUTE_PRINTER.lstrip("\n"), encoding="utf-8")
+
+    restore_helper = root / TARGET_RESTORE_HELPER
+    restore_helper.parent.mkdir(parents=True, exist_ok=True)
+    restore_helper.write_text(FIXTURE_RESTORE_HELPER.lstrip("\n"), encoding="utf-8")
     return root
 
 
@@ -126,6 +145,29 @@ def extract_base_required_helper_paths(source_text: str) -> set[str]:
     raise AssertionError("BASE_REQUIRED_RESTORED_HELPER_FILES is missing")
 
 
+def extract_restore_helper_paths(source_text: str) -> set[str]:
+    marker = 'declare -a HELPER_SURFACE_PATHS=(' 
+    in_block = False
+    paths: set[str] = set()
+
+    for line in source_text.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            if stripped == marker:
+                in_block = True
+            continue
+
+        if stripped == ")":
+            break
+
+        if stripped.startswith('"') and stripped.endswith('"'):
+            paths.add(stripped.strip('"'))
+
+    if not in_block:
+        raise AssertionError("HELPER_SURFACE_PATHS block is missing")
+    return paths
+
+
 class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -134,6 +176,9 @@ class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
         cls.source = (cls.repo_root / TARGET_FILE).read_text(encoding="utf-8")
         cls.route_note = (cls.repo_root / TARGET_ROUTE_NOTE).read_text(encoding="utf-8")
         cls.route_printer = (cls.repo_root / TARGET_ROUTE_PRINTER).read_text(
+            encoding="utf-8"
+        )
+        cls.restore_helper = (cls.repo_root / TARGET_RESTORE_HELPER).read_text(
             encoding="utf-8"
         )
 
@@ -158,6 +203,13 @@ class Issue11SavedMemoryPreflightStagedSurfaceTest(unittest.TestCase):
     ) -> None:
         for snippet in REQUIRED_ROUTE_PRINTER_SNIPPETS:
             self.assertIn(snippet, self.route_printer)
+
+    def test_restore_helper_surface_keeps_issue11_staged_followups_explicit(
+        self,
+    ) -> None:
+        helper_paths = extract_restore_helper_paths(self.restore_helper)
+        for relative_path in REQUIRED_PATHS:
+            self.assertIn(relative_path, helper_paths)
 
 
 if __name__ == "__main__":
