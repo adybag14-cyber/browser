@@ -1,11 +1,15 @@
 // Native headed Lightpanda entry point for Windows validation/distribution.
 const std = @import("std");
+const builtin = @import("builtin");
 const lp = @import("lightpanda");
 
 pub const panic = lp.crash_handler.panic;
 
 pub fn main(init: std.process.Init) !void {
-    var gpa_instance: std.heap.DebugAllocator(.{ .stack_trace_frames = 10 }) = .init;
+    // Windows stack unwinding through active V8/JIT frames is not reliable; keep
+    // DebugAllocator safety enabled but skip allocation/free stack capture there.
+    const stack_trace_frames: usize = if (builtin.os.tag == .windows) 0 else 10;
+    var gpa_instance: std.heap.DebugAllocator(.{ .stack_trace_frames = stack_trace_frames }) = .init;
     const allocator = if (lp.IS_DEBUG) gpa_instance.allocator() else std.heap.c_allocator;
     defer if (lp.IS_DEBUG) {
         if (gpa_instance.detectLeaks() != 0) std.process.exit(1);
