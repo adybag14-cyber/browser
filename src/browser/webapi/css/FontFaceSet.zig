@@ -67,9 +67,10 @@ pub fn getReady(_: *FontFaceSet, frame: *Frame) !js.Promise {
     return frame.js.local.?.resolvePromise({});
 }
 
-pub fn getSize(self: *const FontFaceSet) !u32 {
-    const faces = try self.collectFontFaces(self._page);
-    return @intCast(faces.len);
+// check(font, text?) - always true; headless has no real fonts to check.
+pub fn check(_: *const FontFaceSet, font: []const u8) bool {
+    _ = font;
+    return true;
 }
 
 // load(font, text?) - resolves immediately with an empty array.
@@ -108,29 +109,13 @@ pub const JsApi = struct {
         pub var class_id: bridge.ClassId = undefined;
     };
 
-    pub const size = bridge.accessor(FontFaceSet.getSize, null, .{});
-    pub const status = bridge.accessor(FontFaceSet.getStatus, null, .{});
+    pub const size = bridge.property(0, .{ .template = false, .readonly = true });
+    pub const status = bridge.property("loaded", .{ .template = false, .readonly = true });
     pub const ready = bridge.accessor(FontFaceSet.getReady, null, .{});
     pub const check = bridge.function(FontFaceSet.check, .{});
     pub const load = bridge.function(FontFaceSet.load, .{});
     pub const add = bridge.function(FontFaceSet.add, .{});
 };
-
-test "parseRequestedFamily handles quoted family names" {
-    try std.testing.expectEqualStrings("Runner Font", parseRequestedFamily("16px \"Runner Font\"").?);
-    try std.testing.expectEqualStrings("Runner Font", parseRequestedFamily("italic bold 16px 'Runner Font'").?);
-}
-
-test "parseRequestedFamily handles unquoted generic family names" {
-    try std.testing.expectEqualStrings("sans-serif", parseRequestedFamily("16px sans-serif").?);
-    try std.testing.expectEqualStrings("monospace", parseRequestedFamily("italic 16px monospace, serif").?);
-}
-
-test "isGenericFontFamily recognizes generic families" {
-    try std.testing.expect(isGenericFontFamily("sans-serif"));
-    try std.testing.expect(isGenericFontFamily("SYSTEM-UI"));
-    try std.testing.expect(!isGenericFontFamily("Runner Font"));
-}
 
 const testing = @import("../../../testing.zig");
 test "WebApi: FontFaceSet" {

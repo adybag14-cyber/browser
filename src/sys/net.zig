@@ -26,9 +26,12 @@ const builtin = @import("builtin");
 const c = std.c;
 const posix = std.posix;
 const native_os = builtin.os.tag;
+const win_sock = if (native_os == .windows) @import("win32") else struct {};
 
 pub const socket_t = posix.socket_t;
 pub const IpAddress = std.Io.net.IpAddress;
+pub const SOCK_NONBLOCK: u32 = if (native_os == .windows) 0 else SOCK_NONBLOCK;
+pub const SOCK_CLOEXEC: u32 = if (native_os == .windows) 0 else SOCK_CLOEXEC;
 
 pub fn family(a: *const IpAddress) u32 {
     return switch (a.*) {
@@ -94,23 +97,22 @@ pub fn addressFromSockaddr(addr: *align(4) const posix.sockaddr) IpAddress {
 }
 
 pub fn socket(domain: u32, socket_type: u32, protocol: u32) !socket_t {
-    // Darwin's socket() rejects flag bits in the type argument (its
-    // SOCK.NONBLOCK/CLOEXEC are Zig-invented shim values); strip them and
-    // apply via fcntl instead. Linux/FreeBSD accept them natively.
+    if (comptime native_os == .windows) {
+        const rc = win_sock.socket(@intCast(domain), @intCast(socket_type), @intCast(protocol));
+        if (rc == win_sock.INVALID_SOCKET) return error.Unexpected;
+        return @ptrFromInt(@as(usize, @intCast(rc)));
+    }
+
     const flag_bits = posix.SOCK.NONBLOCK | posix.SOCK.CLOEXEC;
     const extra: u32 = if (comptime builtin.os.tag.isDarwin()) socket_type & flag_bits else 0;
     const rc = c.socket(domain, socket_type & ~extra, protocol);
-    if (rc < 0) {
-        return errnoError(c.errno(rc));
-    }
+    if (rc < 0) return errnoError(c.errno(rc));
     errdefer _ = c.close(rc);
     if (extra & posix.SOCK.NONBLOCK != 0) {
         const fl = try fcntl(rc, posix.F.GETFL, 0);
         _ = try fcntl(rc, posix.F.SETFL, fl | @as(u32, @bitCast(posix.O{ .NONBLOCK = true })));
     }
-    if (extra & posix.SOCK.CLOEXEC != 0) {
-        _ = try fcntl(rc, posix.F.SETFD, posix.FD_CLOEXEC);
-    }
+    if (extra & posix.SOCK.CLOEXEC != 0) _ = try fcntl(rc, posix.F.SETFD, posix.FD_CLOEXEC);
     return rc;
 }
 
@@ -148,11 +150,11 @@ pub fn accept(sock: socket_t, addr: ?*posix.sockaddr, addr_size: ?*posix.socklen
 
     if (have_accept4 == false) {
         errdefer _ = c.close(accepted_sock);
-        if (flags & posix.SOCK.NONBLOCK != 0) {
+        if (flags & SOCK_NONBLOCK != 0) {
             const fl = try fcntl(accepted_sock, posix.F.GETFL, 0);
             _ = try fcntl(accepted_sock, posix.F.SETFL, fl | @as(u32, @bitCast(posix.O{ .NONBLOCK = true })));
         }
-        if (flags & posix.SOCK.CLOEXEC != 0) {
+        if (flags & SOCK_CLOEXEC != 0) {
             _ = try fcntl(accepted_sock, posix.F.SETFD, posix.FD_CLOEXEC);
         }
     }

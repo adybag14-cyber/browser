@@ -25,15 +25,6 @@ const VisualViewport = @This();
 pub const Proto = EventTarget;
 
 _proto: *EventTarget,
-_width: u32 = 1920,
-_height: u32 = 1080,
-_scale: f64 = 1.0,
-
-pub fn setMetrics(self: *VisualViewport, width: u32, height: u32, scale: f64) void {
-    self._width = if (width == 0) 1 else width;
-    self._height = if (height == 0) 1 else height;
-    self._scale = if (scale <= 0) 1.0 else scale;
-}
 
 pub fn asEventTarget(self: *VisualViewport) *EventTarget {
     return self._proto;
@@ -55,18 +46,6 @@ pub fn getHeight(_: *const VisualViewport, frame: *Frame) u32 {
     return frame._page.getViewport().height;
 }
 
-pub fn getWidth(self: *const VisualViewport) u32 {
-    return self._width;
-}
-
-pub fn getHeight(self: *const VisualViewport) u32 {
-    return self._height;
-}
-
-pub fn getScale(self: *const VisualViewport) f64 {
-    return self._scale;
-}
-
 pub const JsApi = struct {
     pub const bridge = js.Bridge(VisualViewport);
 
@@ -76,8 +55,8 @@ pub const JsApi = struct {
         pub var class_id: bridge.ClassId = undefined;
     };
 
-    // Viewport properties are static for a given page instance today.
-    // They are sourced from runtime browser configuration.
+    // Static viewport properties for headless browser
+    // No pinch-zoom or mobile viewport, so values are straightforward
     pub const offsetLeft = bridge.property(0, .{ .template = false });
     pub const offsetTop = bridge.property(0, .{ .template = false });
     pub const pageLeft = bridge.accessor(VisualViewport.getPageLeft, null, .{});

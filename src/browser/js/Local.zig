@@ -1072,12 +1072,6 @@ fn probeJsValueToZig(self: *const Local, comptime T: type, js_val: js.Value) !Pr
                         i32 => if (js_val.isInt32Array()) {
                             return .{ .ok = {} };
                         },
-                        f32 => if (js_val.isFloat32Array()) {
-                            return .{ .ok = {} };
-                        },
-                        f64 => if (js_val.isFloat64Array()) {
-                            return .{ .ok = {} };
-                        },
                         u64 => if (js_val.isBigUint64Array()) {
                             return .{ .ok = {} };
                         },
@@ -1690,7 +1684,6 @@ pub const Scope = struct {
     pub fn deinit(self: *Scope) void {
         v8.v8__Context__Exit(self.local.handle);
         self.handle_scope.deinit();
-        self.local.isolate.exit();
     }
 
     pub fn toLocal(self: *Scope, global: anytype) ToLocalReturnType(@TypeOf(global)) {

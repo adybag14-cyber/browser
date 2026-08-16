@@ -81,6 +81,13 @@ pub const CdpLink = struct {
 // Number of fixed pollfds entries (wakeup pipe + listener).
 const PSEUDO_POLLFDS = 2;
 
+const PollFd = if (builtin.os.tag == .windows) struct {
+    fd: isize = -1,
+    events: i16 = 0,
+    revents: i16 = 0,
+} else posix.pollfd;
+const WakeFd = if (builtin.os.tag == .windows) isize else posix.fd_t;
+
 allocator: Allocator,
 
 app: *App,
@@ -100,12 +107,12 @@ ws_count: usize = 0,
 ws_max: u8,
 ws_mutex: std.Io.Mutex = .init,
 
-pollfds: []posix.pollfd,
+pollfds: []PollFd,
 listener: ?Listener = null,
 accept: std.atomic.Value(bool) = .init(true),
 
 // Wakeup pipe: workers write to [1], main thread polls [0]
-wakeup_pipe: [2]posix.fd_t = .{ -1, -1 },
+wakeup_pipe: [2]WakeFd = .{ -1, -1 },
 
 shutdown: std.atomic.Value(bool) = .init(false),
 
@@ -148,7 +155,9 @@ pub fn globalInit(allocator: Allocator) void {
         CurlDebugAllocator.init(allocator);
     }
 
-    libcurl.curl_global_init(.{ .ssl = true }, curl_allocator) catch |err| {
+    // CURL_GLOBAL_WIN32 performs WSAStartup; without it every Windows socket
+    // operation fails with WSANOTINITIALISED and libcurl reports CouldntConnect.
+    libcurl.curl_global_init(.{ .ssl = true, .win32 = builtin.os.tag == .windows }, curl_allocator) catch |err| {
         lp.assert(false, "curl global init", .{ .err = err });
     };
 }
@@ -163,22 +172,27 @@ pub fn init(allocator: Allocator, app: *App, config: *const Config) !Network {
     globalInit(allocator);
     errdefer globalDeinit();
 
-    const pipe = try sys_net.pipe2(.{ .NONBLOCK = true, .CLOEXEC = true });
+    // The Windows headed client uses Network for HTTP/TLS/cache/connection-pool
+    // services but does not run the POSIX CDP/server poll loop. Keep those
+    // descriptors empty on Windows; page HttpClient multis are independent.
+    const pipe: [2]WakeFd = if (comptime builtin.os.tag == .windows)
+        .{ -1, -1 }
+    else
+        try sys_net.pipe2(.{ .NONBLOCK = true, .CLOEXEC = true });
 
-    // pollfds layout:
-    //   [0]                                  wakeup pipe
-    //   [1]                                  listener
-    //   [PSEUDO_POLLFDS .. + max_cdp]        CDP socket fds
     const max_cdp = config.maxConnections();
-    const pollfds = try allocator.alloc(posix.pollfd, PSEUDO_POLLFDS + max_cdp);
+    const pollfd_count: usize = if (comptime builtin.os.tag == .windows) 0 else PSEUDO_POLLFDS + max_cdp;
+    const pollfds = try allocator.alloc(PollFd, pollfd_count);
     errdefer allocator.free(pollfds);
 
     const cdp_poll_snapshot = try allocator.alloc(?*CdpLink, max_cdp);
     errdefer allocator.free(cdp_poll_snapshot);
     @memset(cdp_poll_snapshot, null);
 
-    @memset(pollfds, .{ .fd = -1, .events = 0, .revents = 0 });
-    pollfds[0] = .{ .fd = pipe[0], .events = posix.POLL.IN, .revents = 0 };
+    if (comptime builtin.os.tag != .windows) {
+        @memset(pollfds, .{ .fd = -1, .events = 0, .revents = 0 });
+        pollfds[0] = .{ .fd = pipe[0], .events = posix.POLL.IN, .revents = 0 };
+    }
 
     const x509_store = blk: {
         if (config.tlsVerifyHost()) {
@@ -258,7 +272,7 @@ pub fn init(allocator: Allocator, app: *App, config: *const Config) !Network {
         .pollfds = pollfds,
         .wakeup_pipe = pipe,
         .cdp_poll_snapshot = cdp_poll_snapshot,
-        .cdp_start = PSEUDO_POLLFDS,
+        .cdp_start = if (comptime builtin.os.tag == .windows) 0 else PSEUDO_POLLFDS,
 
         .available = available,
         .connections = connections,
@@ -277,10 +291,12 @@ pub fn init(allocator: Allocator, app: *App, config: *const Config) !Network {
 }
 
 pub fn deinit(self: *Network) void {
-    for (&self.wakeup_pipe) |*fd| {
-        if (fd.* >= 0) {
-            _ = std.c.close(fd.*);
-            fd.* = -1;
+    if (comptime builtin.os.tag != .windows) {
+        for (&self.wakeup_pipe) |*fd| {
+            if (fd.* >= 0) {
+                _ = std.c.close(fd.*);
+                fd.* = -1;
+            }
         }
     }
 
@@ -321,7 +337,7 @@ pub fn bind(
 
     self.accept.store(true, .release);
 
-    const flags = posix.SOCK.STREAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK;
+    const flags = posix.SOCK.STREAM | sys_net.SOCK_CLOEXEC | sys_net.SOCK_NONBLOCK;
     const listener = try sys_net.socket(sys_net.family(address), flags, posix.IPPROTO.TCP);
     errdefer _ = std.c.close(listener);
 
@@ -662,7 +678,7 @@ fn acceptConnections(self: *Network) void {
     const listener = self.listener orelse return;
 
     while (true) {
-        const socket = sys_net.accept(listener.socket, null, null, posix.SOCK.NONBLOCK) catch |err| {
+        const socket = sys_net.accept(listener.socket, null, null, sys_net.SOCK_NONBLOCK) catch |err| {
             switch (err) {
                 error.WouldBlock => break,
                 error.SocketNotListening => {

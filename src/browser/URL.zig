@@ -161,7 +161,24 @@ pub fn isCompleteHTTPUrl(url: []const u8) bool {
         return false;
     }
 
-    return hasAbsoluteScheme(url);
+    // Validate that everything before the colon is a valid scheme
+    // A scheme must start with a letter and contain only letters, digits, +, -, .
+    if (colon_pos == 0) {
+        return false;
+    }
+
+    const scheme = url[0..colon_pos];
+    if (!std.ascii.isAlphabetic(scheme[0])) {
+        return false;
+    }
+
+    for (scheme[1..]) |c| {
+        if (!std.ascii.isAlphanumeric(c) and c != '+' and c != '-' and c != '.') {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 pub fn getUsername(raw: [:0]const u8) []const u8 {
@@ -708,23 +725,6 @@ test "URL: resolve regression (#1093)" {
         const result = try resolve(testing.arena_allocator, case.base, case.path, .{});
         try testing.expectString(case.expected, result);
     }
-}
-
-test "URL: resolve absolute scheme" {
-    defer testing.reset();
-
-    try testing.expectString(
-        "data:image/png;base64,AAAA",
-        try resolve(testing.arena_allocator, "https://example/index.html", "data:image/png;base64,AAAA", .{}),
-    );
-    try testing.expectString(
-        "file:///C:/tmp/test.png",
-        try resolve(testing.arena_allocator, "https://example/index.html", "file:///C:/tmp/test.png", .{}),
-    );
-    try testing.expectString(
-        "mailto:test@example.com",
-        try resolve(testing.arena_allocator, "https://example/index.html", "mailto:test@example.com", .{}),
-    );
 }
 
 test "URL: resolve" {

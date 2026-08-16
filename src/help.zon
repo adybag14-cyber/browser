@@ -5,6 +5,7 @@
     \\
     \\The commands are:
     \\  agent       starts an interactive AI agent that can browse the web
+    \\  browse      opens the native headed browser window
     \\  fetch       fetches the specified URL
     \\  help        displays this message
     \\  mcp         starts an MCP (Model Context Protocol) server (stdio or HTTP)
@@ -48,6 +49,18 @@
     \\  --port <INT>
     \\          Port of the CDP server.
     \\          Defaults to 9222.
+    ,
+    .browse =
+    \\usage: {0s} browse [URL] [OPTIONS] [COMMON_OPTIONS]
+    \\
+    \\Opens the native headed browser window. URL defaults to about:blank.
+    \\
+    \\options:
+    \\  --width <INT>            Initial window width. Default: 1280.
+    \\  --height <INT>           Initial window height. Default: 720.
+    \\  --profile-dir <PATH>     Browser profile directory.
+    \\  --screenshot-bmp <PATH> Save a BMP after the page is ready.
+    \\  --screenshot-png <PATH> Save a PNG after the page is ready.
     ,
     .fetch =
     \\usage: {0s} fetch <url>... [OPTIONS] [COMMON_OPTIONS]

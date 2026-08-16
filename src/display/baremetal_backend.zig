@@ -30,13 +30,7 @@ const Input = @import("../sys/input.zig").Input;
 const log = @import("../log.zig");
 const testing = @import("../testing.zig");
 
-const c = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cDefine("NOMINMAX", "1");
-    @cDefine("UNICODE", "1");
-    @cDefine("_UNICODE", "1");
-    @cInclude("windows.h");
-}) else struct {};
+const c = if (builtin.os.tag == .windows) @import("win32") else struct {};
 
 const DrawRect = struct {
     x: i32,
@@ -77,7 +71,7 @@ pub const BareMetalBackend = struct {
     last_content_height: i32 = 0,
     last_title: []const u8 = &.{},
     last_url: []const u8 = &.{},
-    address_input: std.ArrayListUnmanaged(u8) = .{},
+    address_input: std.ArrayListUnmanaged(u8) = .empty,
     address_input_active: bool = false,
     address_input_select_all: bool = false,
     address_pending_high_surrogate: ?u16 = null,
@@ -88,9 +82,9 @@ pub const BareMetalBackend = struct {
     last_zoom_percent: i32 = 100,
     last_pointer_x: i32 = 0,
     last_pointer_y: i32 = 0,
-    tab_entries: std.ArrayListUnmanaged(Display.TabEntry) = .{},
-    history_entries: std.ArrayListUnmanaged([]u8) = .{},
-    download_entries: std.ArrayListUnmanaged(Display.DownloadEntry) = .{},
+    tab_entries: std.ArrayListUnmanaged(Display.TabEntry) = .empty,
+    history_entries: std.ArrayListUnmanaged([]u8) = .empty,
+    download_entries: std.ArrayListUnmanaged(Display.DownloadEntry) = .empty,
     active_tab_index: usize = 0,
     history_current_index: usize = 0,
     restore_previous_session: bool = false,
@@ -99,7 +93,7 @@ pub const BareMetalBackend = struct {
     homepage_url: ?[]u8 = null,
     app_data_path: ?[]u8 = null,
     input_mailbox_offset: u64 = 0,
-    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .{},
+    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .empty,
     presentation_display_list: ?DisplayList = null,
 
     pub fn init(host: *Host, _: anytype, width: u32, height: u32) @This() {
@@ -1210,7 +1204,7 @@ fn renderDisplayList(
         return;
     }
 
-    var command_indices: std.ArrayListUnmanaged(usize) = .{};
+    var command_indices: std.ArrayListUnmanaged(usize) = .empty;
     defer command_indices.deinit(self.host.allocator);
     command_indices.ensureTotalCapacity(self.host.allocator, list.commands.items.len) catch return;
     for (list.commands.items, 0..) |_, command_index| {

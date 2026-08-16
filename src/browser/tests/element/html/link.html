@@ -57,7 +57,7 @@
   const state = await testing.async();
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'link_stylesheet.css';
+  link.href = 'https://lightpanda.io/opensource-browser/15';
 
   link.addEventListener('load', (e) => {
     state.resolve(e);
@@ -107,7 +107,7 @@
   // Append to DOM,
   document.head.appendChild(link);
   // then set href.
-  link.href = 'link_stylesheet.css';
+  link.href = 'https://lightpanda.io/opensource-browser/15';
 
   testing.onload(() => testing.expectEqual(true, result));
 }
@@ -150,59 +150,6 @@
   document.head.appendChild(link);
   testing.onload(() => {
     testing.expectEqual(before, document.styleSheets.length);
-  });
-}
-</script>
-
-<script id="link-sheet">
-{
-  const startLen = document.styleSheets.length;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'link_stylesheet.css';
-
-  testing.async(async () => {
-    await new Promise(resolve => {
-      link.addEventListener('load', () => resolve(true));
-      document.head.appendChild(link);
-    });
-
-    testing.expectEqual(true, link.sheet instanceof CSSStyleSheet);
-    testing.expectEqual(testing.BASE_URL + 'element/html/link_stylesheet.css', link.sheet.href);
-    testing.expectEqual(startLen + 1, document.styleSheets.length);
-    testing.expectEqual(link.sheet, document.styleSheets[document.styleSheets.length - 1]);
-    testing.expectEqual(1, link.sheet.cssRules.length);
-    testing.expectEqual(1, link.sheet.cssRules[0].type);
-    testing.expectTrue(link.sheet.cssRules[0].cssText.includes('body'));
-  });
-}
-</script>
-
-<script id="link-sheet-import">
-{
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'link_import_root.css';
-
-  testing.async(async (restore) => {
-    await new Promise(resolve => {
-      link.addEventListener('load', () => resolve(true));
-      document.head.appendChild(link);
-    });
-
-    restore();
-    const body = document.body || document.createElement('body');
-    if (!document.body) {
-      document.documentElement.appendChild(body);
-    }
-    const div = document.createElement('div');
-    div.className = 'link-import-target';
-    body.appendChild(div);
-
-    const computed = getComputedStyle(div);
-    testing.expectEqual('rgb(14, 144, 214)', computed.backgroundColor);
-    testing.expectEqual('rgb(9, 19, 29)', computed.color);
-    testing.expectTrue(link.sheet.cssRules.length >= 2);
   });
 }
 </script>

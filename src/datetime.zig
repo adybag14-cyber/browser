@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const lp = @import("lightpanda");
 
 const Allocator = std.mem.Allocator;
@@ -592,13 +593,27 @@ fn paddingTwoDigits(value: usize) [2]u8 {
 
 pub fn localTime(ts: i64) !LibcTm {
     var tm: LibcTm = undefined;
-    if (localtime_r(&ts, &tm) == null) {
+    if (comptime builtin.os.tag == .windows) {
+        if (_localtime64_s(&tm, &ts) != 0) {
+            return error.InvalidArgument;
+        }
+    } else if (localtime_r(&ts, &tm) == null) {
         return error.InvalidArgument;
     }
     return tm;
 }
 
-const LibcTm = extern struct {
+const LibcTm = if (builtin.os.tag == .windows) extern struct {
+    tm_sec: c_int,
+    tm_min: c_int,
+    tm_hour: c_int,
+    tm_mday: c_int,
+    tm_mon: c_int,
+    tm_year: c_int,
+    tm_wday: c_int,
+    tm_yday: c_int,
+    tm_isdst: c_int,
+} else extern struct {
     tm_sec: c_int,
     tm_min: c_int,
     tm_hour: c_int,
@@ -612,6 +627,7 @@ const LibcTm = extern struct {
     tm_zone: ?[*:0]const u8,
 };
 extern "c" fn localtime_r(timep: *const i64, result: *LibcTm) ?*LibcTm;
+extern "c" fn _localtime64_s(result: *LibcTm, timep: *const i64) c_int;
 
 const Parser = struct {
     input: []const u8,

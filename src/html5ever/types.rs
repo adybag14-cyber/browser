@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use html5ever::{Attribute, QualName};
-use std::os::raw::{c_uchar, c_void};
 use std::ptr;
+use html5ever::{QualName, Attribute};
+use std::os::raw::{c_uchar, c_void};
 
 pub type CreateElementCallback = unsafe extern "C" fn(
     ctx: Ref,
@@ -27,7 +27,10 @@ pub type CreateElementCallback = unsafe extern "C" fn(
     attributes: *mut c_void,
 ) -> Ref;
 
-pub type CreateCommentCallback = unsafe extern "C" fn(ctx: Ref, str: StringSlice) -> Ref;
+pub type CreateCommentCallback = unsafe extern "C" fn(
+    ctx: Ref,
+    str: StringSlice,
+) -> Ref;
 
 pub type AppendDoctypeToDocumentCallback = unsafe extern "C" fn(
     ctx: Ref,
@@ -36,20 +39,29 @@ pub type AppendDoctypeToDocumentCallback = unsafe extern "C" fn(
     system_id: StringSlice,
 ) -> ();
 
-pub type CreateProcessingInstruction =
-    unsafe extern "C" fn(ctx: Ref, target: StringSlice, data: StringSlice) -> Ref;
+pub type CreateProcessingInstruction = unsafe extern "C" fn(
+    ctx: Ref,
+    target: StringSlice,
+    data: StringSlice,
+) -> Ref;
 
 pub type GetDataCallback = unsafe extern "C" fn(ctx: Ref) -> *mut c_void;
 
-pub type AppendCallback =
-    unsafe extern "C" fn(ctx: Ref, parent: Ref, node_or_text: CNodeOrText) -> ();
+pub type AppendCallback = unsafe extern "C" fn(
+    ctx: Ref,
+    parent: Ref,
+    node_or_text: CNodeOrText
+) -> ();
 
 pub type ParseErrorCallback = unsafe extern "C" fn(ctx: Ref, str: StringSlice) -> ();
 
 pub type PopCallback = unsafe extern "C" fn(ctx: Ref, node: Ref) -> ();
 
-pub type AddAttrsIfMissingCallback =
-    unsafe extern "C" fn(ctx: Ref, target: Ref, attributes: *mut c_void) -> ();
+pub type AddAttrsIfMissingCallback = unsafe extern "C" fn(
+    ctx: Ref,
+    target: Ref,
+    attributes: *mut c_void,
+) -> ();
 
 pub type GetTemplateContentsCallback = unsafe extern "C" fn(ctx: Ref, target: Ref) -> Ref;
 
@@ -62,17 +74,19 @@ pub type AttachDeclarativeShadowCallback = unsafe extern "C" fn(
 
 pub type RemoveFromParentCallback = unsafe extern "C" fn(ctx: Ref, target: Ref) -> ();
 
-pub type ReparentChildrenCallback =
-    unsafe extern "C" fn(ctx: Ref, node: Ref, new_parent: Ref) -> ();
+pub type ReparentChildrenCallback = unsafe extern "C" fn(ctx: Ref, node: Ref, new_parent: Ref) -> ();
 
-pub type AppendBeforeSiblingCallback =
-    unsafe extern "C" fn(ctx: Ref, sibling: Ref, node_or_text: CNodeOrText) -> ();
+pub type AppendBeforeSiblingCallback = unsafe extern "C" fn(
+    ctx: Ref,
+    sibling: Ref,
+    node_or_text: CNodeOrText
+) -> ();
 
 pub type AppendBasedOnParentNodeCallback = unsafe extern "C" fn(
     ctx: Ref,
     element: Ref,
     prev_element: Ref,
-    node_or_text: CNodeOrText,
+    node_or_text: CNodeOrText
 ) -> ();
 
 pub type Ref = *const c_void;
@@ -84,14 +98,11 @@ pub struct CNullable<T> {
 }
 impl<T: Default> CNullable<T> {
     pub fn none() -> CNullable<T> {
-        return Self {
-            tag: 0,
-            value: T::default(),
-        };
+        return Self{tag: 0, value: T::default()};
     }
 
     pub fn some(v: T) -> CNullable<T> {
-        return Self { tag: 1, value: v };
+        return Self{tag: 1, value: v};
     }
 }
 
@@ -102,10 +113,7 @@ pub struct Slice<T> {
 }
 impl<T> Default for Slice<T> {
     fn default() -> Self {
-        return Self {
-            ptr: ptr::null(),
-            len: 0,
-        };
+        return Self{ptr: ptr::null(), len: 0};
     }
 }
 
@@ -119,20 +127,11 @@ pub struct CQualName {
 }
 impl CQualName {
     pub fn create(q: &QualName) -> Self {
-        let ns = StringSlice {
-            ptr: q.ns.as_ptr(),
-            len: q.ns.len(),
-        };
-        let local = StringSlice {
-            ptr: q.local.as_ptr(),
-            len: q.local.len(),
-        };
+        let ns = StringSlice { ptr: q.ns.as_ptr(), len: q.ns.len()};
+        let local = StringSlice { ptr: q.local.as_ptr(), len: q.local.len()};
         let prefix = match &q.prefix {
             None => CNullable::<StringSlice>::none(),
-            Some(prefix) => CNullable::<StringSlice>::some(StringSlice {
-                ptr: prefix.as_ptr(),
-                len: prefix.len(),
-            }),
+            Some(prefix) => CNullable::<StringSlice>::some(StringSlice { ptr: prefix.as_ptr(), len: prefix.len()}),
         };
         CQualName{
             // inner: q as *const _ as *const c_void,
@@ -159,10 +158,7 @@ pub struct CAttribute {
 }
 impl Default for CAttribute {
     fn default() -> Self {
-        return Self {
-            name: CQualName::default(),
-            value: StringSlice::default(),
-        };
+        return Self{name: CQualName::default(), value: StringSlice::default()};
     }
 }
 

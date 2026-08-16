@@ -637,3 +637,210 @@ pub fn insertText(frame: *Frame, v: []const u8) !void {
         return textarea.innerInsert(v, frame);
     }
 }
+
+// Compatibility surface for the native headed shell. The current browser core
+// keeps DOM execution on Frame; these wrappers preserve the richer modifier,
+// clipboard and rendered-scroll behavior the Win32 shell used before Page/Frame
+// were split.
+pub const HeadedMouseButton = enum(i32) { main = 0, auxiliary = 1, secondary = 2, fourth = 3, fifth = 4 };
+
+pub const MouseModifiers = struct {
+    alt: bool = false,
+    ctrl: bool = false,
+    meta: bool = false,
+    shift: bool = false,
+    buttons: u16 = 0,
+};
+
+pub const KeyboardModifiers = struct {
+    alt: bool = false,
+    ctrl: bool = false,
+    meta: bool = false,
+    shift: bool = false,
+};
+
+const MouseClickDispatchResult = struct { dispatched: bool = false, default_prevented: bool = false };
+pub const MouseWheelDispatchResult = struct { dispatched: bool = false, default_prevented: bool = false, scrolled_element: bool = false };
+
+fn dispatchHeadedMouseEvent(frame: *Frame, target: *Element, comptime typ: []const u8, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
+    const event: *MouseEvent = try .initTrusted(comptime .wrap(typ), .{
+        .bubbles = true,
+        .cancelable = true,
+        .composed = true,
+        .clientX = x,
+        .clientY = y,
+        .button = @intFromEnum(button),
+        .buttons = modifiers.buttons,
+        .ctrlKey = modifiers.ctrl,
+        .shiftKey = modifiers.shift,
+        .altKey = modifiers.alt,
+        .metaKey = modifiers.meta,
+    }, frame);
+    const raw = event.asEvent();
+    raw.acquireRef();
+    defer _ = raw.releaseRef(frame._page);
+    try frame._event_manager.dispatch(target.asEventTarget(), raw);
+    return .{ .dispatched = true, .default_prevented = raw._prevent_default };
+}
+
+pub fn triggerMouseDownHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    _ = try dispatchHeadedMouseEvent(frame, target, "mousedown", x, y, button, modifiers);
+    try focusEditingHostForMouseDown(frame, target);
+}
+
+pub fn triggerMouseUpHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    _ = try dispatchHeadedMouseEvent(frame, target, "mouseup", x, y, button, modifiers);
+}
+
+pub fn triggerMouseClickHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    _ = try dispatchHeadedMouseEvent(frame, target, "click", x, y, button, modifiers);
+}
+
+pub fn triggerMouseMoveHeaded(frame: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    _ = try dispatchHeadedMouseEvent(frame, target, "mousemove", x, y, .main, modifiers);
+}
+
+pub fn mouseClickRequiresRenderedInteractiveTarget(frame: *Frame, x: f64, y: f64) !bool {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return false;
+    const activation = findClickActivationTarget(target.asNode(), true) orelse return false;
+    const element = activation.is(Element) orelse return false;
+    const html = element.is(Element.Html) orelse return true;
+    return switch (html._type) {
+        .label => false,
+        else => true,
+    };
+}
+
+fn headedOverflowAllowsScroll(value: []const u8) bool {
+    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
+    return std.ascii.eqlIgnoreCase(trimmed, "auto") or std.ascii.eqlIgnoreCase(trimmed, "scroll");
+}
+
+fn headedElementAllowsWheelScrollAxis(frame: *Frame, element: *Element, comptime property: []const u8) !bool {
+    const style = try frame.window.getComputedStyle(element, null, frame);
+    const decl = style.asCSSStyleDeclaration();
+    if (headedOverflowAllowsScroll(decl.getPropertyValue("overflow", frame))) return true;
+    return headedOverflowAllowsScroll(decl.getPropertyValue(property, frame));
+}
+
+fn applyHeadedDefaultWheelScroll(frame: *Frame, target: *Element, delta_x: f64, delta_y: f64) !bool {
+    var current: ?*Element = target;
+    while (current) |element| {
+        const metrics = frame._element_scroll_metrics.get(element) orelse {
+            current = element.parentElement();
+            continue;
+        };
+        var next_left: i32 = @intCast(element.getScrollLeft(frame));
+        var next_top: i32 = @intCast(element.getScrollTop(frame));
+        const old_left = next_left;
+        const old_top = next_top;
+        if (delta_y != 0 and metrics.scroll_height > metrics.client_height and try headedElementAllowsWheelScrollAxis(frame, element, "overflow-y")) next_top +|= deltaToScroll(delta_y);
+        if (delta_x != 0 and metrics.scroll_width > metrics.client_width and try headedElementAllowsWheelScrollAxis(frame, element, "overflow-x")) next_left +|= deltaToScroll(delta_x);
+        if ((next_left != old_left or next_top != old_top) and try frame.setElementScrollPosition(element, next_left, next_top)) return true;
+        current = element.parentElement();
+    }
+    return false;
+}
+
+pub fn triggerMouseWheelHeaded(frame: *Frame, x: f64, y: f64, delta_x: f64, delta_y: f64, modifiers: MouseModifiers) !MouseWheelDispatchResult {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return .{};
+    const wheel_event: *WheelEvent = try .initTrusted("wheel", .{
+        .bubbles = true,
+        .cancelable = true,
+        .composed = true,
+        .clientX = x,
+        .clientY = y,
+        .ctrlKey = modifiers.ctrl,
+        .shiftKey = modifiers.shift,
+        .altKey = modifiers.alt,
+        .metaKey = modifiers.meta,
+        .buttons = modifiers.buttons,
+        .deltaX = delta_x,
+        .deltaY = delta_y,
+        .deltaMode = WheelEvent.DOM_DELTA_PIXEL,
+    }, frame);
+    const event = wheel_event.asEvent();
+    event.acquireRef();
+    defer _ = event.releaseRef(frame._page);
+    try frame._event_manager.dispatch(target.asEventTarget(), event);
+    const prevented = event._prevent_default;
+    return .{ .dispatched = true, .default_prevented = prevented, .scrolled_element = if (prevented) false else try applyHeadedDefaultWheelScroll(frame, target, delta_x, delta_y) };
+}
+
+fn triggerKeyboardHeaded(frame: *Frame, keyboard_event: *KeyboardEvent) !bool {
+    const event = keyboard_event.asEvent();
+    event.acquireRef();
+    defer _ = event.releaseRef(frame._page);
+    const element = frame.window._document.getActiveElement() orelse return true;
+    try frame._event_manager.dispatch(element.asEventTarget(), event);
+    return !event._prevent_default;
+}
+
+pub fn triggerKeyboardKeyDownNoTextWithRepeatHeaded(frame: *Frame, key: []const u8, modifiers: KeyboardModifiers, repeat: bool) !bool {
+    frame.headed_keyboard_text_suppression_depth += 1;
+    defer frame.headed_keyboard_text_suppression_depth -= 1;
+    const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keydown"), .{ .key = key, .altKey = modifiers.alt, .ctrlKey = modifiers.ctrl, .metaKey = modifiers.meta, .shiftKey = modifiers.shift, .repeat = repeat }, frame);
+    return triggerKeyboardHeaded(frame, keyboard_event);
+}
+
+pub fn triggerKeyboardKeyUpHeaded(frame: *Frame, key: []const u8, modifiers: KeyboardModifiers) !bool {
+    const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keyup"), .{ .key = key, .altKey = modifiers.alt, .ctrlKey = modifiers.ctrl, .metaKey = modifiers.meta, .shiftKey = modifiers.shift }, frame);
+    return triggerKeyboardHeaded(frame, keyboard_event);
+}
+
+pub fn triggerWindowBlurHeaded(frame: *Frame) !void {
+    const active = frame.document._active_element orelse return;
+    try active.blur(frame);
+}
+
+pub fn triggerClipboardEventHeaded(frame: *Frame, typ: []const u8) !bool {
+    const active = frame.document._active_element orelse return false;
+    const event = try Event.init(typ, .{ .bubbles = true, .cancelable = true, .composed = true }, frame._page);
+    event.setTrusted();
+    event.acquireRef();
+    defer _ = event.releaseRef(frame._page);
+    try frame._event_manager.dispatch(active.asEventTarget(), event);
+    return !event._prevent_default;
+}
+
+pub fn getActiveTextSelectionHeaded(frame: *Frame) ?[]const u8 {
+    const active = frame.document._active_element orelse return null;
+    if (active.is(Element.Html.Input)) |input| {
+        const start = (input.getSelectionStart() catch return null) orelse return null;
+        const end = (input.getSelectionEnd() catch return null) orelse return null;
+        if (start >= end) return null;
+        const value = input.getValue();
+        if (end > value.len) return null;
+        return value[start..end];
+    }
+    if (active.is(Element.Html.TextArea)) |textarea| {
+        const start = textarea.getSelectionStart();
+        const end = textarea.getSelectionEnd();
+        if (start >= end) return null;
+        const value = textarea.getValue();
+        if (end > value.len) return null;
+        return value[start..end];
+    }
+    return null;
+}
+
+pub fn deleteActiveTextSelectionHeaded(frame: *Frame) !bool {
+    const active = frame.document._active_element orelse return false;
+    if (active.is(Element.Html.Input)) |input| {
+        const start = (try input.getSelectionStart()) orelse return false;
+        const end = (try input.getSelectionEnd()) orelse return false;
+        if (start >= end) return false;
+        try input.innerInsert("", frame);
+        return true;
+    }
+    if (active.is(Element.Html.TextArea)) |textarea| {
+        if (textarea.getSelectionStart() >= textarea.getSelectionEnd()) return false;
+        try textarea.innerInsert("", frame);
+        return true;
+    }
+    return false;
+}

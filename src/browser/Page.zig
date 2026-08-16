@@ -292,8 +292,6 @@ pub fn revokeBlobUrl(self: *Page, url: []const u8) void {
     if (self.blob_urls.fetchRemove(url)) |entry| {
         entry.value.blob.releaseRef(self);
     }
-
-    self._session.finalizeCommittedNavigation(self);
 }
 
 pub fn revokeBlobUrlsFor(self: *Page, creator: u32) void {

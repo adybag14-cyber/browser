@@ -77,11 +77,9 @@ pub const EventPhase = enum(u8) {
 
 pub const Type = union(enum) {
     generic,
-    close_event: *@import("event/CloseEvent.zig"),
     error_event: *@import("event/ErrorEvent.zig"),
     custom_event: *@import("event/CustomEvent.zig"),
     message_event: *@import("event/MessageEvent.zig"),
-    storage_event: *@import("event/StorageEvent.zig"),
     progress_event: *@import("event/ProgressEvent.zig"),
     navigation_current_entry_change_event: *@import("event/NavigationCurrentEntryChangeEvent.zig"),
     page_transition_event: *@import("event/PageTransitionEvent.zig"),
@@ -194,11 +192,9 @@ pub fn relatedTargetPtr(self: *Event) ?*?*EventTarget {
 pub fn is(self: *Event, comptime T: type) ?*T {
     switch (self._type) {
         .generic => return if (T == Event) self else null,
-        .close_event => |e| return if (T == @import("event/CloseEvent.zig")) e else null,
         .error_event => |e| return if (T == @import("event/ErrorEvent.zig")) e else null,
         .custom_event => |e| return if (T == @import("event/CustomEvent.zig")) e else null,
         .message_event => |e| return if (T == @import("event/MessageEvent.zig")) e else null,
-        .storage_event => |e| return if (T == @import("event/StorageEvent.zig")) e else null,
         .progress_event => |e| return if (T == @import("event/ProgressEvent.zig")) e else null,
         .navigation_current_entry_change_event => |e| return if (T == @import("event/NavigationCurrentEntryChangeEvent.zig")) e else null,
         .page_transition_event => |e| return if (T == @import("event/PageTransitionEvent.zig")) e else null,

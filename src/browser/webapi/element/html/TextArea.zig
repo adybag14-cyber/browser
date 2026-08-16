@@ -69,14 +69,6 @@ fn dispatchInputEvent(self: *TextArea, data: ?[]const u8, input_type: []const u8
     try frame._event_manager.dispatch(self.asElement().asEventTarget(), event.asEvent());
 }
 
-pub fn dispatchInputEvent(self: *TextArea, page: *Page) !void {
-    const event = try Event.initTrusted(comptime .wrap("input"), .{
-        .bubbles = true,
-        .composed = true,
-    }, page);
-    try page._event_manager.dispatch(self.asElement().asEventTarget(), event);
-}
-
 pub fn asElement(self: *TextArea) *Element {
     return Factory.protoOf(self).asElement();
 }

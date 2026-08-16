@@ -17,13 +17,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
-const Config = @import("../Config.zig");
-const build_config = @import("build_config");
 const CookieJar = @import("../browser/webapi/storage/Cookie.zig").Jar;
-const Http = @import("../http/Http.zig");
 const log = @import("../log.zig");
 const builtin = @import("builtin");
-const Host = @import("../sys/host.zig").Host;
+const Host = if (builtin.os.tag == .windows) struct {} else @import("../sys/host.zig").Host;
 pub const BrowserCommand = @import("BrowserCommand.zig").BrowserCommand;
 const DisplayList = @import("../render/DisplayList.zig").DisplayList;
 pub const PopupSource = @import("../browser/PopupSource.zig").PopupSource;
@@ -60,7 +57,6 @@ const Win32Backend = if (builtin.os.tag == .windows) @import("win32_backend.zig"
     pub fn setTabEntries(_: *@This(), _: []const TabEntry, _: usize) void {}
     pub fn setSettingsState(_: *@This(), _: SettingsState) void {}
     pub fn setAppDataPath(_: *@This(), _: ?[]const u8) void {}
-    pub fn setHttpRuntime(_: *@This(), _: *Http) void {}
     pub fn setImageRequestCookieJar(_: *@This(), _: ?*CookieJar) void {}
     pub fn dispatchInput(_: *@This(), _: anytype) !void {}
     pub fn presentDocument(_: *@This(), _: []const u8, _: []const u8, _: []const u8) !void {}
@@ -84,6 +80,16 @@ const Win32Backend = if (builtin.os.tag == .windows) @import("win32_backend.zig"
 };
 
 pub const Display = @This();
+
+pub const BrowserMode = enum { headless, headed };
+
+pub const InitOpts = struct {
+    mode: BrowserMode = .headed,
+    width: u32 = 1280,
+    height: u32 = 720,
+    screenshot_bmp_path: ?[]const u8 = null,
+    screenshot_png_path: ?[]const u8 = null,
+};
 
 pub const Viewport = struct {
     width: u32,
@@ -119,7 +125,7 @@ pub const SettingsState = struct {
     homepage_url: []const u8,
 };
 
-const BareMetalBackend = @import("baremetal_backend.zig").BareMetalBackend;
+const BareMetalBackend = if (builtin.os.tag == .windows) Win32Backend else @import("baremetal_backend.zig").BareMetalBackend;
 
 pub const Backend = union(enum) {
     headless: HeadlessBackend,
@@ -138,8 +144,8 @@ pub const HeadedStubBackend = struct {
     last_resize_seq: u64 = 0,
 };
 
-requested_mode: Config.BrowserMode,
-runtime_mode: Config.BrowserMode,
+requested_mode: BrowserMode,
+runtime_mode: BrowserMode,
 backend: Backend,
 default_viewport: Viewport,
 viewport: Viewport,
@@ -150,17 +156,18 @@ browse_screenshot_png_attempted: bool = false,
 browse_navigation_state_seen: bool = false,
 browse_is_loading: bool = true,
 
-pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) Display {
-    const requested_mode = config.browserMode();
+pub fn init(allocator: std.mem.Allocator, opts: InitOpts, host: ?*Host) Display {
+    const requested_mode = opts.mode;
     const default_viewport: Viewport = .{
-        .width = config.windowWidth(),
-        .height = config.windowHeight(),
+        .width = opts.width,
+        .height = opts.height,
         .device_pixel_ratio = 1.0,
     };
+    const is_bare_metal = builtin.os.tag == .freestanding;
 
-    const runtime_mode: Config.BrowserMode = switch (requested_mode) {
+    const runtime_mode: BrowserMode = switch (requested_mode) {
         .headless => .headless,
-        .headed => if (build_config.target_class == .bare_metal or builtin.os.tag == .windows) .headed else .headless,
+        .headed => if (is_bare_metal or builtin.os.tag == .windows) .headed else .headless,
     };
 
     return .{
@@ -168,7 +175,7 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
         .runtime_mode = runtime_mode,
         .backend = switch (requested_mode) {
             .headless => .{ .headless = .{} },
-            .headed => if (build_config.target_class == .bare_metal)
+            .headed => if (is_bare_metal)
                 .{ .bare_metal = BareMetalBackend.init(host orelse @panic("bare metal display requires host services"), allocator, default_viewport.width, default_viewport.height) }
             else if (runtime_mode == .headed)
                 .{ .headed_windows = Win32Backend.init(allocator, default_viewport.width, default_viewport.height) }
@@ -177,14 +184,8 @@ pub fn init(allocator: std.mem.Allocator, config: *const Config, host: ?*Host) D
         },
         .default_viewport = default_viewport,
         .viewport = default_viewport,
-        .browse_screenshot_bmp_path = switch (config.mode) {
-            .browse => |opts| if (opts.screenshot_bmp_path) |path| path else null,
-            else => null,
-        },
-        .browse_screenshot_png_path = switch (config.mode) {
-            .browse => |opts| if (opts.screenshot_png_path) |path| path else null,
-            else => null,
-        },
+        .browse_screenshot_bmp_path = opts.screenshot_bmp_path,
+        .browse_screenshot_png_path = opts.screenshot_png_path,
     };
 }
 
@@ -321,14 +322,6 @@ pub fn setAppDataPath(self: *Display, path: ?[]const u8) void {
     switch (self.backend) {
         .bare_metal => |*backend| backend.setAppDataPath(path),
         .headed_windows => |*backend| backend.setAppDataPath(path),
-        else => {},
-    }
-}
-
-pub fn setHttpRuntime(self: *Display, http: *Http) void {
-    switch (self.backend) {
-        .bare_metal => |*backend| backend.setHttpRuntime(http),
-        .headed_windows => |*backend| backend.setHttpRuntime(http),
         else => {},
     }
 }

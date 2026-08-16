@@ -103,6 +103,7 @@ const RawTerminal = struct {
     original: std.posix.termios,
 
     fn enable() error{NotInteractive}!RawTerminal {
+        if (comptime @import("builtin").os.tag == .windows) return error.NotInteractive;
         if (!interactiveTty()) return error.NotInteractive;
         // A tty that refuses raw mode is non-interactive for our purposes.
         const original = std.posix.tcgetattr(std.posix.STDIN_FILENO) catch return error.NotInteractive;
@@ -235,6 +236,7 @@ fn readChoiceInput() !ChoiceInput {
 }
 
 fn readChoiceByte() !?u8 {
+    if (comptime @import("builtin").os.tag == .windows) return null;
     var buf: [1]u8 = undefined;
     const n = std.posix.read(std.posix.STDIN_FILENO, &buf) catch |err| switch (err) {
         error.WouldBlock => return null,

@@ -79,10 +79,6 @@ pub fn getCanGoForward(self: *const Navigation) bool {
     return self._entries.items.len > self._index + 1;
 }
 
-pub fn getCurrentIndex(self: *const Navigation) usize {
-    return self._index;
-}
-
 pub fn getCurrentEntryOrNull(self: *Navigation) ?*NavigationHistoryEntry {
     if (self._entries.items.len > self._index) {
         return self._entries.items[self._index];
@@ -117,6 +113,10 @@ pub fn back(self: *Navigation, frame: *Frame) !NavigationReturn {
     const next_entry = self._entries.items[new_index];
 
     return self.navigateInner(next_entry._url, .{ .traverse = new_index }, frame);
+}
+
+pub fn getCurrentIndex(self: *const Navigation) usize {
+    return self._index;
 }
 
 pub fn entries(self: *const Navigation) []*NavigationHistoryEntry {
@@ -313,12 +313,6 @@ pub fn navigateInner(
 ) !NavigationReturn {
     const arena = frame._session.arena;
     const url = _url orelse return error.MissingURL;
-    var ls: js.Local.Scope = undefined;
-    const local = page.js.local orelse blk: {
-        page.js.localScope(&ls);
-        break :blk &ls.local;
-    };
-    defer if (page.js.local == null) ls.deinit();
 
     // https://github.com/WICG/navigation-api/issues/95
     //
@@ -436,14 +430,16 @@ pub fn reload(self: *Navigation, _opts: ?ReloadOptions, frame: *Frame) !Navigati
     const entry = self.getCurrentEntry();
     if (opts.state) |state| {
         const previous = entry;
-        entry._state = .{ .source = .navigation, .value = state.toJson(arena) catch return error.DataClone };
+        entry._state = .{ .source = .navigation, .value = state.toJson(arena.allocator()) catch return error.DataClone };
 
-        const event = try NavigationCurrentEntryChangeEvent.initTrusted(
-            .wrap("currententrychange"),
-            .{ .from = previous, .navigationType = @tagName(.reload) },
-            frame,
-        );
-        try self.dispatch(.{ .currententrychange = event }, frame);
+        if (self._on_currententrychange) |cec| {
+            const event = (try NavigationCurrentEntryChangeEvent.initTrusted(
+                .wrap("currententrychange"),
+                .{ .from = previous, .navigationType = @tagName(.reload) },
+                frame,
+            )).asEvent();
+            try self.dispatch(cec, event, frame);
+        }
     }
 
     return self.navigateInner(entry._url, .reload, frame);

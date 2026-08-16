@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const posix = std.posix;
 
 const Config = @import("../Config.zig");
@@ -260,7 +261,7 @@ fn opensocketCallback(
         @intCast(address.socktype),
         @intCast(address.protocol),
     ) catch return libcurl.CURL_SOCKET_BAD;
-    return fd;
+    return if (comptime builtin.os.tag == .windows) @intFromPtr(fd) else fd;
 }
 
 pub const Connection = struct {

@@ -73,6 +73,7 @@ pub fn build(b: *Build) !void {
         // https://codeberg.org/ziglang/zig/issues/31272
         .glibc_version = .{ .major = 2, .minor = 43, .patch = 0 },
     }) else requested_target;
+    const is_msvc = target.result.abi == .msvc;
 
     // Without an explicit -Dprebuilt_v8_path, pick up whatever `make
     // download-v8` cached rather than building V8 from source.
@@ -124,6 +125,47 @@ pub fn build(b: *Build) !void {
         try linkHtml5Ever(b, mod);
         linkZenai(b, mod);
         linkIsocline(b, mod);
+        if (target.result.os.tag == .windows) {
+            // Zig 0.16 Aro currently fails to translate the MSVC Windows SDK
+            // headers directly. Translate ABI-compatible MinGW declarations,
+            // then compile the generated Zig declarations under the real target.
+            const windows_header_target = b.resolveTargetQuery(.{
+                .cpu_arch = target.result.cpu.arch,
+                .os_tag = .windows,
+                .abi = .gnu,
+            });
+            const windows_translate = b.addTranslateC(.{
+                .root_source_file = b.path("src/sys/windows_headers.h"),
+                .target = windows_header_target,
+                .optimize = optimize,
+            });
+            const windows_module = b.createModule(.{
+                .root_source_file = windows_translate.getOutput(),
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+            });
+            mod.addImport("win32", windows_module);
+            mod.linkSystemLibrary("user32", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("gdi32", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("msimg32", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("imm32", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("comdlg32", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("dwrite", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("gdiplus", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("urlmon", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("winmm", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("userenv", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("dbghelp", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("iphlpapi", .{ .use_pkg_config = .no });
+            mod.linkSystemLibrary("bcrypt", .{ .use_pkg_config = .no });
+            // Debug V8's Win32 platform code references two debug-CRT report
+            // routing functions. Linking the full debug UCRT beside Zig's CRT
+            // duplicates runtime symbols, so satisfy only those diagnostics.
+            if (target.result.abi == .msvc and optimize == .Debug) {
+                mod.addCSourceFile(.{ .file = b.path("src/sys/msvc_crt_debug_shim.c") });
+            }
+        }
 
         break :blk mod;
     };
@@ -179,6 +221,36 @@ pub fn build(b: *Build) !void {
         const version_info_run = b.addRunArtifact(exe);
         version_info_run.addArg("version");
         version_info_step.dependOn(&version_info_run.step);
+    }
+
+    {
+        // Dedicated headed-mode compile gate. This deliberately avoids making
+        // unrelated agent/server helpers prerequisites for the Windows browser.
+        const headed_exe = b.addExecutable(.{
+            .name = "lightpanda-headed-check",
+            .use_llvm = use_llvm,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main_headed.zig"),
+                .target = target,
+                .optimize = optimize,
+                .sanitize_c = enable_csan,
+                .sanitize_thread = enable_tsan,
+                .imports = &.{
+                    .{ .name = "lightpanda", .module = lightpanda_module },
+                },
+            }),
+        });
+        const headed_step = b.step("headed-check", "Compile the native headed browser path");
+        headed_step.dependOn(&headed_exe.step);
+
+        const headed_install = b.addInstallArtifact(headed_exe, .{});
+        const headed_build_step = b.step("headed", "Build and install the native headed browser");
+        headed_build_step.dependOn(&headed_install.step);
+
+        const headed_run = b.addRunArtifact(headed_exe);
+        if (b.args) |args| headed_run.addArgs(args);
+        const headed_run_step = b.step("run-headed", "Run the native headed browser");
+        headed_run_step.dependOn(&headed_run.step);
     }
 
     {
@@ -349,7 +421,14 @@ fn linkV8(
         .prebuilt_v8_path = prebuilt_v8_path,
         .shared_v8 = shared_v8,
     });
-    mod.addImport("v8", dep.module("v8"));
+    const v8_module = dep.module("v8");
+    // The prebuilt Windows V8 archive is built with MSVC. Do not make Zig
+    // inject libc++ into an MSVC consumer just because the V8 wrapper uses
+    // C++ on Unix; mixing the two runtimes also breaks Windows @cImport.
+    if (target.result.abi == .msvc) {
+        v8_module.link_libcpp = false;
+    }
+    mod.addImport("v8", v8_module);
 }
 
 fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
@@ -360,7 +439,7 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
     const exec_cargo = b.addSystemCommand(&.{
         "cargo",           "build",
         "--profile",       if (is_debug) "dev" else "release",
-        "--features",      if (is_debug) "memstats" else "",
+        "--features",      if (is_debug and mod.resolved_target.?.result.os.tag != .windows) "memstats" else "",
         "--manifest-path", "src/html5ever/Cargo.toml",
     });
 
@@ -387,12 +466,12 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
     const obj = out_dir.path(b, if (is_debug) "debug" else "release").path(b, html5ever_lib_name);
     if (is_windows_msvc) {
         const strip_cmd = b.addSystemCommand(&.{
-            "powershell",
+            "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
             "-NoProfile",
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
-            "& { param([string]$src, [string]$dst) Copy-Item -Force $src $dst; $libExe='C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe'; if(-not (Test-Path $libExe)){ throw 'lib.exe not found at expected VS path' }; $members=& $libExe /nologo /list $dst; $remove=$members | Where-Object { $_ -match 'compiler_builtins' }; if($remove.Count -eq 0){ exit 0 }; $tmpA=\"$dst.tmpA.lib\"; $tmpB=\"$dst.tmpB.lib\"; Copy-Item -Force $dst $tmpA; foreach($m in $remove){ & $libExe /nologo \"/remove:$m\" \"/out:$tmpB\" $tmpA | Out-Null; Move-Item -Force $tmpB $tmpA }; Move-Item -Force $tmpA $dst }",
+            "& { param([string]$src, [string]$dst) Copy-Item -Force $src $dst; $libExe=(Get-ChildItem 'C:\\Program Files\\Microsoft Visual Studio\\*\\*\\VC\\Tools\\MSVC\\*\\bin\\Hostx64\\x64\\lib.exe' -ErrorAction SilentlyContinue | Sort-Object { [version]$_.Directory.Parent.Parent.Parent.Name } -Descending | Select-Object -First 1 -ExpandProperty FullName); if(-not $libExe){ $libExe=(Get-Command lib.exe -ErrorAction SilentlyContinue).Source }; if(-not $libExe){ throw 'MSVC lib.exe not found' }; $members=& $libExe /nologo /list $dst; $remove=$members | Where-Object { $_ -match 'compiler_builtins' }; if($remove.Count -eq 0){ exit 0 }; $tmpA=\"$dst.tmpA.lib\"; $tmpB=\"$dst.tmpB.lib\"; Copy-Item -Force $dst $tmpA; foreach($m in $remove){ & $libExe /nologo \"/remove:$m\" \"/out:$tmpB\" $tmpA | Out-Null; Move-Item -Force $tmpB $tmpA }; Move-Item -Force $tmpA $dst }",
         });
         strip_cmd.addFileArg(obj);
         const stripped_obj = strip_cmd.addOutputFileArg("litefetch_html5ever_stripped.lib");
@@ -469,13 +548,27 @@ fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool) !void {
     mod.linkLibrary(curl);
 
     const dep = b.dependency("curl", .{});
+    // Zig 0.16's translate-c currently fails while parsing the VS/SDK header
+    // stack for curl under the MSVC ABI. curl's public C ABI uses the same
+    // Windows LLP64 layout under GNU and MSVC, so translate with the stable
+    // MinGW header path, then compile the generated Zig module for the real
+    // MSVC target. The curl library itself is still built and linked as MSVC.
+    const translate_target = if (target.result.os.tag == .windows and target.result.abi == .msvc)
+        b.resolveTargetQuery(.{ .cpu_arch = target.result.cpu.arch, .os_tag = .windows, .abi = .gnu })
+    else
+        target;
     const translate_c = b.addTranslateC(.{
         .root_source_file = dep.path("include/curl/curl.h"),
-        .target = target,
+        .target = translate_target,
         .optimize = mod.optimize.?,
     });
     translate_c.addIncludePath(dep.path("include"));
-    mod.addImport("curl", translate_c.createModule());
+    const curl_bindings = b.createModule(.{
+        .root_source_file = translate_c.getOutput(),
+        .target = target,
+        .optimize = mod.optimize.?,
+    });
+    mod.addImport("curl", curl_bindings);
 
     const zlib = buildZlib(b, target, mod.optimize.?, is_tsan);
     curl.root_module.linkLibrary(zlib);
@@ -600,6 +693,14 @@ fn buildBoringSsl(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin
 
     const crypto = dep.artifact("crypto");
     crypto.bundle_ubsan_rt = false;
+
+    if (target.result.os.tag == .windows) {
+        // Avoid Windows SDK crypto aliases colliding with BoringSSL type names.
+        ssl.root_module.addCMacro("WIN32_LEAN_AND_MEAN", "1");
+        crypto.root_module.addCMacro("WIN32_LEAN_AND_MEAN", "1");
+        ssl.root_module.addCMacro("NOMINMAX", "1");
+        crypto.root_module.addCMacro("NOMINMAX", "1");
+    }
 
     return .{ ssl, crypto };
 }
@@ -960,52 +1061,52 @@ fn buildCurl(
             },
         .files = &.{
             // You can include all files from lib, libcurl uses #ifdef-guards to exclude code for disabled functions
-            "cf-dns.c",            "dnscache.c",            "protocol.c",          "curlx/strdup.c",
-            "thrdpool.c",          "thrdqueue.c",           "altsvc.c",            "amigaos.c",
-            "asyn-ares.c",         "asyn-base.c",           "asyn-thrdd.c",        "bufq.c",
-            "bufref.c",            "cf-h1-proxy.c",         "cf-h2-proxy.c",       "cf-haproxy.c",
-            "cf-https-connect.c",  "cf-ip-happy.c",         "cf-socket.c",         "cfilters.c",
-            "conncache.c",         "connect.c",             "content_encoding.c",  "cookie.c",
-            "cshutdn.c",           "curl_addrinfo.c",       "curl_endian.c",       "curl_fnmatch.c",
-            "curl_fopen.c",        "curl_get_line.c",       "curl_gethostname.c",  "curl_gssapi.c",
-            "curl_memrchr.c",      "curl_ntlm_core.c",      "curl_range.c",        "curl_sasl.c",
-            "curl_sha512_256.c",   "curl_share.c",          "curl_sspi.c",         "curl_threads.c",
-            "curl_trc.c",          "curlx/base64.c",        "curlx/dynbuf.c",      "curlx/fopen.c",
-            "curlx/inet_ntop.c",   "curlx/inet_pton.c",     "curlx/multibyte.c",   "curlx/nonblock.c",
-            "curlx/strcopy.c",     "curlx/strerr.c",        "curlx/strparse.c",    "curlx/timediff.c",
-            "curlx/timeval.c",     "curlx/version_win32.c", "curlx/wait.c",        "curlx/warnless.c",
-            "curlx/winapi.c",      "cw-out.c",              "cw-pause.c",          "dict.c",
-            "dllmain.c",           "doh.c",                 "dynhds.c",            "easy.c",
-            "easygetopt.c",        "easyoptions.c",         "escape.c",            "fake_addrinfo.c",
-            "file.c",              "fileinfo.c",            "formdata.c",          "ftp.c",
-            "ftplistparser.c",     "getenv.c",              "getinfo.c",           "gopher.c",
-            "hash.c",              "headers.c",             "hmac.c",              "hostip.c",
-            "hostip4.c",           "hostip6.c",             "hsts.c",              "http.c",
-            "http1.c",             "http2.c",               "http_aws_sigv4.c",    "http_chunks.c",
-            "http_digest.c",       "http_negotiate.c",      "http_ntlm.c",         "http_proxy.c",
-            "httpsrr.c",           "idn.c",                 "if2ip.c",             "imap.c",
-            "ldap.c",              "llist.c",               "macos.c",             "md4.c",
-            "md5.c",               "memdebug.c",            "mime.c",              "mprintf.c",
-            "mqtt.c",              "multi.c",               "multi_ev.c",          "multi_ntfy.c",
-            "netrc.c",             "noproxy.c",             "openldap.c",          "parsedate.c",
-            "pingpong.c",          "pop3.c",                "progress.c",          "psl.c",
-            "rand.c",              "ratelimit.c",           "request.c",           "rtsp.c",
-            "select.c",            "sendf.c",               "setopt.c",            "sha256.c",
-            "slist.c",             "smb.c",                 "smtp.c",              "socketpair.c",
-            "socks.c",             "socks_gssapi.c",        "socks_sspi.c",        "splay.c",
-            "strcase.c",           "strequal.c",            "strerror.c",          "system_win32.c",
-            "telnet.c",            "tftp.c",                "transfer.c",          "uint-bset.c",
-            "uint-hash.c",         "uint-spbset.c",         "uint-table.c",        "url.c",
-            "urlapi.c",            "vauth/cleartext.c",     "vauth/cram.c",        "vauth/digest.c",
-            "vauth/digest_sspi.c", "vauth/gsasl.c",         "vauth/krb5_gssapi.c", "vauth/krb5_sspi.c",
-            "vauth/ntlm.c",        "vauth/ntlm_sspi.c",     "vauth/oauth2.c",      "vauth/spnego_gssapi.c",
-            "vauth/spnego_sspi.c", "vauth/vauth.c",         "version.c",           "vquic/curl_ngtcp2.c",
-            "vquic/curl_quiche.c", "vquic/vquic-tls.c",     "vquic/vquic.c",       "vssh/libssh.c",
-            "vssh/libssh2.c",      "vssh/vssh.c",           "vtls/apple.c",        "vtls/cipher_suite.c",
-            "vtls/gtls.c",         "vtls/hostcheck.c",      "vtls/keylog.c",       "vtls/mbedtls.c",
-            "vtls/openssl.c",      "vtls/rustls.c",         "vtls/schannel.c",     "vtls/schannel_verify.c",
-            "vtls/vtls.c",         "vtls/vtls_scache.c",    "vtls/vtls_spack.c",   "vtls/wolfssl.c",
-            "vtls/x509asn1.c",     "ws.c",
+            "cf-dns.c",            "dnscache.c",             "protocol.c",          "curlx/strdup.c",
+            "curlx/basename.c",    "curlx/snprintf.c",       "thrdpool.c",          "thrdqueue.c",
+            "altsvc.c",            "amigaos.c",              "asyn-ares.c",         "asyn-base.c",
+            "asyn-thrdd.c",        "bufq.c",                 "bufref.c",            "cf-h1-proxy.c",
+            "cf-h2-proxy.c",       "cf-haproxy.c",           "cf-https-connect.c",  "cf-ip-happy.c",
+            "cf-socket.c",         "cfilters.c",             "conncache.c",         "connect.c",
+            "content_encoding.c",  "cookie.c",               "cshutdn.c",           "curl_addrinfo.c",
+            "curl_endian.c",       "curl_fnmatch.c",         "curl_fopen.c",        "curl_get_line.c",
+            "curl_gethostname.c",  "curl_gssapi.c",          "curl_memrchr.c",      "curl_ntlm_core.c",
+            "curl_range.c",        "curl_sasl.c",            "curl_sha512_256.c",   "curl_share.c",
+            "curl_sspi.c",         "curl_threads.c",         "curl_trc.c",          "curlx/base64.c",
+            "curlx/dynbuf.c",      "curlx/fopen.c",          "curlx/inet_ntop.c",   "curlx/inet_pton.c",
+            "curlx/multibyte.c",   "curlx/nonblock.c",       "curlx/strcopy.c",     "curlx/strerr.c",
+            "curlx/strparse.c",    "curlx/timediff.c",       "curlx/timeval.c",     "curlx/version_win32.c",
+            "curlx/wait.c",        "curlx/warnless.c",       "curlx/winapi.c",      "cw-out.c",
+            "cw-pause.c",          "dict.c",                 "dllmain.c",           "doh.c",
+            "dynhds.c",            "easy.c",                 "easygetopt.c",        "easyoptions.c",
+            "escape.c",            "fake_addrinfo.c",        "file.c",              "fileinfo.c",
+            "formdata.c",          "ftp.c",                  "ftplistparser.c",     "getenv.c",
+            "getinfo.c",           "gopher.c",               "hash.c",              "headers.c",
+            "hmac.c",              "hostip.c",               "hostip4.c",           "hostip6.c",
+            "hsts.c",              "http.c",                 "http1.c",             "http2.c",
+            "http_aws_sigv4.c",    "http_chunks.c",          "http_digest.c",       "http_negotiate.c",
+            "http_ntlm.c",         "http_proxy.c",           "httpsrr.c",           "idn.c",
+            "if2ip.c",             "imap.c",                 "ldap.c",              "llist.c",
+            "macos.c",             "md4.c",                  "md5.c",               "memdebug.c",
+            "mime.c",              "mprintf.c",              "mqtt.c",              "multi.c",
+            "multi_ev.c",          "multi_ntfy.c",           "netrc.c",             "noproxy.c",
+            "openldap.c",          "parsedate.c",            "pingpong.c",          "pop3.c",
+            "progress.c",          "psl.c",                  "rand.c",              "ratelimit.c",
+            "request.c",           "rtsp.c",                 "select.c",            "sendf.c",
+            "setopt.c",            "sha256.c",               "slist.c",             "smb.c",
+            "smtp.c",              "socketpair.c",           "socks.c",             "socks_gssapi.c",
+            "socks_sspi.c",        "splay.c",                "strcase.c",           "strequal.c",
+            "strerror.c",          "system_win32.c",         "telnet.c",            "tftp.c",
+            "transfer.c",          "uint-bset.c",            "uint-hash.c",         "uint-spbset.c",
+            "uint-table.c",        "url.c",                  "urlapi.c",            "vauth/cleartext.c",
+            "vauth/cram.c",        "vauth/digest.c",         "vauth/digest_sspi.c", "vauth/gsasl.c",
+            "vauth/krb5_gssapi.c", "vauth/krb5_sspi.c",      "vauth/ntlm.c",        "vauth/ntlm_sspi.c",
+            "vauth/oauth2.c",      "vauth/spnego_gssapi.c",  "vauth/spnego_sspi.c", "vauth/vauth.c",
+            "version.c",           "vquic/curl_ngtcp2.c",    "vquic/curl_quiche.c", "vquic/vquic-tls.c",
+            "vquic/vquic.c",       "vssh/libssh.c",          "vssh/libssh2.c",      "vssh/vssh.c",
+            "vtls/apple.c",        "vtls/cipher_suite.c",    "vtls/gtls.c",         "vtls/hostcheck.c",
+            "vtls/keylog.c",       "vtls/mbedtls.c",         "vtls/openssl.c",      "vtls/rustls.c",
+            "vtls/schannel.c",     "vtls/schannel_verify.c", "vtls/vtls.c",         "vtls/vtls_scache.c",
+            "vtls/vtls_spack.c",   "vtls/wolfssl.c",         "vtls/x509asn1.c",     "ws.c",
         },
     });
 

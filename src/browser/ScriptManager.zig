@@ -457,7 +457,6 @@ fn addInlineScript(self: *ScriptManager, script_element: *Element.Html.Script, k
             .script_element = script_element,
             .frame = frame,
         } },
-        .include_credentials = include_credentials,
     };
 
     // An inline module found during parsing waits its turn in document order.

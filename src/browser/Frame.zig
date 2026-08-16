@@ -148,6 +148,9 @@ _element_token_lists: Element.TokenListLookup = .empty,
 _element_shadow_roots: Element.ShadowRootLookup = .empty,
 _node_owner_documents: Node.OwnerDocumentLookup = .empty,
 _element_scroll_positions: Element.ScrollPositionLookup = .empty,
+_element_scroll_metrics: Element.ScrollMetricsLookup = .empty,
+_element_layout_boxes: Element.LayoutBoxLookup = .empty,
+headed_keyboard_text_suppression_depth: u16 = 0,
 _element_namespace_uris: Element.NamespaceUriLookup = .empty,
 _svg_animated_enumerations: AnimatedEnumeration.Lookup = .empty,
 _svg_animated_lengths: AnimatedLength.Lookup = .empty,
@@ -583,6 +586,102 @@ pub fn removeWorker(self: *Frame, worker: *Worker) void {
     }
 }
 
+pub fn resetElementScrollMetrics(self: *Frame) void {
+    self._element_scroll_metrics.clearRetainingCapacity();
+}
+
+pub fn resetElementLayoutBoxes(self: *Frame) void {
+    self._element_layout_boxes.clearRetainingCapacity();
+}
+
+pub fn setElementScrollMetrics(self: *Frame, element: *Element, metrics: Element.ScrollMetrics) !void {
+    try self._element_scroll_metrics.put(self.arena, element, metrics);
+    _ = try self.setElementScrollPosition(
+        element,
+        @as(i32, @intCast(element.getScrollLeft(self))),
+        @as(i32, @intCast(element.getScrollTop(self))),
+    );
+}
+
+pub fn setElementLayoutBox(self: *Frame, element: *Element, box: Element.LayoutBox) !void {
+    try self._element_layout_boxes.put(self.arena, element, box);
+}
+
+pub fn setElementScrollPosition(self: *Frame, element: *Element, x: i32, y: i32) !bool {
+    const owner = element.ownerFrame(self);
+    const gop = try owner._element_scroll_positions.getOrPut(owner.arena, element);
+    if (!gop.found_existing) gop.value_ptr.* = .{};
+
+    var next_x: u32 = @intCast(@max(0, x));
+    var next_y: u32 = @intCast(@max(0, y));
+    if (owner._element_scroll_metrics.get(element)) |metrics| {
+        next_x = @min(next_x, if (metrics.scroll_width > metrics.client_width) metrics.scroll_width - metrics.client_width else 0);
+        next_y = @min(next_y, if (metrics.scroll_height > metrics.client_height) metrics.scroll_height - metrics.client_height else 0);
+    }
+
+    const changed = gop.value_ptr.x != next_x or gop.value_ptr.y != next_y;
+    gop.value_ptr.x = next_x;
+    gop.value_ptr.y = next_y;
+    return changed;
+}
+
+pub const HeadedMouseButton = user_input.HeadedMouseButton;
+pub const MouseButton = HeadedMouseButton;
+pub const MouseModifiers = user_input.MouseModifiers;
+pub const KeyboardModifiers = user_input.KeyboardModifiers;
+pub const MouseWheelDispatchResult = user_input.MouseWheelDispatchResult;
+
+pub fn triggerMouseDown(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
+    return user_input.triggerMouseDownHeaded(self, x, y, button, modifiers);
+}
+
+pub fn triggerMouseUp(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
+    return user_input.triggerMouseUpHeaded(self, x, y, button, modifiers);
+}
+
+pub fn triggerMouseClickWithModifiers(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
+    return user_input.triggerMouseClickHeaded(self, x, y, button, modifiers);
+}
+
+pub fn triggerMouseMove(self: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {
+    return user_input.triggerMouseMoveHeaded(self, x, y, modifiers);
+}
+
+pub fn triggerMouseWheel(self: *Frame, x: f64, y: f64, delta_x: f64, delta_y: f64, modifiers: MouseModifiers) !MouseWheelDispatchResult {
+    return user_input.triggerMouseWheelHeaded(self, x, y, delta_x, delta_y, modifiers);
+}
+
+pub fn mouseClickRequiresRenderedInteractiveTarget(self: *Frame, x: f64, y: f64) !bool {
+    return user_input.mouseClickRequiresRenderedInteractiveTarget(self, x, y);
+}
+
+pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *Frame, key: []const u8, modifiers: KeyboardModifiers, repeat: bool) !bool {
+    return user_input.triggerKeyboardKeyDownNoTextWithRepeatHeaded(self, key, modifiers, repeat);
+}
+
+pub fn triggerKeyboardKeyUp(self: *Frame, key: []const u8, modifiers: KeyboardModifiers) !bool {
+    return user_input.triggerKeyboardKeyUpHeaded(self, key, modifiers);
+}
+
+pub fn insertText(self: *Frame, value: []const u8) !void {
+    return user_input.insertText(self, value);
+}
+
+pub fn triggerWindowBlur(self: *Frame) !void {
+    return user_input.triggerWindowBlurHeaded(self);
+}
+
+pub fn triggerClipboardEvent(self: *Frame, typ: []const u8) !bool {
+    return user_input.triggerClipboardEventHeaded(self, typ);
+}
+
+pub fn getActiveTextSelection(self: *Frame) ?[]const u8 {
+    return user_input.getActiveTextSelectionHeaded(self);
+}
+
+pub fn deleteActiveTextSelection(self: *Frame) !bool {
+    return user_input.deleteActiveTextSelectionHeaded(self);
+}
 pub fn base(self: *const Frame) [:0]const u8 {
     return self.base_url orelse self.url;
 }

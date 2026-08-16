@@ -27,8 +27,6 @@ const Element = @import("../../Element.zig");
 const DOMTokenList = @import("../../collections.zig").DOMTokenList;
 
 const HtmlElement = @import("../Html.zig");
-const CSSStyleSheet = @import("../../css/CSSStyleSheet.zig");
-const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
 
 const Link = @This();
 
@@ -147,39 +145,6 @@ pub fn linkAddedCallback(self: *Link, frame: *Frame) !void {
         // synthetic load, fires next tick
         return frame.queueLoad(Factory.protoOf(self));
     }
-
-}
-
-fn stylesheetRequestIncludesCredentials(self: *const Link) bool {
-    return stylesheetRequestAttributeIncludesCredentials(self.getCrossOrigin());
-}
-
-fn stylesheetRequestAttributeIncludesCredentials(cross_origin: ?[]const u8) bool {
-    const value = cross_origin orelse return true;
-    return std.ascii.eqlIgnoreCase(std.mem.trim(u8, value, " \t\r\n"), "use-credentials");
-}
-
-fn stylesheetRequestUrlForFetch(
-    allocator: std.mem.Allocator,
-    url: [:0]const u8,
-    include_credentials: bool,
-) ![:0]const u8 {
-    if (include_credentials) {
-        return try allocator.dupeZ(u8, url);
-    }
-
-    if (RawURL.getUsername(url).len == 0) {
-        return try allocator.dupeZ(u8, url);
-    }
-
-    return try RawURL.buildUrl(
-        allocator,
-        RawURL.getProtocol(url),
-        RawURL.getHost(url),
-        RawURL.getPathname(url),
-        RawURL.getSearch(url),
-        RawURL.getHash(url),
-    );
 }
 
 pub const JsApi = struct {
@@ -221,52 +186,7 @@ pub const Build = struct {
     }
 };
 
-fn stylesheetHeaderCallback(transfer: *Http.Transfer) !bool {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    const response_header = transfer.response_header orelse return true;
-    ctx.status = response_header.status;
-    if (response_header.status >= 400) {
-        ctx.failed = error.BadStatusCode;
-    }
-    return true;
-}
-
-fn stylesheetDataCallback(transfer: *Http.Transfer, data: []const u8) !void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    try ctx.buffer.appendSlice(ctx.allocator, data);
-}
-
-fn stylesheetDoneCallback(ctx_ptr: *anyopaque) !void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
-    try ctx.sheet.replaceSync(ctx.buffer.items, ctx.page);
-    ctx.finished = true;
-}
-
-fn stylesheetErrorCallback(ctx_ptr: *anyopaque, err: anyerror) void {
-    const ctx: *StylesheetFetchContext = @ptrCast(@alignCast(ctx_ptr));
-    ctx.failed = err;
-}
-
 const testing = @import("../../../../testing.zig");
-test "stylesheetRequestAttributeIncludesCredentials requires use-credentials when crossorigin is present" {
-    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials(null));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(""));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials("anonymous"));
-    try std.testing.expect(!stylesheetRequestAttributeIncludesCredentials(" nope "));
-    try std.testing.expect(stylesheetRequestAttributeIncludesCredentials("use-credentials"));
-}
-
-test "stylesheetRequestUrlForFetch strips userinfo when credentials are disabled" {
-    const stripped = try stylesheetRequestUrlForFetch(
-        std.testing.allocator,
-        "http://css%20user:p%40ss@127.0.0.1:9582/private.css?x=1#frag",
-        false,
-    );
-    defer std.testing.allocator.free(stripped);
-
-    try std.testing.expectEqualStrings("http://127.0.0.1:9582/private.css?x=1#frag", stripped);
-}
-
 test "WebApi: HTML.Link" {
     try testing.htmlRunner("element/html/link.html", .{});
 }

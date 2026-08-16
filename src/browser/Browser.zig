@@ -227,15 +227,11 @@ pub fn reportJsHeap(self: *Browser) void {
 }
 
 pub fn runMicrotasks(self: *Browser) void {
-    self.env.isolate.enter();
-    defer self.env.isolate.exit();
     self.env.runMicrotasks();
 }
 
 pub fn runMacrotasks(self: *Browser) !void {
     const env = &self.env;
-    env.isolate.enter();
-    defer env.isolate.exit();
 
     try self.env.runMacrotasks();
     env.pumpMessageLoop();
@@ -245,14 +241,10 @@ pub fn runMacrotasks(self: *Browser) !void {
 }
 
 pub fn hasBackgroundTasks(self: *Browser) bool {
-    self.env.isolate.enter();
-    defer self.env.isolate.exit();
     return self.env.hasBackgroundTasks();
 }
 
 pub fn waitForBackgroundTasks(self: *Browser) void {
-    self.env.isolate.enter();
-    defer self.env.isolate.exit();
     self.env.waitForBackgroundTasks();
 }
 
@@ -265,7 +257,5 @@ pub fn msToNextTask(self: *Browser) ?u64 {
 }
 
 pub fn runIdleTasks(self: *const Browser) void {
-    self.env.isolate.enter();
-    defer self.env.isolate.exit();
     self.env.runIdleTasks();
 }

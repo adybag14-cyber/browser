@@ -1141,8 +1141,6 @@ pub fn focus(self: *Element, frame: *Frame) !void {
         try frame._event_manager.dispatch(old_target, focusout_event.asEvent());
     }
 
-    initializeTextControlCaretOnFocus(self);
-
     const old_related: ?*EventTarget = if (old_active) |old| old.asEventTarget() else null;
 
     // Dispatch focus on new element (no bubble, composed)
@@ -1378,22 +1376,6 @@ pub fn getElementDimensions(self: *Element, frame: *Frame) Dimensions {
                     dims.explicit_height = true;
                 } else |_| {}
             }
-            if (tag == .img) {
-                if (self.is(Element.Html.Image)) |image| {
-                    const natural_width = @as(f64, @floatFromInt(image.getNaturalWidth(page)));
-                    const natural_height = @as(f64, @floatFromInt(image.getNaturalHeight(page)));
-                    if (natural_width > 0 and natural_height > 0) {
-                        if (width == 5.0 and height == 5.0) {
-                            width = natural_width;
-                            height = natural_height;
-                        } else if (width != 5.0 and height == 5.0) {
-                            height = width * natural_height / natural_width;
-                        } else if (height != 5.0 and width == 5.0) {
-                            width = height * natural_width / natural_height;
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -1464,25 +1446,7 @@ pub fn boundingClientRectValuesForVisible(self: *Element, frame: *Frame) DOMRect
     const dims = self.getElementDimensions(frame);
 
     // Use sibling position for x coordinate to ensure siblings have different x values
-    if (page._element_layout_boxes.get(self)) |layout_box| {
-        x = @floatFromInt(layout_box.x);
-        y = @floatFromInt(layout_box.y);
-    }
-
-    var ancestor = self.asNode().parentElement();
-    while (ancestor) |current| : (ancestor = current.parentElement()) {
-        if (page._element_scroll_positions.get(current)) |scroll_position| {
-            x -= @as(f64, @floatFromInt(scroll_position.x));
-            y -= @as(f64, @floatFromInt(scroll_position.y));
-        }
-    }
-
-    var transform_node: ?*Element = self;
-    while (transform_node) |current| : (transform_node = current.parentElement()) {
-        const delta = resolveTranslateTransform(current, page);
-        x += delta.x;
-        y += delta.y;
-    }
+    const x = calculateSiblingPosition(self.asNode());
 
     return .{
         .x = x,
@@ -1726,13 +1690,6 @@ fn positionStyle(self: *Element, frame: *Frame) []const u8 {
 pub fn getClientTop(_: *Element) f64 {
     // Border width - in our dummy layout, we don't apply borders to layout
     return 0.0;
-}
-
-fn maxScrollOffset(scroll_size: u32, client_size: u32) u32 {
-    if (scroll_size <= client_size) {
-        return 0;
-    }
-    return scroll_size - client_size;
 }
 
 pub fn getClientLeft(_: *Element) f64 {
@@ -2623,13 +2580,6 @@ pub const Build = struct {
 };
 
 const testing = @import("../../testing.zig");
-test "inlineStyleDeclarationValue parses width and height from inline style" {
-    const style = "display:block; width: 220px; height: 40px; background: #1a55d6;";
-    try std.testing.expectEqualStrings("220px", inlineStyleAttributeValue(style, "width").?);
-    try std.testing.expectEqualStrings("40px", inlineStyleAttributeValue(style, "height").?);
-    try std.testing.expect(inlineStyleAttributeValue(style, "color") == null);
-}
-
 test "WebApi: Element" {
     try testing.htmlRunner("element", .{});
 }

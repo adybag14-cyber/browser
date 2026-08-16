@@ -46,52 +46,6 @@ const ArenaPool = App.ArenaPool;
 
 const Session = @This();
 
-pub const PendingDownload = struct {
-    url: []u8,
-    suggested_filename: []u8,
-
-    pub fn deinit(self: *PendingDownload, allocator: Allocator) void {
-        allocator.free(self.url);
-        allocator.free(self.suggested_filename);
-        self.* = undefined;
-    }
-};
-
-pub const RootAttachmentDownloadHandler = struct {
-    ctx: *anyopaque,
-    promote: *const fn (ctx: *anyopaque, page: *Page, transfer: *HttpClient.Transfer, suggested_filename: []const u8) anyerror!void,
-};
-
-pub const PendingBrowserNavigate = struct {
-    url: []u8,
-
-    pub fn deinit(self: *PendingBrowserNavigate, allocator: Allocator) void {
-        allocator.free(self.url);
-        self.* = undefined;
-    }
-};
-
-pub const PendingTabOpen = struct {
-    url: [:0]u8,
-    target_name: []u8,
-    popup_source: PopupSource = .none,
-    opts: Page.NavigateOpts,
-    activate: bool = true,
-    zoom_percent: i32 = 100,
-
-    pub fn deinit(self: *PendingTabOpen, allocator: Allocator) void {
-        allocator.free(self.url);
-        allocator.free(self.target_name);
-        if (self.opts.body) |body| {
-            allocator.free(body);
-        }
-        if (self.opts.header) |header| {
-            allocator.free(header);
-        }
-        self.* = undefined;
-    }
-};
-
 browser: *Browser,
 arena: *lp.Arena,
 history: History,
@@ -238,24 +192,6 @@ pub fn deinit(self: *Session) void {
     self.closeAllPages();
 
     self.cookie_jar.deinit();
-    while (self.pending_browser_navigations.items.len > 0) {
-        var pending_browser_navigation = self.pending_browser_navigations.items[self.pending_browser_navigations.items.len - 1];
-        self.pending_browser_navigations.items.len -= 1;
-        pending_browser_navigation.deinit(self.browser.app.allocator);
-    }
-    self.pending_browser_navigations.deinit(self.browser.app.allocator);
-    while (self.pending_downloads.items.len > 0) {
-        var pending = self.pending_downloads.items[self.pending_downloads.items.len - 1];
-        self.pending_downloads.items.len -= 1;
-        pending.deinit(self.browser.app.allocator);
-    }
-    self.pending_downloads.deinit(self.browser.app.allocator);
-    while (self.pending_tab_opens.items.len > 0) {
-        var pending = self.pending_tab_opens.items[self.pending_tab_opens.items.len - 1];
-        self.pending_tab_opens.items.len -= 1;
-        pending.deinit(self.browser.app.allocator);
-    }
-    self.pending_tab_opens.deinit(self.browser.app.allocator);
 
     self.browser.env.memoryPressureNotification(.critical);
 

@@ -17,12 +17,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const lp = @import("lightpanda");
 const log = @import("../log.zig");
-const Page = @import("../browser/Page.zig");
+const Page = @import("../browser/Frame.zig");
 const URL = @import("../browser/URL.zig");
 const CookieJar = @import("../browser/webapi/storage/Cookie.zig").Jar;
-const Http = @import("../http/Http.zig");
-const HttpClient = Http.Client;
 const Notification = @import("../Notification.zig");
 const BrowserCommand = @import("BrowserCommand.zig").BrowserCommand;
 const Display = @import("Display.zig");
@@ -32,16 +31,7 @@ const DisplayColor = @import("../render/DisplayList.zig").Color;
 const ImageCommand = @import("../render/DisplayList.zig").ImageCommand;
 const PopupSource = Display.PopupSource;
 
-const c = @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cDefine("NOMINMAX", "1");
-    @cDefine("UNICODE", "1");
-    @cDefine("_UNICODE", "1");
-    @cInclude("windows.h");
-    @cInclude("commdlg.h");
-    @cInclude("imm.h");
-    @cInclude("urlmon.h");
-});
+const c = @import("win32");
 
 const DWRITE_FACTORY_TYPE_SHARED: c_int = 0;
 const DWRITE_CONTAINER_TYPE_UNKNOWN: c_int = 0;
@@ -147,6 +137,29 @@ const WM_APP_OPEN_FILE_DIALOG = c.WM_APP + 1;
 const IMAGE_ACCEPT_HEADER: [:0]const u8 =
     "Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
 
+const CompatMutex = struct {
+    inner: std.Io.Mutex = .init,
+
+    fn lock(self: *CompatMutex) void {
+        self.inner.lockUncancelable(lp.io);
+    }
+
+    fn unlock(self: *CompatMutex) void {
+        self.inner.unlock(lp.io);
+    }
+};
+
+const CompatCondition = struct {
+    inner: std.Io.Condition = .init,
+
+    fn wait(self: *CompatCondition, mutex: *CompatMutex) void {
+        self.inner.waitUncancelable(lp.io, &mutex.inner);
+    }
+
+    fn signal(self: *CompatCondition) void {
+        self.inner.signal(lp.io);
+    }
+};
 const GDIP_STATUS_OK: GpStatus = 0;
 
 const CachedImage = struct {
@@ -167,9 +180,9 @@ const CachedImage = struct {
         }
         if (self.owns_cache_file and self.cache_path.len > 0) {
             if (std.fs.path.isAbsolute(self.cache_path)) {
-                std.fs.deleteFileAbsolute(self.cache_path) catch {};
+                std.Io.Dir.deleteFileAbsolute(lp.io, self.cache_path) catch {};
             } else {
-                std.fs.cwd().deleteFile(self.cache_path) catch {};
+                std.Io.Dir.cwd().deleteFile(lp.io, self.cache_path) catch {};
             }
         }
         allocator.free(self.cache_path);
@@ -195,7 +208,6 @@ const RegisteredPrivateFont = struct {
 pub const Win32Backend = struct {
     allocator: std.mem.Allocator,
     app_data_path: ?[]u8 = null,
-    http_runtime: ?*Http = null,
     page_count: u32 = 0,
 
     requested_width: std.atomic.Value(u32),
@@ -208,13 +220,13 @@ pub const Win32Backend = struct {
     ime_composing: bool = false,
     suppress_wm_char_units: u32 = 0,
 
-    input_lock: std.Thread.Mutex = .{},
-    input_events: std.ArrayListUnmanaged(InputEvent) = .{},
+    input_lock: CompatMutex = .{},
+    input_events: std.ArrayListUnmanaged(InputEvent) = .empty,
 
-    command_lock: std.Thread.Mutex = .{},
-    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .{},
+    command_lock: CompatMutex = .{},
+    command_queue: std.ArrayListUnmanaged(BrowserCommand) = .empty,
 
-    presentation_lock: std.Thread.Mutex = .{},
+    presentation_lock: CompatMutex = .{},
     presentation_title: []u8 = &.{},
     presentation_url: []u8 = &.{},
     presentation_body: []u8 = &.{},
@@ -227,27 +239,27 @@ pub const Win32Backend = struct {
     presentation_can_go_forward: bool = false,
     presentation_is_loading: bool = false,
     presentation_zoom_percent: i32 = 100,
-    address_input: std.ArrayListUnmanaged(u8) = .{},
+    address_input: std.ArrayListUnmanaged(u8) = .empty,
     address_input_active: bool = false,
     address_input_select_all: bool = false,
     address_pending_high_surrogate: ?u16 = null,
-    find_input: std.ArrayListUnmanaged(u8) = .{},
+    find_input: std.ArrayListUnmanaged(u8) = .empty,
     find_input_active: bool = false,
     find_input_select_all: bool = false,
     find_pending_high_surrogate: ?u16 = null,
     find_match_index: usize = 0,
-    presentation_tab_entries: std.ArrayListUnmanaged(PresentationTabEntry) = .{},
+    presentation_tab_entries: std.ArrayListUnmanaged(PresentationTabEntry) = .empty,
     presentation_active_tab_index: usize = 0,
-    presentation_history_entries: std.ArrayListUnmanaged([]u8) = .{},
+    presentation_history_entries: std.ArrayListUnmanaged([]u8) = .empty,
     presentation_history_current_index: usize = 0,
     history_overlay_open: bool = false,
     history_overlay_selected_index: usize = 0,
     history_overlay_scroll_index: usize = 0,
-    presentation_bookmark_entries: std.ArrayListUnmanaged([]u8) = .{},
+    presentation_bookmark_entries: std.ArrayListUnmanaged([]u8) = .empty,
     bookmark_overlay_open: bool = false,
     bookmark_overlay_selected_index: usize = 0,
     bookmark_overlay_scroll_index: usize = 0,
-    presentation_download_entries: std.ArrayListUnmanaged(PresentationDownloadEntry) = .{},
+    presentation_download_entries: std.ArrayListUnmanaged(PresentationDownloadEntry) = .empty,
     download_overlay_open: bool = false,
     download_overlay_selected_index: usize = 0,
     download_overlay_scroll_index: usize = 0,
@@ -259,16 +271,16 @@ pub const Win32Backend = struct {
     settings_overlay_selected_index: usize = 0,
     presentation_left_mouse_consumed: bool = false,
     pending_presentation_command: ?BrowserCommand = null,
-    image_cache_lock: std.Thread.Mutex = .{},
+    image_cache_lock: CompatMutex = .{},
     image_cache: std.StringHashMapUnmanaged(CachedImage) = .{},
-    private_font_cache_lock: std.Thread.Mutex = .{},
+    private_font_cache_lock: CompatMutex = .{},
     private_font_cache: std.AutoHashMapUnmanaged(u64, RegisteredPrivateFont) = .{},
     gdiplus_token: c.ULONG_PTR = 0,
     gdiplus_started: bool = false,
 
     thread: ?std.Thread = null,
-    thread_start_lock: std.Thread.Mutex = .{},
-    thread_start_cond: std.Thread.Condition = .{},
+    thread_start_lock: CompatMutex = .{},
+    thread_start_cond: CompatCondition = .{},
     thread_started: bool = false,
     window_hwnd: std.atomic.Value(usize) = .init(0),
 
@@ -362,10 +374,6 @@ pub const Win32Backend = struct {
         self.requested_width.store(width, .release);
         self.requested_height.store(height, .release);
         _ = self.resize_seq.fetchAdd(1, .acq_rel);
-    }
-
-    pub fn setHttpRuntime(self: *Win32Backend, http: *Http) void {
-        self.http_runtime = http;
     }
 
     pub fn setImageRequestCookieJar(self: *Win32Backend, cookie_jar: ?*CookieJar) void {
@@ -627,17 +635,17 @@ pub const Win32Backend = struct {
     }
 
     fn loadBookmarksFromDisk(self: *Win32Backend) void {
-        var loaded: std.ArrayListUnmanaged([]u8) = .{};
+        var loaded: std.ArrayListUnmanaged([]u8) = .empty;
         errdefer deinitOwnedStringList(&loaded, self.allocator);
 
         if (self.app_data_path) |app_data_path| {
-            var dir = std.fs.openDirAbsolute(app_data_path, .{}) catch |err| {
+            var dir = openProfileDir(app_data_path) catch |err| {
                 log.warn(.app, "win bm dir open", .{ .err = err });
                 return;
             };
-            defer dir.close();
+            defer dir.close(lp.io);
 
-            const file = dir.openFile(BOOKMARKS_FILE, .{}) catch |err| switch (err) {
+            const file = dir.openFile(lp.io, BOOKMARKS_FILE, .{}) catch |err| switch (err) {
                 error.FileNotFound => null,
                 else => {
                     log.warn(.app, "win bm open", .{ .err = err });
@@ -645,9 +653,9 @@ pub const Win32Backend = struct {
                 },
             };
             if (file) |bookmark_file| {
-                defer bookmark_file.close();
+                defer bookmark_file.close(lp.io);
 
-                const data = bookmark_file.readToEndAlloc(self.allocator, 1024 * 64) catch |err| {
+                const data = dir.readFileAlloc(lp.io, BOOKMARKS_FILE, self.allocator, .limited(1024 * 64)) catch |err| {
                     log.warn(.app, "win bm read", .{ .err = err });
                     return;
                 };
@@ -680,7 +688,7 @@ pub const Win32Backend = struct {
 
         deinitOwnedStringList(&self.presentation_bookmark_entries, self.allocator);
         self.presentation_bookmark_entries = loaded;
-        loaded = .{};
+        loaded = .empty;
         self.bookmark_overlay_selected_index = clampOverlaySelectedIndex(
             self.presentation_bookmark_entries.items.len,
             self.bookmark_overlay_selected_index,
@@ -701,11 +709,11 @@ pub const Win32Backend = struct {
     fn saveBookmarksToDiskLocked(self: *Win32Backend) void {
         const app_data_path = self.app_data_path orelse return;
 
-        var dir = std.fs.openDirAbsolute(app_data_path, .{}) catch |err| {
+        var dir = openProfileDir(app_data_path) catch |err| {
             log.warn(.app, "win bm dir open", .{ .err = err });
             return;
         };
-        defer dir.close();
+        defer dir.close(lp.io);
 
         var buf = std.Io.Writer.Allocating.init(self.allocator);
         defer buf.deinit();
@@ -723,7 +731,7 @@ pub const Win32Backend = struct {
             };
         }
 
-        dir.writeFile(.{ .sub_path = BOOKMARKS_FILE, .data = buf.written() }) catch |err| {
+        dir.writeFile(lp.io, .{ .sub_path = BOOKMARKS_FILE, .data = buf.written() }) catch |err| {
             log.warn(.app, "win bm write", .{ .err = err });
         };
     }
@@ -789,7 +797,7 @@ pub const Win32Backend = struct {
     }
 
     pub fn dispatchInput(self: *Win32Backend, page: *Page) !void {
-        var pending: std.ArrayListUnmanaged(InputEvent) = .{};
+        var pending: std.ArrayListUnmanaged(InputEvent) = .empty;
         self.input_lock.lock();
         std.mem.swap(std.ArrayListUnmanaged(InputEvent), &pending, &self.input_events);
         self.input_lock.unlock();
@@ -1019,7 +1027,7 @@ pub const Win32Backend = struct {
                 }
             }
 
-            std.Thread.sleep(15 * std.time.ns_per_ms);
+            lp.io.sleep(.fromMilliseconds(15), .awake) catch {};
         }
 
         if (hwnd) |window| {
@@ -1235,12 +1243,19 @@ const SettingsOverlayRow = enum(usize) {
 
 const BOOKMARKS_FILE = "bookmarks.txt";
 
+fn openProfileDir(path: []const u8) !std.Io.Dir {
+    if (std.fs.path.isAbsolute(path)) {
+        return std.Io.Dir.openDirAbsolute(lp.io, path, .{});
+    }
+    return std.Io.Dir.cwd().openDir(lp.io, path, .{});
+}
+
 fn deinitOwnedStringList(list: *std.ArrayListUnmanaged([]u8), allocator: std.mem.Allocator) void {
     for (list.items) |item| {
         allocator.free(item);
     }
     list.deinit(allocator);
-    list.* = .{};
+    list.* = .empty;
 }
 
 fn deinitOwnedTabList(list: *std.ArrayListUnmanaged(PresentationTabEntry), allocator: std.mem.Allocator) void {
@@ -1248,7 +1263,7 @@ fn deinitOwnedTabList(list: *std.ArrayListUnmanaged(PresentationTabEntry), alloc
         entry.deinit(allocator);
     }
     list.deinit(allocator);
-    list.* = .{};
+    list.* = .empty;
 }
 
 fn deinitOwnedDownloadList(list: *std.ArrayListUnmanaged(PresentationDownloadEntry), allocator: std.mem.Allocator) void {
@@ -1256,7 +1271,7 @@ fn deinitOwnedDownloadList(list: *std.ArrayListUnmanaged(PresentationDownloadEnt
         entry.deinit(allocator);
     }
     list.deinit(allocator);
-    list.* = .{};
+    list.* = .empty;
 }
 
 fn presentationHasContent(backend: *Win32Backend) bool {
@@ -1298,7 +1313,7 @@ fn copyPresentationSnapshot(backend: *Win32Backend) !PresentationSnapshot {
         .find_editing = backend.find_input_active,
         .find_match_index = backend.find_match_index,
         .tab_entries = blk: {
-            var tab_entries: std.ArrayListUnmanaged(PresentationTabEntry) = .{};
+            var tab_entries: std.ArrayListUnmanaged(PresentationTabEntry) = .empty;
             errdefer deinitOwnedTabList(&tab_entries, backend.allocator);
             try tab_entries.ensureTotalCapacity(backend.allocator, backend.presentation_tab_entries.items.len);
             for (backend.presentation_tab_entries.items) |entry| {
@@ -1324,7 +1339,7 @@ fn copyPresentationSnapshot(backend: *Win32Backend) !PresentationSnapshot {
         else
             @min(backend.presentation_active_tab_index, backend.presentation_tab_entries.items.len - 1),
         .history_entries = blk: {
-            var history_entries: std.ArrayListUnmanaged([]u8) = .{};
+            var history_entries: std.ArrayListUnmanaged([]u8) = .empty;
             errdefer deinitOwnedStringList(&history_entries, backend.allocator);
             try history_entries.ensureTotalCapacity(backend.allocator, backend.presentation_history_entries.items.len);
             for (backend.presentation_history_entries.items) |entry| {
@@ -1337,7 +1352,7 @@ fn copyPresentationSnapshot(backend: *Win32Backend) !PresentationSnapshot {
         .history_selected_index = backend.history_overlay_selected_index,
         .history_scroll_index = backend.history_overlay_scroll_index,
         .bookmark_entries = blk: {
-            var bookmark_entries: std.ArrayListUnmanaged([]u8) = .{};
+            var bookmark_entries: std.ArrayListUnmanaged([]u8) = .empty;
             errdefer deinitOwnedStringList(&bookmark_entries, backend.allocator);
             try bookmark_entries.ensureTotalCapacity(backend.allocator, backend.presentation_bookmark_entries.items.len);
             for (backend.presentation_bookmark_entries.items) |entry| {
@@ -1349,7 +1364,7 @@ fn copyPresentationSnapshot(backend: *Win32Backend) !PresentationSnapshot {
         .bookmark_selected_index = backend.bookmark_overlay_selected_index,
         .bookmark_scroll_index = backend.bookmark_overlay_scroll_index,
         .download_entries = blk: {
-            var download_entries: std.ArrayListUnmanaged(PresentationDownloadEntry) = .{};
+            var download_entries: std.ArrayListUnmanaged(PresentationDownloadEntry) = .empty;
             errdefer deinitOwnedDownloadList(&download_entries, backend.allocator);
             try download_entries.ensureTotalCapacity(backend.allocator, backend.presentation_download_entries.items.len);
             for (backend.presentation_download_entries.items) |entry| {
@@ -2983,7 +2998,7 @@ fn collectFindMatchesForDisplayList(
     display_list: *const DisplayList,
     query: []const u8,
 ) !std.ArrayListUnmanaged(FindMatch) {
-    var matches: std.ArrayListUnmanaged(FindMatch) = .{};
+    var matches: std.ArrayListUnmanaged(FindMatch) = .empty;
     errdefer matches.deinit(allocator);
 
     if (query.len == 0) {
@@ -4199,10 +4214,8 @@ fn downloadHttpImageCacheFile(
     page_url: []const u8,
     cookie_jar: ?*CookieJar,
 ) ![]u8 {
-    if (backend.http_runtime) |http| {
-        return try fetchHttpImageCacheFile(backend, http, image, page_url, cookie_jar);
-    }
-
+    _ = page_url;
+    _ = cookie_jar;
     const url = image.url;
 
     const wide_url = try std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, url);
@@ -4225,23 +4238,6 @@ fn downloadHttpImageCacheFile(
     return std.unicode.utf16LeToUtf8Alloc(backend.allocator, wide_path[0..path_len]);
 }
 
-const ImageFetchContext = struct {
-    allocator: std.mem.Allocator,
-    file: std.fs.File,
-    response_status: u16 = 0,
-    finished: bool = false,
-    failed: ?anyerror = null,
-    closed: bool = false,
-
-    fn close(self: *ImageFetchContext) void {
-        if (self.closed) {
-            return;
-        }
-        self.file.close();
-        self.closed = true;
-    }
-};
-
 fn imageUrlFileExtension(url: []const u8) []const u8 {
     if (std.mem.indexOfScalar(u8, url, '?')) |query_index| {
         return imageUrlFileExtension(url[0..query_index]);
@@ -4258,92 +4254,6 @@ fn imageUrlFileExtension(url: []const u8) []const u8 {
         }
     }
     return "img";
-}
-
-fn fetchHttpImageCacheFile(
-    backend: *Win32Backend,
-    http: *Http,
-    image: ImageCommand,
-    page_url: []const u8,
-    cookie_jar: ?*CookieJar,
-) ![]u8 {
-    const url = image.url;
-    const path = try tempImageCacheFilePath(backend.allocator, url, imageUrlFileExtension(url));
-    errdefer backend.allocator.free(path);
-
-    var file = try std.fs.createFileAbsolute(path, .{ .truncate = true });
-    errdefer {
-        file.close();
-        std.fs.deleteFileAbsolute(path) catch {};
-    }
-
-    var ctx = ImageFetchContext{
-        .allocator = backend.allocator,
-        .file = file,
-    };
-    var arena = std.heap.ArenaAllocator.init(backend.allocator);
-    defer arena.deinit();
-
-    const notification = try Notification.init(backend.allocator);
-    defer notification.deinit();
-
-    const client = try http.createClient(backend.allocator);
-    defer client.deinit();
-
-    const temp = arena.allocator();
-    const url_z = try imageRequestUrlForFetch(temp, image);
-    var headers = try client.newHeaders();
-    try headers.add(IMAGE_ACCEPT_HEADER);
-
-    if (image.request_include_credentials) {
-        if (cookie_jar) |jar| {
-            const page_url_z = try temp.dupeZ(u8, page_url);
-            const request_cookie = HttpClient.RequestCookie{
-                .jar = jar,
-                .origin = page_url_z,
-                .is_http = std.mem.startsWith(u8, page_url, "http://") or std.mem.startsWith(u8, page_url, "https://"),
-                .is_navigation = false,
-            };
-            try request_cookie.headersForRequest(temp, url_z, &headers);
-        } else if (image.request_cookie_value.len > 0) {
-            const cookie_header = try std.fmt.allocPrintSentinel(temp, "Cookie: {s}", .{image.request_cookie_value}, 0);
-            try headers.add(cookie_header);
-        }
-    }
-    if (image.request_referer_value.len > 0) {
-        const referer_header = try std.fmt.allocPrintSentinel(temp, "Referer: {s}", .{image.request_referer_value}, 0);
-        try headers.add(referer_header);
-    }
-    if (image.request_include_credentials and image.request_authorization_value.len > 0) {
-        const authorization_header = try std.fmt.allocPrintSentinel(temp, "Authorization: {s}", .{image.request_authorization_value}, 0);
-        try headers.add(authorization_header);
-    }
-
-    try client.request(.{
-        .ctx = &ctx,
-        .frame_id = 0,
-        .url = url_z,
-        .method = .GET,
-        .headers = headers,
-        .cookie_jar = cookie_jar,
-        .resource_type = .image,
-        .notification = notification,
-        .header_callback = imageFetchHeaderCallback,
-        .data_callback = imageFetchDataCallback,
-        .done_callback = imageFetchDoneCallback,
-        .error_callback = imageFetchErrorCallback,
-    });
-
-    while (!ctx.finished and ctx.failed == null) {
-        _ = try client.tick(50);
-    }
-
-    if (ctx.failed) |err| {
-        std.fs.deleteFileAbsolute(path) catch {};
-        return err;
-    }
-
-    return path;
 }
 
 fn imageRequestUrlForFetch(allocator: std.mem.Allocator, image: ImageCommand) ![:0]const u8 {
@@ -4370,39 +4280,6 @@ fn imageRequestUrlForFetch(allocator: std.mem.Allocator, image: ImageCommand) ![
     );
 }
 
-fn imageFetchHeaderCallback(transfer: *HttpClient.Transfer) !bool {
-    const ctx: *ImageFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    const response_header = transfer.response_header orelse return true;
-    ctx.response_status = response_header.status;
-    if (response_header.status >= 400) {
-        ctx.failed = error.BadStatusCode;
-    }
-    return true;
-}
-
-fn imageFetchDataCallback(transfer: *HttpClient.Transfer, data: []const u8) !void {
-    const ctx: *ImageFetchContext = @ptrCast(@alignCast(transfer.ctx));
-    if (ctx.failed != null or (ctx.response_status >= 300 and ctx.response_status <= 399)) {
-        return;
-    }
-    try ctx.file.writeAll(data);
-}
-
-fn imageFetchDoneCallback(raw_ctx: *anyopaque) !void {
-    const ctx: *ImageFetchContext = @ptrCast(@alignCast(raw_ctx));
-    ctx.close();
-    ctx.finished = true;
-}
-
-fn imageFetchErrorCallback(raw_ctx: *anyopaque, err: anyerror) void {
-    const ctx: *ImageFetchContext = @ptrCast(@alignCast(raw_ctx));
-    if (!ctx.finished) {
-        ctx.close();
-    }
-    ctx.failed = err;
-    ctx.finished = true;
-}
-
 const CachedImageSource = struct {
     path: []u8,
     owns_file: bool = false,
@@ -4421,7 +4298,7 @@ fn localFilePathFromUrl(allocator: std.mem.Allocator, url: []const u8) ![]u8 {
         raw_path = raw_path["localhost".len..];
     }
 
-    raw_path = std.mem.trimLeft(u8, raw_path, "/");
+    raw_path = std.mem.trimStart(u8, raw_path, "/");
     if (raw_path.len == 0) {
         return error.InvalidFileUrl;
     }
@@ -4462,7 +4339,7 @@ fn parseDataUriBytes(allocator: std.mem.Allocator, src: []const u8) ![]const u8 
             stripped.appendAssumeCapacity(cch);
         }
     }
-    const trimmed = std.mem.trimRight(u8, stripped.items, "=");
+    const trimmed = std.mem.trimEnd(u8, stripped.items, "=");
     if (trimmed.len % 4 == 1) {
         return error.InvalidDataUrl;
     }
@@ -4474,18 +4351,18 @@ fn parseDataUriBytes(allocator: std.mem.Allocator, src: []const u8) ![]const u8 
 }
 
 fn tempImageCacheFilePath(allocator: std.mem.Allocator, url: []const u8, extension: []const u8) ![]u8 {
-    const temp_root = std.process.getEnvVarOwned(allocator, "TEMP") catch try allocator.dupe(u8, ".");
+    const temp_root = if (std.c.getenv("TEMP")) |p| try allocator.dupe(u8, std.mem.span(p)) else try allocator.dupe(u8, ".");
     defer allocator.free(temp_root);
 
     const cache_dir = try std.fs.path.join(allocator, &.{ temp_root, "lightpanda-image-cache" });
     defer allocator.free(cache_dir);
     if (std.fs.path.isAbsolute(cache_dir)) {
-        std.fs.makeDirAbsolute(cache_dir) catch |err| switch (err) {
+        std.Io.Dir.createDirAbsolute(lp.io, cache_dir, .default_dir) catch |err| switch (err) {
             error.PathAlreadyExists => {},
             else => return err,
         };
     } else {
-        std.fs.cwd().makePath(cache_dir) catch |err| switch (err) {
+        std.Io.Dir.cwd().createDirPath(lp.io, cache_dir) catch |err| switch (err) {
             error.PathAlreadyExists => {},
             else => return err,
         };
@@ -4523,9 +4400,9 @@ fn writeDataImageCacheFile(backend: *Win32Backend, url: []const u8) ![]u8 {
     const path = try tempImageCacheFilePath(backend.allocator, url, dataUriFileExtension(url));
     errdefer backend.allocator.free(path);
 
-    const file = try std.fs.createFileAbsolute(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(data);
+    const file = try std.Io.Dir.createFileAbsolute(lp.io, path, .{ .truncate = true });
+    defer file.close(lp.io);
+    try outputWriteAll(file, data);
     return path;
 }
 
@@ -5381,7 +5258,7 @@ fn renderPresentationDisplayList(
     current_find_match: ?usize,
 ) void {
     const display_list = snapshot.display_list orelse return;
-    var command_indices: std.ArrayListUnmanaged(usize) = .{};
+    var command_indices: std.ArrayListUnmanaged(usize) = .empty;
     defer command_indices.deinit(backend.allocator);
     command_indices.ensureTotalCapacity(backend.allocator, display_list.commands.items.len) catch return;
     for (display_list.commands.items, 0..) |command, command_index| {
@@ -5650,10 +5527,10 @@ fn renderPresentationScene(
     }
     _ = c.SetBkMode(hdc, c.TRANSPARENT);
 
-    var find_matches: std.ArrayListUnmanaged(FindMatch) = .{};
+    var find_matches: std.ArrayListUnmanaged(FindMatch) = .empty;
     defer find_matches.deinit(allocator);
     if (snapshot.display_list) |display_list| {
-        find_matches = collectFindMatchesForDisplayList(allocator, &display_list, snapshot.find_text) catch .{};
+        find_matches = collectFindMatchesForDisplayList(allocator, &display_list, snapshot.find_text) catch .empty;
     }
     const current_find_match = if (find_matches.items.len > 0)
         normalizeFindMatchIndex(snapshot.find_match_index, find_matches.items.len)
@@ -5855,11 +5732,9 @@ const RenderedPresentation = struct {
     }
 };
 
-fn openOutputFile(path: []const u8) !std.fs.File {
-    if (std.fs.path.isAbsolute(path)) {
-        return std.fs.createFileAbsolute(path, .{});
-    }
-    return std.fs.cwd().createFile(path, .{});
+fn openOutputFile(path: []const u8) !std.Io.File {
+    if (std.fs.path.isAbsolute(path)) return std.Io.Dir.createFileAbsolute(lp.io, path, .{});
+    return std.Io.Dir.cwd().createFile(lp.io, path, .{});
 }
 
 fn capturePresentationPixels(backend: *Win32Backend) !RenderedPresentation {
@@ -5924,7 +5799,7 @@ fn savePresentationPngAuto(backend: *Win32Backend) bool {
     const filename = std.fmt.allocPrint(
         backend.allocator,
         "lightpanda-screenshot-{d}.png",
-        .{std.time.timestamp()},
+        .{lp.datetime.timestamp(.real)},
     ) catch |err| {
         log.warn(.app, "win png name fail", .{ .err = err });
         return false;
@@ -5937,7 +5812,7 @@ fn savePresentationBitmapAuto(backend: *Win32Backend) bool {
     const filename = std.fmt.allocPrint(
         backend.allocator,
         "lightpanda-screenshot-{d}.bmp",
-        .{std.time.timestamp()},
+        .{lp.datetime.timestamp(.real)},
     ) catch |err| {
         log.warn(.app, "win bmp name failed", .{ .err = err });
         return false;
@@ -5959,7 +5834,7 @@ fn savePresentationBitmap(backend: *Win32Backend, path: []const u8) bool {
         log.warn(.app, "win bmp create failed", .{ .err = err });
         return false;
     };
-    defer file.close();
+    defer file.close(lp.io);
 
     const file_header = BitmapFileHeader{
         .bfType = 0x4D42,
@@ -5976,16 +5851,16 @@ fn savePresentationBitmap(backend: *Win32Backend, path: []const u8) bool {
     bmi_header.biBitCount = 32;
     bmi_header.biCompression = c.BI_RGB;
 
-    file.writeAll(std.mem.asBytes(&file_header)) catch |err| {
+    outputWriteAll(file, std.mem.asBytes(&file_header)) catch |err| {
         log.warn(.app, "win bmp write failed", .{ .err = err });
         return false;
     };
-    file.writeAll(std.mem.asBytes(&bmi_header)) catch |err| {
+    outputWriteAll(file, std.mem.asBytes(&bmi_header)) catch |err| {
         log.warn(.app, "win bmp write failed", .{ .err = err });
         return false;
     };
 
-    file.writeAll(rendered.pixels[0..pixel_bytes]) catch |err| {
+    outputWriteAll(file, rendered.pixels[0..pixel_bytes]) catch |err| {
         log.warn(.app, "win bmp write failed", .{ .err = err });
         return false;
     };
@@ -6004,10 +5879,10 @@ fn savePresentationPng(backend: *Win32Backend, path: []const u8) bool {
         log.warn(.app, "win png create fail", .{ .err = err });
         return false;
     };
-    defer file.close();
+    defer file.close(lp.io);
 
     writePngFromBgra(
-        &file,
+        file,
         @intCast(rendered.width),
         @intCast(rendered.height),
         rendered.pixels,
@@ -6020,14 +5895,19 @@ fn savePresentationPng(backend: *Win32Backend, path: []const u8) bool {
     return true;
 }
 
+fn outputWriteAll(file: std.Io.File, data: []const u8) !void {
+    var writer = file.writerStreaming(lp.io, &.{});
+    try writer.interface.writeAll(data);
+}
+
 fn writePngFromBgra(
-    file: *std.fs.File,
+    file: std.Io.File,
     width: u32,
     height: u32,
     bgra_pixels: []const u8,
     allocator: std.mem.Allocator,
 ) !void {
-    try file.writeAll("\x89PNG\r\n\x1a\n");
+    try outputWriteAll(file, "\x89PNG\r\n\x1a\n");
 
     var ihdr: [13]u8 = undefined;
     storeBigEndianU32(ihdr[0..4], width);
@@ -6062,37 +5942,37 @@ fn writePngFromBgra(
     try writePngChunk(file, "IEND".*, &.{});
 }
 
-fn writePngChunk(file: *std.fs.File, chunk_type: [4]u8, data: []const u8) !void {
+fn writePngChunk(file: std.Io.File, chunk_type: [4]u8, data: []const u8) !void {
     var len_buf: [4]u8 = undefined;
     storeBigEndianU32(&len_buf, @intCast(data.len));
-    try file.writeAll(&len_buf);
-    try file.writeAll(&chunk_type);
-    try file.writeAll(data);
+    try outputWriteAll(file, &len_buf);
+    try outputWriteAll(file, &chunk_type);
+    try outputWriteAll(file, data);
 
     var crc = crc32Init();
     crc = crc32Update(crc, &chunk_type);
     crc = crc32Update(crc, data);
     var crc_buf: [4]u8 = undefined;
     storeBigEndianU32(&crc_buf, crc32Final(crc));
-    try file.writeAll(&crc_buf);
+    try outputWriteAll(file, &crc_buf);
 }
 
-fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
+fn writePngIdatStored(file: std.Io.File, data: []const u8) !void {
     const block_count = if (data.len == 0) 1 else (data.len + 65534) / 65535;
     const compressed_len = 2 + data.len + block_count * 5 + 4;
 
     var len_buf: [4]u8 = undefined;
     storeBigEndianU32(&len_buf, @intCast(compressed_len));
-    try file.writeAll(&len_buf);
+    try outputWriteAll(file, &len_buf);
 
     const chunk_type = "IDAT".*;
-    try file.writeAll(&chunk_type);
+    try outputWriteAll(file, &chunk_type);
 
     var crc = crc32Init();
     crc = crc32Update(crc, &chunk_type);
 
     const zlib_header = [_]u8{ 0x78, 0x01 };
-    try file.writeAll(&zlib_header);
+    try outputWriteAll(file, &zlib_header);
     crc = crc32Update(crc, &zlib_header);
 
     var offset: usize = 0;
@@ -6101,7 +5981,7 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
         const block_len: u16 = @intCast(@min(remaining, 65535));
         const final_block = remaining <= 65535;
         const block_header = [_]u8{if (final_block) 0x01 else 0x00};
-        try file.writeAll(&block_header);
+        try outputWriteAll(file, &block_header);
         crc = crc32Update(crc, &block_header);
 
         const len_bytes = [_]u8{
@@ -6110,12 +5990,12 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
             @truncate(~block_len),
             @truncate((~block_len) >> 8),
         };
-        try file.writeAll(&len_bytes);
+        try outputWriteAll(file, &len_bytes);
         crc = crc32Update(crc, &len_bytes);
 
         if (block_len > 0) {
             const block = data[offset .. offset + block_len];
-            try file.writeAll(block);
+            try outputWriteAll(file, block);
             crc = crc32Update(crc, block);
             offset += block_len;
         }
@@ -6127,12 +6007,12 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
 
     var adler_buf: [4]u8 = undefined;
     storeBigEndianU32(&adler_buf, adler32(data));
-    try file.writeAll(&adler_buf);
+    try outputWriteAll(file, &adler_buf);
     crc = crc32Update(crc, &adler_buf);
 
     var crc_buf: [4]u8 = undefined;
     storeBigEndianU32(&crc_buf, crc32Final(crc));
-    try file.writeAll(&crc_buf);
+    try outputWriteAll(file, &crc_buf);
 }
 
 fn storeBigEndianU32(buf: []u8, value: u32) void {
@@ -7247,7 +7127,7 @@ fn hasImeCompositionString(lparam: c.LPARAM) bool {
 const WINDOW_CLASS_NAME = std.unicode.utf8ToUtf16LeStringLiteral("LightpandaHeadedWindowClass");
 const WINDOW_TITLE = std.unicode.utf8ToUtf16LeStringLiteral("Lightpanda Browser");
 
-const WINDOW_STYLE: c.DWORD = c.WS_OVERLAPPED | c.WS_CAPTION | c.WS_SYSMENU | c.WS_MINIMIZEBOX;
+const WINDOW_STYLE: c.DWORD = c.WS_OVERLAPPED | c.WS_CAPTION | c.WS_SYSMENU | c.WS_MINIMIZEBOX | c.WS_VISIBLE;
 const WINDOW_EX_STYLE: c.DWORD = c.WS_EX_APPWINDOW;
 
 fn registerWindowClass() !void {
@@ -7893,7 +7773,7 @@ fn buildOpenFileDialogFilter(
     const pattern = try buildAcceptFileDialogPatternString(allocator, accept) orelse return null;
     defer allocator.free(pattern);
 
-    var filter = std.ArrayList(u16){};
+    var filter: std.ArrayList(u16) = .empty;
     defer filter.deinit(allocator);
 
     try appendUtf16FilterSegment(&filter, allocator, "Accepted files");
@@ -7923,7 +7803,7 @@ fn buildAcceptFileDialogPatternString(
     allocator: std.mem.Allocator,
     accept: []const u8,
 ) !?[]u8 {
-    var patterns = std.ArrayListUnmanaged([]u8){};
+    var patterns = std.ArrayListUnmanaged([]u8).empty;
     defer {
         for (patterns.items) |pattern| {
             allocator.free(pattern);
@@ -7940,7 +7820,7 @@ fn buildAcceptFileDialogPatternString(
         return null;
     }
 
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     defer out.deinit(allocator);
     for (patterns.items, 0..) |pattern, index| {
         if (index != 0) {
@@ -8070,7 +7950,7 @@ fn parseOpenFileDialogSelection(
     allocator: std.mem.Allocator,
     raw: []const u16,
 ) !Display.ChosenFiles {
-    var segments = std.ArrayListUnmanaged([]const u16){};
+    var segments = std.ArrayListUnmanaged([]const u16).empty;
     defer segments.deinit(allocator);
 
     var index: usize = 0;
@@ -8126,7 +8006,7 @@ fn flattenOpenFileDialogFilterForTest(
     allocator: std.mem.Allocator,
     filter: [:0]const u16,
 ) ![]u8 {
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     defer out.deinit(allocator);
 
     for (filter, 0..) |unit, index| {
@@ -8986,7 +8866,7 @@ test "win32 bookmark toggle persists to app dir" {
     defer std.testing.allocator.free(abs_dir);
 
     var dir = try std.fs.openDirAbsolute(abs_dir, .{});
-    defer dir.close();
+    defer dir.close(lp.io);
     dir.deleteFile(BOOKMARKS_FILE) catch |err| switch (err) {
         error.FileNotFound => {},
         else => return err,
@@ -9059,7 +8939,7 @@ test "win32 bookmark overlay delete removes persisted entry" {
     defer std.testing.allocator.free(abs_dir);
 
     var dir = try std.fs.openDirAbsolute(abs_dir, .{});
-    defer dir.close();
+    defer dir.close(lp.io);
     dir.deleteFile(BOOKMARKS_FILE) catch |err| switch (err) {
         error.FileNotFound => {},
         else => return err,
@@ -9079,8 +8959,8 @@ test "win32 bookmark overlay delete removes persisted entry" {
     try std.testing.expect(!backend.bookmark_overlay_open);
     try std.testing.expectEqual(@as(usize, 0), backend.presentation_bookmark_entries.items.len);
 
-    const file = try dir.openFile(BOOKMARKS_FILE, .{});
-    defer file.close();
+    const file = try dir.openFile(lp.io, BOOKMARKS_FILE, .{});
+    defer file.close(lp.io);
     const data = try file.readToEndAlloc(std.testing.allocator, 64);
     defer std.testing.allocator.free(data);
     try std.testing.expectEqual(@as(usize, 0), data.len);

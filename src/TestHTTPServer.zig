@@ -150,42 +150,6 @@ fn getContentType(file_path: []const u8) []const u8 {
         return "text/html; charset=GB2312";
     }
 
-    if (std.mem.endsWith(u8, file_path, ".png")) {
-        return "image/png";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".jpg") or std.mem.endsWith(u8, file_path, ".jpeg")) {
-        return "image/jpeg";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".gif")) {
-        return "image/gif";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".webp")) {
-        return "image/webp";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".svg")) {
-        return "image/svg+xml";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".woff2")) {
-        return "font/woff2";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".woff")) {
-        return "font/woff";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".ttf")) {
-        return "font/ttf";
-    }
-
-    if (std.mem.endsWith(u8, file_path, ".otf")) {
-        return "font/otf";
-    }
-
     if (std.mem.endsWith(u8, file_path, ".html")) {
         return "text/html";
     }

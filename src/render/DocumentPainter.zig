@@ -1,7 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const Page = @import("../browser/Page.zig");
+const Page = @import("../browser/Frame.zig");
 const URL = @import("../browser/URL.zig");
+const referrer = @import("../browser/referrer.zig");
 const Node = @import("../browser/webapi/Node.zig");
 const Element = @import("../browser/webapi/Element.zig");
 const HTMLDocument = @import("../browser/webapi/HTMLDocument.zig");
@@ -19,12 +20,7 @@ const FontFaceResource = @import("DisplayList.zig").FontFaceResource;
 const FontFaceFormat = @import("DisplayList.zig").FontFaceFormat;
 const ClipRect = @import("DisplayList.zig").ClipRect;
 const CSSStyleSheet = @import("../browser/webapi/css/CSSStyleSheet.zig");
-const win = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cInclude("windows.h");
-    @cInclude("wingdi.h");
-    @cInclude("winuser.h");
-}) else struct {};
+const win = if (builtin.os.tag == .windows) @import("win32") else struct {};
 
 pub const PaintOpts = struct {
     viewport_width: i32,
@@ -579,10 +575,13 @@ const Painter = struct {
                     try self.paintNodeWithOpacity(child, cursor, opacity);
                 }
             },
-            .element => |element| try self.paintElement(element, cursor, opacity),
-            .cdata => |cdata| switch (cdata._type) {
-                .text => try self.paintInlineTextNode(cdata, cursor, opacity),
-                else => {},
+            .element => try self.paintElement(node.subtype(Element), cursor, opacity),
+            .cdata => {
+                const cdata = node.subtype(Node.CData);
+                switch (cdata._type) {
+                    .text => try self.paintInlineTextNode(cdata, cursor, opacity),
+                    else => {},
+                }
             },
             else => {},
         }
@@ -614,7 +613,7 @@ const Painter = struct {
             .cache_layout_boxes = false,
         };
         var cursor = FlowCursor.init(0, 0, @max(@as(i32, 40), available_width));
-            try temp_painter.paintNode(node, &cursor);
+        try temp_painter.paintNode(node, &cursor);
 
         if (displayListBounds(&temp_list)) |bounds| {
             return .{
@@ -636,7 +635,7 @@ const Painter = struct {
         };
         defer temp_list.deinit(self.allocator);
 
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
 
         var temp_painter = Painter{
@@ -912,7 +911,7 @@ const Painter = struct {
             .page_margin = self.list.page_margin,
         };
         defer temp_list.deinit(self.allocator);
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
 
         var temp_painter = Painter{
@@ -1122,23 +1121,23 @@ const Painter = struct {
         const pos = cursor.beginInlineLeaf(width, .{}, spacing);
         const text_y = pos.y + @divTrunc(@max(@as(i32, 0), height - base_height), 2);
 
-            try self.list.addText(self.allocator, .{
-                .x = pos.x,
-                .y = text_y,
-                .width = width,
-                .height = height,
-                .z_index = paint_z_index,
-                .font_size = text_style.font_size,
-                .font_family = @constCast(text_style.font_family),
-                .font_weight = text_style.font_weight,
-                .italic = text_style.italic,
-                .color = text_style.color,
-                .letter_spacing = text_style.letter_spacing,
-                .word_spacing = text_style.word_spacing,
-                .underline = underline,
-                .opacity = opacity,
-                .text = @constCast(segment),
-            });
+        try self.list.addText(self.allocator, .{
+            .x = pos.x,
+            .y = text_y,
+            .width = width,
+            .height = height,
+            .z_index = paint_z_index,
+            .font_size = text_style.font_size,
+            .font_family = @constCast(text_style.font_family),
+            .font_weight = text_style.font_weight,
+            .italic = text_style.italic,
+            .color = text_style.color,
+            .letter_spacing = text_style.letter_spacing,
+            .word_spacing = text_style.word_spacing,
+            .underline = underline,
+            .opacity = opacity,
+            .text = @constCast(segment),
+        });
 
         cursor.advanceInlineLeaf(.{ .x = pos.x, .y = text_y, .width = width, .height = height }, .{}, spacing);
     }
@@ -1439,14 +1438,14 @@ const Painter = struct {
                 .layout_scale = self.list.layout_scale,
                 .page_margin = self.list.page_margin,
             };
-        var temp_painter = Painter{
-            .allocator = self.allocator,
-            .page = self.page,
-            .opts = self.opts,
-            .list = &temp_list,
-            .paint_text_styles = self.paint_text_styles,
-            .cache_layout_boxes = false,
-        };
+            var temp_painter = Painter{
+                .allocator = self.allocator,
+                .page = self.page,
+                .opts = self.opts,
+                .list = &temp_list,
+                .paint_text_styles = self.paint_text_styles,
+                .cache_layout_boxes = false,
+            };
             const height = try temp_painter.paintBlockChildrenWithFloats(
                 element,
                 child_left,
@@ -1727,7 +1726,7 @@ const Painter = struct {
         var child_it = element.asNode().childrenIterator();
         var child_index: usize = 0;
         while (child_it.next()) |child| : (child_index += 1) {
-            if (!isFlexRenderableChild(child)) continue;
+            if (!try isFlexRenderableChild(child, self.page)) continue;
 
             var flex_grow: f32 = 0;
             var flex_shrink: f32 = 1;
@@ -2017,7 +2016,7 @@ const Painter = struct {
         var child_it = element.asNode().childrenIterator();
         var child_index: usize = 0;
         while (child_it.next()) |child| : (child_index += 1) {
-            if (!isFlexRenderableChild(child)) continue;
+            if (!try isFlexRenderableChild(child, self.page)) continue;
 
             var flex_grow: f32 = 0;
             var flex_shrink: f32 = 1;
@@ -2381,7 +2380,7 @@ const Painter = struct {
         opacity: u8,
     ) !i32 {
         var child_cursor = FlowCursor.init(child_left, child_top, child_width);
-        var out_of_flow_children: std.ArrayList(*Node) = .{};
+        var out_of_flow_children: std.ArrayList(*Node) = .empty;
         defer out_of_flow_children.deinit(self.allocator);
         var float_left_x = child_left;
         var float_right_x = child_left + child_width;
@@ -2679,13 +2678,14 @@ const Painter = struct {
                     return self.allocator.dupe(u8, "");
                 }
                 if (input._input_type == .file) {
-                    const selected_files = input.getSelectedFiles();
-                    if (selected_files.len > 1) {
-                        return std.fmt.allocPrint(self.allocator, "{d} files selected", .{selected_files.len});
-                    }
-                    const selected_name = input.getSelectedFileName();
-                    if (selected_name.len > 0) {
-                        return self.allocator.dupe(u8, selected_name);
+                    if (try input.getFiles(self.page)) |file_list| {
+                        const selected_files = file_list._files;
+                        if (selected_files.len > 1) {
+                            return std.fmt.allocPrint(self.allocator, "{d} files selected", .{selected_files.len});
+                        }
+                        if (selected_files.len == 1 and selected_files[0]._name.len > 0) {
+                            return self.allocator.dupe(u8, selected_files[0]._name);
+                        }
                     }
                     if (element.getAttributeSafe(comptime .wrap("placeholder"))) |placeholder| {
                         return self.allocator.dupe(u8, placeholder);
@@ -2717,8 +2717,10 @@ const Painter = struct {
                 };
             },
             .textarea => {
-                const text = try element.asNode().getTextContentAlloc(self.allocator);
-                defer self.allocator.free(text);
+                var text_buf = std.Io.Writer.Allocating.init(self.allocator);
+                defer text_buf.deinit();
+                try element.asNode().getTextContent(&text_buf.writer);
+                const text = text_buf.written();
                 if (element.getAttributeSafe(comptime .wrap("placeholder"))) |placeholder| {
                     return self.allocator.dupe(u8, placeholder);
                 }
@@ -2728,8 +2730,10 @@ const Painter = struct {
                 return self.allocator.dupe(u8, "[textarea]");
             },
             .button, .option, .select => {
-                const text = try element.asNode().getTextContentAlloc(self.allocator);
-                defer self.allocator.free(text);
+                var text_buf = std.Io.Writer.Allocating.init(self.allocator);
+                defer text_buf.deinit();
+                try element.asNode().getTextContent(&text_buf.writer);
+                const text = text_buf.written();
                 const collapsed = try collapseWhitespace(self.allocator, text);
                 if (collapsed.len > 0) {
                     return collapsed;
@@ -2737,7 +2741,7 @@ const Painter = struct {
                 self.allocator.free(collapsed);
                 return self.allocator.dupe(u8, "[control]");
             },
-            else => return collectDirectText(self.allocator, element),
+            else => return collectDirectText(self.allocator, element, self.page),
         }
     }
 
@@ -2832,7 +2836,7 @@ const Painter = struct {
         }
 
         sortCommandRowFragments(fragments.items);
-        const resolved = try URL.resolve(self.page.call_arena, self.page.base(), href, .{ .encode = true });
+        const resolved = try URL.resolve(self.page.call_arena, self.page.base(), href, .{ .encoding = self.page.charset });
         const dom_path = try encodeNodePath(self.page.call_arena, element.asNode());
         const download_filename = element.getAttributeSafe(comptime .wrap("download")) orelse "";
         const open_in_new_tab = linkOpensFreshTab(element);
@@ -3041,7 +3045,7 @@ fn resolvedLinkRegion(
     if (href.len == 0) {
         return null;
     }
-    const resolved = try URL.resolve(page.call_arena, page.base(), href, .{ .encode = true });
+    const resolved = try URL.resolve(page.call_arena, page.base(), href, .{ .encoding = page.charset });
     const dom_path = try encodeNodePath(page.call_arena, element.asNode());
 
     return .{
@@ -3069,7 +3073,7 @@ fn resolvedControlRegion(
 ) !?ControlRegion {
     const html = element.is(Element.Html) orelse return null;
     switch (html._type) {
-        .input => |input| if (input._input_type == .hidden) return null,
+        .input => if (html.subtype(Element.Html.Input)._input_type == .hidden) return null,
         .button, .select, .textarea => {},
         else => return null,
     }
@@ -3087,7 +3091,7 @@ fn resolvedControlRegion(
 fn isHiddenFormControl(element: *Element) bool {
     const html = element.is(Element.Html) orelse return false;
     return switch (html._type) {
-        .input => |input| input._input_type == .hidden,
+        .input => html.subtype(Element.Html.Input)._input_type == .hidden,
         else => false,
     };
 }
@@ -3133,7 +3137,7 @@ fn collectCommandRowFragments(
     allocator: std.mem.Allocator,
     commands: []const Command,
 ) !std.ArrayListUnmanaged(CommandBounds) {
-    var fragments: std.ArrayListUnmanaged(CommandBounds) = .{};
+    var fragments: std.ArrayListUnmanaged(CommandBounds) = .empty;
     errdefer fragments.deinit(allocator);
 
     for (commands) |command| {
@@ -3147,7 +3151,7 @@ fn encodeNodePath(
     allocator: std.mem.Allocator,
     node: *Node,
 ) ![]u16 {
-    var reverse: std.ArrayListUnmanaged(u16) = .{};
+    var reverse: std.ArrayListUnmanaged(u16) = .empty;
     errdefer reverse.deinit(allocator);
 
     var current: ?*Node = node;
@@ -3295,7 +3299,7 @@ fn resolvedImageCommand(
         return null;
     }
 
-    const resolved = try URL.resolve(page.call_arena, page.base(), src, .{ .encode = true });
+    const resolved = try URL.resolve(page.call_arena, page.base(), src, .{ .encoding = page.charset });
     const resolved_z = try page.call_arena.dupeZ(u8, resolved);
     const request_context = try resolveImageRequestContext(page, resolved_z);
     const alt = element.getAttributeSafe(comptime .wrap("alt")) orelse "";
@@ -3305,8 +3309,8 @@ fn resolvedImageCommand(
         page,
         width,
         height,
-        @as(i32, @intCast(page.window.getInnerWidth())),
-        @as(i32, @intCast(page.window.getInnerHeight())),
+        @as(i32, @intCast(page.window.getInnerWidth(page))),
+        @as(i32, @intCast(page.window.getInnerHeight(page))),
     );
     return .{
         .x = x,
@@ -3398,27 +3402,66 @@ const ObjectPosition = struct {
 };
 
 fn resolveImageRequestContext(page: *Page, resolved_url: [:0]const u8) !ImageRequestContext {
-    var headers = try page._session.browser.http_client.newHeaders();
-    defer headers.deinit();
-
-    try page.headersForRequest(page.call_arena, resolved_url, &headers);
-
     var context = ImageRequestContext{};
-    var it = headers.iterator();
-    while (it.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "Cookie")) {
-            context.cookie_value = try page.call_arena.dupe(u8, header.value);
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Referer")) {
-            context.referer_value = try page.call_arena.dupe(u8, header.value);
-            continue;
-        }
-        if (std.ascii.eqlIgnoreCase(header.name, "Authorization")) {
-            context.authorization_value = try page.call_arena.dupe(u8, header.value);
+
+    // Match normal subresource cookie policy: images are HTTP subresources,
+    // not navigations, so SameSite=Lax is excluded cross-site while None is
+    // allowed on secure requests. The page URL is the initiating site.
+    var cookie_writer: std.Io.Writer.Allocating = .init(page.call_arena);
+    defer cookie_writer.deinit();
+    try page._session.cookie_jar.forRequest(resolved_url, &cookie_writer.writer, .{
+        .is_http = true,
+        .is_navigation = false,
+        .origin_url = page.url,
+    });
+    if (cookie_writer.written().len > 0) {
+        context.cookie_value = try page.call_arena.dupe(u8, cookie_writer.written());
+    }
+
+    // Use the current upstream referrer-policy implementation. about:* frames
+    // inherit the first HTTP(S) ancestor as their referrer source.
+    const source = headedReferrerSource(page);
+    if (std.mem.startsWith(u8, source, "http")) {
+        if (try referrer.compute(page.call_arena, page.referrer_policy, source, resolved_url)) |value| {
+            context.referer_value = try page.call_arena.dupe(u8, value);
         }
     }
+
+    // Preserve headed-mode Basic-auth behavior: explicit user-info on the
+    // resource wins; otherwise page user-info is inherited only same-origin.
+    if (try authorizationHeaderValueForRequest(page.call_arena, page.url, resolved_url)) |value| {
+        context.authorization_value = try page.call_arena.dupe(u8, value);
+    }
+
     return context;
+}
+
+fn headedReferrerSource(page: *const Page) [:0]const u8 {
+    var frame = page;
+    while (std.mem.startsWith(u8, frame.url, "about:")) {
+        frame = frame.parent orelse return frame.url;
+    }
+    return frame.url;
+}
+
+fn authorizationHeaderValueForRequest(temp: std.mem.Allocator, page_url: [:0]const u8, request_url: [:0]const u8) !?[]const u8 {
+    if (try authorizationHeaderValueForUrl(temp, request_url)) |value| return value;
+    if (URL.getUsername(page_url).len == 0) return null;
+    const page_origin = try URL.getOrigin(temp, page_url) orelse return null;
+    if (!URL.isSameOrigin(request_url, page_origin)) return null;
+    return authorizationHeaderValueForUrl(temp, page_url);
+}
+
+fn authorizationHeaderValueForUrl(temp: std.mem.Allocator, url: [:0]const u8) !?[]const u8 {
+    const username_raw = URL.getUsername(url);
+    if (username_raw.len == 0) return null;
+    const username = try URL.unescape(temp, username_raw);
+    const password = try URL.unescape(temp, URL.getPassword(url));
+    const credentials = try std.fmt.allocPrint(temp, "{s}:{s}", .{ username, password });
+    const encoded_len = std.base64.standard.Encoder.calcSize(credentials.len);
+    const encoded = try temp.alloc(u8, encoded_len);
+    _ = std.base64.standard.Encoder.encode(encoded, credentials);
+    return @as(?[]const u8, try std.fmt.allocPrint(temp, "Basic {s}", .{encoded}));
 }
 
 fn appendResolvedBackgroundImage(
@@ -3434,7 +3477,7 @@ fn appendResolvedBackgroundImage(
     }
 
     const image_url = extractBackgroundImageUrl(raw_background_image) orelse return;
-    const resolved = try URL.resolve(self.page.call_arena, self.page.base(), image_url, .{ .encode = true });
+    const resolved = try URL.resolve(self.page.call_arena, self.page.base(), image_url, .{ .encoding = self.page.charset });
     const resolved_z = try self.page.call_arena.dupeZ(u8, resolved);
     const request_context = try resolveImageRequestContext(self.page, resolved_z);
     const repeat = resolveBackgroundRepeat(decl, self.page);
@@ -4216,7 +4259,7 @@ fn hasOnlyInlineFlowChildren(element: *Element, page: *Page) !bool {
     var it = element.asNode().childrenIterator();
     while (it.next()) |child| {
         if (child.is(Node.CData.Text)) |text| {
-            if (std.mem.trim(u8, text.getWholeText(), &std.ascii.whitespace).len > 0) {
+            if (std.mem.trim(u8, try text.getWholeText(page), &std.ascii.whitespace).len > 0) {
                 saw_flow_child = true;
             }
             continue;
@@ -4649,9 +4692,9 @@ fn isFlexRowContainer(display: []const u8, decl: anytype, page: *Page) bool {
         std.ascii.eqlIgnoreCase(direction, "row-reverse");
 }
 
-fn isFlexRenderableChild(node: *Node) bool {
+fn isFlexRenderableChild(node: *Node, page: *Page) !bool {
     if (node.is(Node.CData.Text)) |text| {
-        return std.mem.trim(u8, text.getWholeText(), &std.ascii.whitespace).len > 0;
+        return std.mem.trim(u8, try text.getWholeText(page), &std.ascii.whitespace).len > 0;
     }
     if (node.is(Element)) |element| {
         return switch (element.getTag()) {
@@ -4951,7 +4994,7 @@ fn estimateInlineAtomicDescendantWidth(
     var it = element.asNode().childrenIterator();
     while (it.next()) |child| {
         if (child.is(Node.CData.Text)) |text| {
-            const normalized = try normalizeInlineText(self.allocator, text.getWholeText());
+            const normalized = try normalizeInlineText(self.allocator, try text.getWholeText(self.page));
             defer self.allocator.free(normalized);
             const trimmed = std.mem.trim(u8, normalized, " ");
             if (trimmed.len == 0) continue;
@@ -5162,9 +5205,10 @@ const IntrinsicImageDimensions = struct {
 };
 
 fn resolveIntrinsicImageDimensions(element: *Element, page: *Page) ?IntrinsicImageDimensions {
+    _ = page;
     const image = element.is(Element.Html.Image) orelse return null;
-    const width: i32 = @intCast(image.getNaturalWidth(page));
-    const height: i32 = @intCast(image.getNaturalHeight(page));
+    const width: i32 = @intCast(image.getNaturalWidth());
+    const height: i32 = @intCast(image.getNaturalHeight());
     if (width <= 0 or height <= 0) return null;
     return .{ .width = width, .height = height };
 }
@@ -5511,14 +5555,14 @@ fn measuredFontWeight(css_weight: i32) i32 {
     return @as(i32, @intCast(std.math.clamp(css_weight, 100, 900)));
 }
 
-fn collectDirectText(allocator: std.mem.Allocator, element: *Element) ![]u8 {
+fn collectDirectText(allocator: std.mem.Allocator, element: *Element, page: *Page) ![]u8 {
     var buf = std.Io.Writer.Allocating.init(allocator);
     defer buf.deinit();
 
     var it = element.asNode().childrenIterator();
     while (it.next()) |child| {
         if (child.is(Node.CData.Text)) |text| {
-            try buf.writer.writeAll(text.getWholeText());
+            try buf.writer.writeAll(try text.getWholeText(page));
             try buf.writer.writeByte(' ');
             continue;
         }
@@ -5542,7 +5586,7 @@ fn normalizeInlineText(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         return allocator.dupe(u8, " ");
     }
 
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
 
     if (std.ascii.isWhitespace(text[0])) {
@@ -5575,7 +5619,7 @@ fn collapseWhitespace(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
         return allocator.dupe(u8, "");
     }
 
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
 
     var in_space = false;
@@ -5629,7 +5673,8 @@ fn appendLoadedFontFacesToDisplayList(
     list: *DisplayList,
 ) !void {
     const sheets = try page.window._document.getStyleSheets(page);
-    for (sheets.items()) |sheet| {
+    var sheet_index: usize = 0;
+    while (sheets.item(sheet_index)) |sheet| : (sheet_index += 1) {
         for (sheet.getFontFaces()) |entry| {
             if (!entry.loaded or entry.font_bytes.len == 0) {
                 continue;

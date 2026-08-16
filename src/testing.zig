@@ -531,7 +531,7 @@ test "tests:beforeAll" {
         .ws_max_concurrent = 50,
     } });
 
-    test_app = try App.init(test_allocator, &test_config, null);
+    test_app = try App.init(test_allocator, &test_config);
     errdefer test_app.deinit();
 
     try test_browser.init(test_app, .{}, null);

@@ -14,8 +14,6 @@ const CSSStyleRule = @import("CSSStyleRule.zig");
 const log = lp.log;
 
 const CSSStyleSheet = @This();
-const STYLESHEET_ACCEPT_HEADER: [:0]const u8 = "Accept: text/css,*/*;q=0.1";
-const FONT_ACCEPT_HEADER: [:0]const u8 = "Accept: font/woff2,font/woff,font/ttf,font/otf,*/*;q=0.1";
 
 pub const CSSError = error{
     OutOfMemory,
@@ -31,20 +29,19 @@ _disabled: bool = false,
 _css_rules: ?*CSSRuleList = null,
 _owner_rule: ?*CSSRule = null,
 _owner_node: ?*Element = null,
-_rules: []ParsedRule = &.{},
-_font_faces: []ParsedFontFace = &.{},
-_request_base_url: ?[:0]const u8 = null,
-_request_referer_url: ?[:0]const u8 = null,
-_request_include_credentials: bool = true,
 
-const ParsedRule = struct {
-    selector_text: []const u8,
-    declarations_text: []const u8,
-    selectors: []const ParsedSelector,
-    source_order: usize,
-    rule: *CSSRule,
+pub const FontFaceEntry = struct {
+    pub const Format = enum(u8) { unknown, truetype, opentype, woff, woff2 };
+    family: []const u8,
+    source_url: ?[]const u8 = null,
+    format: Format = .unknown,
+    font_bytes: []const u8 = &.{},
+    loaded: bool = false,
 };
 
+pub fn getFontFaces(_: *const CSSStyleSheet) []const FontFaceEntry {
+    return &.{};
+}
 pub fn init(frame: *Frame) !*CSSStyleSheet {
     return frame._factory.create(CSSStyleSheet{});
 }
@@ -228,88 +225,6 @@ pub const JsApi = struct {
     pub const replace = bridge.function(CSSStyleSheet.replace, .{});
     pub const replaceSync = bridge.function(CSSStyleSheet.replaceSync, .{});
 };
-
-test "parseDeclarationValue extracts font-face declarations" {
-    const declarations =
-        \\font-family: "Runner Font";
-        \\src: url("font_face_test.woff2") format("woff2");
-    ;
-    try std.testing.expectEqualStrings("\"Runner Font\"", parseDeclarationValue(declarations, "font-family").?);
-    try std.testing.expectEqualStrings("url(\"font_face_test.woff2\") format(\"woff2\")", parseDeclarationValue(declarations, "src").?);
-}
-
-test "parseFontFaceSources extracts multiple font sources and format hints" {
-    const allocator = std.testing.allocator;
-    const sources = try parseFontFaceSources(
-        allocator,
-        "local(\"Runner\"), url(\"font_face_test.woff2\") format(\"woff2\"), url('private_font_test.ttf') format('truetype')",
-    );
-    defer {
-        for (sources) |source| {
-            allocator.free(source.url_specifier);
-        }
-        allocator.free(sources);
-    }
-
-    try std.testing.expectEqual(@as(usize, 2), sources.len);
-    try std.testing.expectEqualStrings("font_face_test.woff2", sources[0].url_specifier);
-    try std.testing.expectEqual(FontFaceEntry.Format.woff2, sources[0].format_hint);
-    try std.testing.expectEqualStrings("private_font_test.ttf", sources[1].url_specifier);
-    try std.testing.expectEqual(FontFaceEntry.Format.truetype, sources[1].format_hint);
-}
-
-test "choosePreferredFontFaceSource prefers renderable ttf or otf fallback" {
-    const sources = [_]ParsedFontSource{
-        .{ .url_specifier = "font_face_test.woff2", .format_hint = .woff2 },
-        .{ .url_specifier = "private_font_test.ttf", .format_hint = .truetype },
-    };
-    const selected = choosePreferredFontFaceSource(sources[0..]).?;
-    try std.testing.expectEqualStrings("private_font_test.ttf", selected.url_specifier);
-    try std.testing.expectEqual(FontFaceEntry.Format.truetype, selected.format_hint);
-}
-
-test "choosePreferredFontFaceSource falls back to first source when only non-renderable formats exist" {
-    const sources = [_]ParsedFontSource{
-        .{ .url_specifier = "font_face_test.woff2", .format_hint = .woff2 },
-        .{ .url_specifier = "font_face_test.woff", .format_hint = .woff },
-    };
-    const selected = choosePreferredFontFaceSource(sources[0..]).?;
-    try std.testing.expectEqualStrings("font_face_test.woff2", selected.url_specifier);
-    try std.testing.expectEqual(FontFaceEntry.Format.woff2, selected.format_hint);
-}
-
-test "parseFirstFontFaceFormatHint recognizes common hints" {
-    try std.testing.expectEqual(FontFaceEntry.Format.truetype, parseFirstFontFaceFormatHint(" format('truetype'), local('Runner')"));
-    try std.testing.expectEqual(FontFaceEntry.Format.opentype, parseFirstFontFaceFormatHint(" format(\"opentype\") "));
-    try std.testing.expectEqual(FontFaceEntry.Format.woff, parseFirstFontFaceFormatHint(" format('woff') "));
-    try std.testing.expectEqual(FontFaceEntry.Format.woff2, parseFirstFontFaceFormatHint(" format('woff2') "));
-    try std.testing.expectEqual(FontFaceEntry.Format.unknown, parseFirstFontFaceFormatHint(" local('Runner') "));
-}
-
-test "detectFontFaceFormat recognizes supported font extensions" {
-    try std.testing.expectEqual(FontFaceEntry.Format.truetype, detectFontFaceFormat("https://font.test/private_font_test.ttf"));
-    try std.testing.expectEqual(FontFaceEntry.Format.opentype, detectFontFaceFormat("https://font.test/private_font_test.otf?x=1"));
-    try std.testing.expectEqual(FontFaceEntry.Format.woff, detectFontFaceFormat("https://font.test/font.woff#frag"));
-    try std.testing.expectEqual(FontFaceEntry.Format.woff2, detectFontFaceFormat("https://font.test/font.woff2"));
-    try std.testing.expectEqual(FontFaceEntry.Format.unknown, detectFontFaceFormat("https://font.test/font.bin"));
-}
-
-test "formatSupportsEmbeddedBytes only retains ttf and otf bytes" {
-    try std.testing.expect(formatSupportsEmbeddedBytes(.truetype));
-    try std.testing.expect(formatSupportsEmbeddedBytes(.opentype));
-    try std.testing.expect(formatSupportsEmbeddedBytes(.woff));
-    try std.testing.expect(formatSupportsEmbeddedBytes(.woff2));
-    try std.testing.expect(!formatSupportsEmbeddedBytes(.unknown));
-}
-
-test "applyMatchingRules keeps valid selector-list branches when one branch is unsupported" {
-    var page = try testing.pageTest("page/selector_forgiving_stylesheet.html");
-    defer page._session.removePage();
-
-    const duplicate = (try page.window._document.querySelector(.wrap(".dup"), page)).?;
-    const duplicate_style = try page.window.getComputedStyle(duplicate, null, page);
-    try std.testing.expectEqualStrings("none", duplicate_style.asCSSStyleDeclaration().getPropertyValue("display", page));
-}
 
 const testing = @import("../../../testing.zig");
 test "WebApi: CSSStyleSheet" {

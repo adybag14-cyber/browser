@@ -20,11 +20,8 @@ const std = @import("std");
 const lp = @import("lightpanda");
 
 const Config = @import("Config.zig");
-const HostPaths = @import("HostPaths.zig");
-const Host = @import("sys/host.zig").Host;
 const Snapshot = @import("browser/js/Snapshot.zig");
 const Platform = @import("browser/js/Platform.zig");
-const Display = @import("display/Display.zig");
 const Telemetry = @import("telemetry/telemetry.zig").Telemetry;
 
 const Network = @import("network/Network.zig");
@@ -39,7 +36,6 @@ const App = @This();
 network: Network,
 config: *const Config,
 platform: Platform,
-display: Display,
 snapshot: Snapshot,
 telemetry: Telemetry,
 watchdog: Watchdog,
@@ -74,11 +70,7 @@ pub fn init(allocator: Allocator, config: *const Config) !*App {
     app.network = try Network.init(allocator, app, config);
     errdefer app.network.deinit();
 
-    app.app_dir_path = if (host) |host_ref|
-        host_ref.resolveProfileDir(config.profileDir())
-    else
-        HostPaths.resolveProfileDir(allocator, config.profileDir());
-    app.display.setAppDataPath(app.app_dir_path);
+    app.app_dir_path = getAndMakeAppDir(allocator);
 
     app.telemetry = try Telemetry.init(app, config.command, config.interactive());
     errdefer app.telemetry.deinit(allocator);
@@ -105,7 +97,6 @@ pub fn deinit(self: *App) void {
     self.telemetry.deinit(allocator);
     self.network.deinit();
     self.snapshot.deinit();
-    self.display.deinit();
     self.platform.deinit();
     self.arena_pool.deinit();
 

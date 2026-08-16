@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const lp = @import("lightpanda");
 const builtin = @import("builtin");
 
 const Allocator = std.mem.Allocator;
@@ -39,12 +40,12 @@ pub fn resolveProfileDir(allocator: Allocator, override_path: ?[]const u8) ?[]co
         return null;
     }
 
-    const app_dir_path = std.fs.getAppDataDir(allocator, "lightpanda") catch |err| {
+    const app_dir_path = defaultAppDataDir(allocator) catch |err| {
         log.warn(.app, "get data dir", .{ .err = err });
         return null;
     };
 
-    std.fs.cwd().makePath(app_dir_path) catch |err| switch (err) {
+    std.Io.Dir.cwd().createDirPath(lp.io, app_dir_path) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => {
             allocator.free(app_dir_path);
@@ -55,11 +56,28 @@ pub fn resolveProfileDir(allocator: Allocator, override_path: ?[]const u8) ?[]co
     return app_dir_path;
 }
 
+fn defaultAppDataDir(allocator: Allocator) ![]const u8 {
+    if (builtin.os.tag == .windows) {
+        const root = if (std.c.getenv("LOCALAPPDATA")) |p| std.mem.span(p) else if (std.c.getenv("APPDATA")) |p| std.mem.span(p) else return error.AppDataDirUnavailable;
+        return std.fs.path.join(allocator, &.{ root, "lightpanda" });
+    }
+    if (builtin.os.tag == .macos) {
+        const home = std.c.getenv("HOME") orelse return error.AppDataDirUnavailable;
+        return std.fs.path.join(allocator, &.{ std.mem.span(home), "Library", "Application Support", "lightpanda" });
+    }
+    if (std.c.getenv("XDG_DATA_HOME")) |xdg| {
+        const value = std.mem.span(xdg);
+        if (value.len > 0) return std.fs.path.join(allocator, &.{ value, "lightpanda" });
+    }
+    const home = std.c.getenv("HOME") orelse return error.AppDataDirUnavailable;
+    return std.fs.path.join(allocator, &.{ std.mem.span(home), ".local", "share", "lightpanda" });
+}
+
 fn copyAndPrepareDir(allocator: Allocator, path: []const u8) ![]const u8 {
     const owned = try allocator.dupe(u8, path);
     errdefer allocator.free(owned);
     if (supportsProfileDirFilesystem()) {
-        std.fs.cwd().makePath(owned) catch |err| switch (err) {
+        std.Io.Dir.cwd().createDirPath(lp.io, owned) catch |err| switch (err) {
             error.PathAlreadyExists => return owned,
             else => return err,
         };
@@ -78,7 +96,7 @@ pub fn resolveProfileSubdir(allocator: Allocator, profile_root: ?[]const u8, sub
         return path;
     }
 
-    std.fs.cwd().makePath(path) catch |err| switch (err) {
+    std.Io.Dir.cwd().createDirPath(lp.io, path) catch |err| switch (err) {
         error.PathAlreadyExists => return path,
         else => {
             log.warn(.app, "create profile subdir", .{ .err = err, .path = path });

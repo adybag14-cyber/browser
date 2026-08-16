@@ -2,17 +2,13 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const color = @import("../../color.zig");
-const Page = @import("../../Page.zig");
+const Execution = @import("../../js/Execution.zig");
 
 const ImageData = @import("../ImageData.zig");
 
 const CanvasSurface = @This();
 
-const win = if (builtin.os.tag == .windows) @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cInclude("windows.h");
-    @cInclude("wingdi.h");
-}) else struct {};
+const win = if (builtin.os.tag == .windows) @import("win32") else struct {};
 
 pub const TextAlign = enum {
     left,
@@ -291,14 +287,14 @@ pub fn getImageData(
     sy: f64,
     sw: f64,
     sh: f64,
-    page: *Page,
+    exec: *Execution,
 ) !*ImageData {
     const width = dimensionFromFloat(sw) orelse return error.IndexSizeError;
     const height = dimensionFromFloat(sh) orelse return error.IndexSizeError;
     if (width == 0 or height == 0) return error.IndexSizeError;
 
-    const image_data = try ImageData.constructor(width, height, null, page);
-    const bytes = try image_data.bytes(page);
+    const image_data = try ImageData.init(width, height, null, exec);
+    const bytes = image_data.getData().local(exec.js.local.?).slice();
     @memset(bytes, 0);
 
     const start_x = coordinateFromFloat(sx) orelse 0;
@@ -330,9 +326,9 @@ pub fn putImageData(
     dirty_y: ?f64,
     dirty_width: ?f64,
     dirty_height: ?f64,
-    page: *Page,
+    exec: *Execution,
 ) !void {
-    const source = try image_data.bytes(page);
+    const source = image_data.getData().local(exec.js.local.?).slice();
     const source_width = image_data._width;
     const source_height = image_data._height;
 

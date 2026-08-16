@@ -617,7 +617,6 @@ pub fn curl_easy_setopt(easy: *Curl, comptime option: CurlOption, value: anytype
 
         .url,
         .proxy,
-        .no_proxy,
         .accept_encoding,
         .custom_request,
         .cookie,
@@ -670,8 +669,10 @@ pub fn curl_easy_getinfo(easy: *Curl, comptime info: CurlInfo, out: anytype) Err
         .total_time_t,
         .conn_id,
         => blk: {
-            const p: *c.curl_off_t = out;
-            break :blk c.curl_easy_getinfo(easy, inf, p);
+            var value: c.curl_off_t = 0;
+            const rc = c.curl_easy_getinfo(easy, inf, &value);
+            out.* = @intCast(value);
+            break :blk rc;
         },
         .private => blk: {
             const p: **anyopaque = out;

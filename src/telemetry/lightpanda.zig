@@ -79,6 +79,7 @@ pub fn init(self: *LightPanda, app: *App, iid: ?[36]u8, run_mode: Config.RunMode
         .writer = std.Io.Writer.Allocating.init(app.allocator),
         .mode = switch (run_mode) {
             .fetch => "F",
+            .browse => "B",
             .serve => "S",
             .agent => if (interactive == false) "AR" else "A",
             .run => "R",

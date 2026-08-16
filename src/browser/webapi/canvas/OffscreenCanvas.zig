@@ -20,7 +20,6 @@ const std = @import("std");
 const js = @import("../../js/js.zig");
 
 const Blob = @import("../Blob.zig");
-const CanvasSurface = @import("CanvasSurface.zig");
 const OffscreenCanvasRenderingContext2D = @import("OffscreenCanvasRenderingContext2D.zig");
 
 const Execution = js.Execution;
@@ -32,8 +31,6 @@ pub const _prototype_root = true;
 
 _width: u32,
 _height: u32,
-_surface: ?*CanvasSurface = null,
-_context_2d: ?*OffscreenCanvasRenderingContext2D = null,
 
 /// Since there's no base class rendering contexts inherit from,
 /// we're using tagged union.
@@ -52,22 +49,16 @@ pub fn getWidth(self: *const OffscreenCanvas) u32 {
     return self._width;
 }
 
-pub fn setWidth(self: *OffscreenCanvas, value: u32, page: *Page) !void {
+pub fn setWidth(self: *OffscreenCanvas, value: u32) void {
     self._width = value;
-    if (self._surface) |surface| {
-        try surface.resize(page.arena, self._width, self._height);
-    }
 }
 
 pub fn getHeight(self: *const OffscreenCanvas) u32 {
     return self._height;
 }
 
-pub fn setHeight(self: *OffscreenCanvas, value: u32, page: *Page) !void {
+pub fn setHeight(self: *OffscreenCanvas, value: u32) void {
     self._height = value;
-    if (self._surface) |surface| {
-        try surface.resize(page.arena, self._width, self._height);
-    }
 }
 
 pub fn getContext(_: *OffscreenCanvas, context_type: []const u8, exec: *Execution) !?DrawingContext {

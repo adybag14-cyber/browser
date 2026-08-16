@@ -35,7 +35,6 @@ const max_cookie_header_size = 8 * 1024;
 const max_jar_size = 1024;
 
 arena: ArenaAllocator,
-arena_owned: ?*ArenaAllocator = null,
 name: []const u8,
 value: []const u8,
 domain: []const u8,
@@ -52,36 +51,7 @@ pub const SameSite = enum {
 };
 
 pub fn deinit(self: *const Cookie) void {
-    if (self.arena_owned) |arena_owned| {
-        const child = arena_owned.child_allocator;
-        arena_owned.deinit();
-        child.destroy(arena_owned);
-        return;
-    }
-    var arena = self.arena;
-    _ = arena.reset(.free_all);
-}
-
-pub fn cloneOwned(self: *const Cookie, allocator: Allocator) !Cookie {
-    var arena = try allocator.create(ArenaAllocator);
-    arena.* = ArenaAllocator.init(allocator);
-    errdefer {
-        arena.deinit();
-        allocator.destroy(arena);
-    }
-    const aa = arena.allocator();
-    return .{
-        .arena = arena.*,
-        .arena_owned = arena,
-        .name = try aa.dupe(u8, self.name),
-        .value = try aa.dupe(u8, self.value),
-        .domain = try aa.dupe(u8, self.domain),
-        .path = try aa.dupe(u8, self.path),
-        .expires = self.expires,
-        .secure = self.secure,
-        .http_only = self.http_only,
-        .same_site = self.same_site,
-    };
+    self.arena.deinit();
 }
 
 // There's https://datatracker.ietf.org/doc/html/rfc6265 but browsers are
@@ -498,14 +468,14 @@ pub const Jar = struct {
     }
 
     pub fn deinit(self: *Jar) void {
-        for (self.cookies.items) |*c| {
+        for (self.cookies.items) |c| {
             c.deinit();
         }
         self.cookies.deinit(self.allocator);
     }
 
     pub fn clearRetainingCapacity(self: *Jar) void {
-        for (self.cookies.items) |*c| {
+        for (self.cookies.items) |c| {
             c.deinit();
         }
         self.cookies.clearRetainingCapacity();
@@ -595,8 +565,7 @@ pub const Jar = struct {
             i -= 1;
             const cookie = &self.cookies.items[i];
             if (isCookieExpired(cookie, time)) {
-                var removed = self.cookies.swapRemove(i);
-                removed.deinit();
+                self.cookies.swapRemove(i).deinit();
             }
         }
     }

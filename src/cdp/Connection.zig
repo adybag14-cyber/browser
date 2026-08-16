@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const lp = @import("lightpanda");
 
 const CDP = @import("CDP.zig");
@@ -88,9 +89,7 @@ pub fn send(self: *Connection, data: []const u8) !void {
     var changed_to_blocking: bool = false;
     defer _ = self.send_arena.reset(.{ .retain_with_limit = 1024 * 32 });
 
-    defer if (changed_to_blocking) {
-        // We had to change our socket to blocking mode to get our write out
-        // We need to change it back to non-blocking.
+    defer if (changed_to_blocking and comptime builtin.os.tag != .windows) {
         _ = sys_net.fcntl(self.socket, posix.F.SETFL, self.socket_flags) catch |err| {
             log.err(.app, "ws restore nonblocking", .{ .err = err });
         };
@@ -99,6 +98,10 @@ pub fn send(self: *Connection, data: []const u8) !void {
     LOOP: while (pos < data.len) {
         const written = sys_net.write(self.socket, data[pos..]) catch |err| switch (err) {
             error.WouldBlock => {
+                if (comptime builtin.os.tag == .windows) {
+                    lp.io.sleep(.fromMilliseconds(1), .awake) catch {};
+                    continue :LOOP;
+                }
                 // self.socket is nonblocking, because we don't want to block
                 // reads. But our life is a lot easier if we block writes,
                 // largely, because we don't have to maintain a queue of pending
