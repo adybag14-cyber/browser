@@ -14,6 +14,7 @@ const Display = lp.Display;
 const DocumentPainter = lp.DocumentPainter;
 const BrowserCommand = Display.BrowserCommand;
 const HostPaths = @import("HostPaths.zig");
+const Downloads = @import("headed_downloads.zig").Manager;
 const markdown = @import("browser/markdown.zig");
 const js = lp.js;
 
@@ -146,6 +147,7 @@ const Shell = struct {
     app: *App,
     display: Display,
     profile_dir: ?[]const u8,
+    downloads: Downloads,
     tabs: std.ArrayList(*Tab) = .empty,
     closed_tabs: std.ArrayList(ClosedTab) = .empty,
     active_index: usize = 0,
@@ -168,16 +170,20 @@ const Shell = struct {
             .screenshot_png_path = opts.screenshot_png,
         }, null);
         display.setAppDataPath(profile_dir);
+        var downloads = try Downloads.init(app, profile_dir);
+        errdefer downloads.deinit();
         return .{
             .app = app,
             .display = display,
             .profile_dir = profile_dir,
+            .downloads = downloads,
             .width = width,
             .height = height,
         };
     }
 
     fn deinit(self: *Shell) void {
+        self.downloads.deinit();
         while (self.tabs.items.len > 0) {
             const tab = self.tabs.pop().?;
             self.display.onPageRemoved();
@@ -209,6 +215,7 @@ const Shell = struct {
     fn closeTab(self: *Shell, index: usize, remember: bool) !void {
         if (index >= self.tabs.items.len) return;
         const tab = self.tabs.orderedRemove(index);
+        self.downloads.cancelForSource(tab);
         if (remember) try self.pushClosed(tab);
         self.display.onPageRemoved();
         tab.deinit(self.app.allocator);
@@ -237,8 +244,14 @@ const Shell = struct {
         if (self.activeTab()) |tab| tab.zoom_percent = closed.zoom_percent;
     }
 
-    fn tick(self: *Shell) void {
-        for (self.tabs.items) |tab| tab.tick();
+    fn tick(self: *Shell) !void {
+        for (self.tabs.items) |tab| {
+            tab.tick();
+            if (tab.frame()) |frame| {
+                try self.downloads.processPendingRequests(self.app, frame, tab.session, tab.notification, tab);
+            }
+        }
+        self.downloads.tick(0);
     }
 
     fn syncDisplayState(self: *Shell) !void {
@@ -279,7 +292,9 @@ const Shell = struct {
             };
         }
         self.display.setTabEntries(entries, self.active_index);
-        self.display.setDownloadEntries(&.{});
+        const download_entries = try self.downloads.toDisplayEntries(self.app.allocator);
+        defer self.downloads.freeDisplayEntries(self.app.allocator, download_entries);
+        self.display.setDownloadEntries(download_entries);
         self.display.setSettingsState(.{
             .restore_previous_session = self.restore_previous_session,
             .allow_script_popups = self.allow_script_popups,
@@ -350,16 +365,23 @@ const Shell = struct {
             .navigate_new_tab => |url| try self.newTab(url, true),
             .navigate_target_tab => |target| try self.newTab(target.url, true),
             .activate_link_region => |activation| {
-                if (activation.open_in_new_tab or activation.target_name.len > 0) {
+                const pending_before = tab.session.pending_downloads.items.len;
+                try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
+                try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
+                var click = try frame.triggerMouseClickOnNodePathWithResult(activation.dom_path, activation.x, activation.y, .main, .{});
+                if (!click.dispatched) {
+                    click = try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
+                }
+                tab.last_presented_hash = 0;
+                const queued_download = tab.session.pending_downloads.items.len > pending_before;
+                if (!click.default_prevented and !queued_download and (activation.open_in_new_tab or activation.target_name.len > 0)) {
                     try self.newTab(activation.url, true);
-                } else {
-                    try tab.navigate(activation.url);
                 }
             },
             .activate_control_region => |activation| {
                 try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
                 try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
-                try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
+                _ = try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
                 tab.last_presented_hash = 0;
             },
             .back => {
@@ -475,7 +497,16 @@ const Shell = struct {
             },
             .bookmark_add_current, .bookmark_open_visible_new_tabs, .bookmark_sort_set, .bookmark_filter_set, .bookmark_filter_clear, .bookmark_open, .bookmark_open_new_tab, .bookmark_move_up, .bookmark_move_down, .bookmark_remove => {},
             .history_clear_session, .history_remove, .history_remove_before, .history_remove_after, .history_sort_set, .history_filter_set, .history_filter_clear => {},
-            .download, .download_source, .download_source_new_tab, .download_open_file, .download_reveal_file, .download_open_folder, .download_retry, .download_remove, .download_clear, .download_sort_set, .download_filter_set, .download_filter_clear => {},
+            .download => |request| try self.downloads.startDownloadFromValues(self.app, frame, tab.session, tab.notification, tab, request.url, request.suggested_filename),
+            .download_source => |index| if (self.downloads.entryUrl(index)) |url| try tab.navigate(url),
+            .download_source_new_tab => |index| if (self.downloads.entryUrl(index)) |url| try self.newTab(url, true),
+            .download_retry => |index| if (self.downloads.entryUrl(index)) |url| {
+                const filename = self.downloads.entrySuggestedFilename(index) orelse "";
+                try self.downloads.startDownloadFromValues(self.app, frame, tab.session, tab.notification, tab, url, filename);
+            },
+            .download_remove => |index| _ = self.downloads.removeEntry(index),
+            .download_clear => self.downloads.clearCompleted(),
+            .download_open_file, .download_reveal_file, .download_open_folder, .download_sort_set, .download_filter_set, .download_filter_clear => {},
             .settings_clear_cookies => tab.session.cookie_jar.clearRetainingCapacity(),
             .settings_clear_local_storage, .settings_clear_indexed_db => {},
             .error_retry => if (tab.last_error != null) try tab.navigate(tab.url()),
@@ -499,7 +530,7 @@ pub fn browse(app: *App, opts: anytype) !void {
         }
         try shell.drainCommands();
         if (shell.tabs.items.len == 0) break;
-        shell.tick();
+        try shell.tick();
         try shell.syncDisplayState();
         try shell.present();
         lp.io.sleep(.fromMilliseconds(4), .awake) catch {};

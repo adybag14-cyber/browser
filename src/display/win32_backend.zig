@@ -813,7 +813,7 @@ pub const Win32Backend = struct {
                         if (!mouse.rendered_interactive_hit and try page.mouseClickRequiresRenderedInteractiveTarget(mouse.x, mouse.y)) {
                             continue;
                         }
-                        try page.triggerMouseClickWithModifiers(mouse.x, mouse.y, .main, mouse.modifiers);
+                        _ = try page.triggerMouseClickWithModifiers(mouse.x, mouse.y, .main, mouse.modifiers);
                     }
                 },
                 .mouse_move => |mouse| try page.triggerMouseMove(mouse.x, mouse.y, mouse.modifiers),

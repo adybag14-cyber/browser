@@ -26,6 +26,7 @@ const std = @import("std");
 const lp = @import("lightpanda");
 
 const Frame = @import("../Frame.zig");
+const URL = @import("../URL.zig");
 const js = @import("../js/js.zig");
 
 const Node = @import("../webapi/Node.zig");
@@ -426,7 +427,11 @@ fn followLink(frame: *Frame, target: *Node, element: *Element, href: []const u8,
     }
 
     if (try element.hasAttribute(comptime .wrap("download"), frame)) {
-        log.warn(.browser, "a.download", .{ .type = frame._type, .url = frame.url });
+        const resolved_url = try URL.resolve(frame.call_arena, frame.base(), href, .{ .encoding = frame.charset });
+        const suggested_filename = element.getAttributeSafe(comptime .wrap("download")) orelse "";
+        try element.focus(frame);
+        try frame._session.enqueueDownload(resolved_url, suggested_filename);
+        log.info(.browser, "a.download", .{ .type = frame._type, .url = resolved_url });
         return;
     }
 
@@ -659,7 +664,7 @@ pub const KeyboardModifiers = struct {
     shift: bool = false,
 };
 
-const MouseClickDispatchResult = struct { dispatched: bool = false, default_prevented: bool = false };
+pub const MouseClickDispatchResult = struct { dispatched: bool = false, default_prevented: bool = false };
 pub const MouseWheelDispatchResult = struct { dispatched: bool = false, default_prevented: bool = false, scrolled_element: bool = false };
 
 fn dispatchHeadedMouseEvent(frame: *Frame, target: *Element, comptime typ: []const u8, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
@@ -694,9 +699,33 @@ pub fn triggerMouseUpHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseBu
     _ = try dispatchHeadedMouseEvent(frame, target, "mouseup", x, y, button, modifiers);
 }
 
-pub fn triggerMouseClickHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
-    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
-    _ = try dispatchHeadedMouseEvent(frame, target, "click", x, y, button, modifiers);
+fn resolveNodePath(frame: *Frame, path: []const u16) ?*Node {
+    var current = frame.window._document.asNode();
+    for (path) |segment| {
+        var child = current.firstChild();
+        var index: u16 = 0;
+        while (child) |candidate| : (child = candidate.nextSibling()) {
+            if (index == segment) {
+                current = candidate;
+                break;
+            }
+            index += 1;
+        } else {
+            return null;
+        }
+    }
+    return current;
+}
+
+pub fn triggerMouseClickOnNodePathHeaded(frame: *Frame, path: []const u16, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
+    const node = resolveNodePath(frame, path) orelse return .{};
+    const target = node.is(Element) orelse return .{};
+    return dispatchHeadedMouseEvent(frame, target, "click", x, y, button, modifiers);
+}
+
+pub fn triggerMouseClickHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return .{};
+    return dispatchHeadedMouseEvent(frame, target, "click", x, y, button, modifiers);
 }
 
 pub fn triggerMouseMoveHeaded(frame: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {

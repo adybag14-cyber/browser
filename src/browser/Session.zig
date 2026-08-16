@@ -132,6 +132,18 @@ cancel_hook: ?CancelHook = null,
 download_behavior: DownloadBehavior = .deny,
 download_path: ?[]const u8 = null,
 download_events_enabled: bool = false,
+pending_downloads: std.ArrayListUnmanaged(PendingDownload) = .empty,
+
+pub const PendingDownload = struct {
+    url: []u8,
+    suggested_filename: []u8,
+
+    pub fn deinit(self: *PendingDownload, allocator: std.mem.Allocator) void {
+        allocator.free(self.url);
+        allocator.free(self.suggested_filename);
+        self.* = undefined;
+    }
+};
 
 pub const DownloadBehavior = enum {
     allow,
@@ -207,7 +219,30 @@ pub fn deinit(self: *Session) void {
         self.bridge_store.deinit(allocator);
     }
     self._console_messages.deinit();
+    {
+        const allocator = self.browser.app.allocator;
+        for (self.pending_downloads.items) |*download| download.deinit(allocator);
+        self.pending_downloads.deinit(allocator);
+    }
     self.arena.release();
+}
+
+pub fn enqueueDownload(self: *Session, url: []const u8, suggested_filename: []const u8) !void {
+    const allocator = self.browser.app.allocator;
+    const owned_url = try allocator.dupe(u8, url);
+    errdefer allocator.free(owned_url);
+    const owned_filename = try allocator.dupe(u8, suggested_filename);
+    errdefer allocator.free(owned_filename);
+    try self.pending_downloads.append(allocator, .{
+        .url = owned_url,
+        .suggested_filename = owned_filename,
+    });
+}
+
+pub fn takePendingDownloads(self: *Session) std.ArrayListUnmanaged(PendingDownload) {
+    var pending: std.ArrayListUnmanaged(PendingDownload) = .empty;
+    std.mem.swap(std.ArrayListUnmanaged(PendingDownload), &pending, &self.pending_downloads);
+    return pending;
 }
 
 /// Register the console listener so `drainConsoleMessages` returns output. Idempotent.

@@ -629,6 +629,7 @@ pub const HeadedMouseButton = user_input.HeadedMouseButton;
 pub const MouseButton = HeadedMouseButton;
 pub const MouseModifiers = user_input.MouseModifiers;
 pub const KeyboardModifiers = user_input.KeyboardModifiers;
+pub const MouseClickDispatchResult = user_input.MouseClickDispatchResult;
 pub const MouseWheelDispatchResult = user_input.MouseWheelDispatchResult;
 
 pub fn triggerMouseDown(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
@@ -639,8 +640,12 @@ pub fn triggerMouseUp(self: *Frame, x: f64, y: f64, button: MouseButton, modifie
     return user_input.triggerMouseUpHeaded(self, x, y, button, modifiers);
 }
 
-pub fn triggerMouseClickWithModifiers(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
+pub fn triggerMouseClickWithModifiers(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
     return user_input.triggerMouseClickHeaded(self, x, y, button, modifiers);
+}
+
+pub fn triggerMouseClickOnNodePathWithResult(self: *Frame, path: []const u16, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
+    return user_input.triggerMouseClickOnNodePathHeaded(self, path, x, y, button, modifiers);
 }
 
 pub fn triggerMouseMove(self: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {
