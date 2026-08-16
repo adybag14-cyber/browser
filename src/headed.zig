@@ -34,6 +34,24 @@ const ClosedTab = struct {
     }
 };
 
+const NavigationScopeGuard = struct {
+    frame: *Frame,
+    previous_local: ?*const js.Local,
+    scope: js.Local.Scope,
+
+    fn init(self: *NavigationScopeGuard, frame: *Frame) void {
+        self.frame = frame;
+        self.previous_local = frame.js.local;
+        frame.js.localScope(&self.scope);
+        frame.js.local = &self.scope.local;
+    }
+
+    fn deinit(self: *NavigationScopeGuard) void {
+        self.scope.deinit();
+        self.frame.js.local = self.previous_local;
+    }
+};
+
 const Tab = struct {
     browser: Browser = undefined,
     notification: *Notification = undefined,
@@ -346,12 +364,9 @@ const Shell = struct {
             },
             .back => {
                 if (tab.session.navigation.getCanGoBack()) {
-                    const previous_local = frame.js.local;
-                    defer frame.js.local = previous_local;
-                    var nav_scope: js.Local.Scope = undefined;
-                    frame.js.localScope(&nav_scope);
+                    var nav_scope: NavigationScopeGuard = undefined;
+                    nav_scope.init(frame);
                     defer nav_scope.deinit();
-                    frame.js.local = &nav_scope.local;
                     _ = try tab.session.navigation.back(frame);
                     tab.loading = true;
                     tab.last_presented_hash = 0;
@@ -359,12 +374,9 @@ const Shell = struct {
             },
             .forward => {
                 if (tab.session.navigation.getCanGoForward()) {
-                    const previous_local = frame.js.local;
-                    defer frame.js.local = previous_local;
-                    var nav_scope: js.Local.Scope = undefined;
-                    frame.js.localScope(&nav_scope);
+                    var nav_scope: NavigationScopeGuard = undefined;
+                    nav_scope.init(frame);
                     defer nav_scope.deinit();
-                    frame.js.local = &nav_scope.local;
                     _ = try tab.session.navigation.forward(frame);
                     tab.loading = true;
                     tab.last_presented_hash = 0;
@@ -372,12 +384,9 @@ const Shell = struct {
             },
             .reload => {
                 if (!isBlankAddress(frame.url)) {
-                    const previous_local = frame.js.local;
-                    defer frame.js.local = previous_local;
-                    var nav_scope: js.Local.Scope = undefined;
-                    frame.js.localScope(&nav_scope);
+                    var nav_scope: NavigationScopeGuard = undefined;
+                    nav_scope.init(frame);
                     defer nav_scope.deinit();
-                    frame.js.local = &nav_scope.local;
                     _ = try tab.session.navigation.reload(null, frame);
                     tab.loading = true;
                     tab.last_presented_hash = 0;
@@ -391,12 +400,9 @@ const Shell = struct {
             .history_traverse => |index| {
                 const entries = tab.session.navigation.entries();
                 if (index < entries.len) {
-                    const previous_local = frame.js.local;
-                    defer frame.js.local = previous_local;
-                    var nav_scope: js.Local.Scope = undefined;
-                    frame.js.localScope(&nav_scope);
+                    var nav_scope: NavigationScopeGuard = undefined;
+                    nav_scope.init(frame);
                     defer nav_scope.deinit();
-                    frame.js.local = &nav_scope.local;
                     _ = try tab.session.navigation.traverseTo(entries[index].key(), null, frame);
                     tab.loading = true;
                     tab.last_presented_hash = 0;
@@ -429,6 +435,9 @@ const Shell = struct {
             .tab_reload_index => |index| if (index < self.tabs.items.len) {
                 const candidate = self.tabs.items[index];
                 if (candidate.frame()) |candidate_frame| {
+                    var nav_scope: NavigationScopeGuard = undefined;
+                    nav_scope.init(candidate_frame);
+                    defer nav_scope.deinit();
                     _ = try candidate.session.navigation.reload(null, candidate_frame);
                     candidate.loading = true;
                     candidate.last_presented_hash = 0;
