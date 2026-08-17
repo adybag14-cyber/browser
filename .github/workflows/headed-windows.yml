@@ -88,7 +88,7 @@ jobs:
           if ($installedVersion -ne $env:ZIG_VERSION) {
             throw "Unexpected Zig version: $installedVersion != $env:ZIG_VERSION"
           }
-          Write-Host "Verified Zig $installedVersion: $actual"
+          Write-Host "Verified Zig ${installedVersion}: $actual"
 
       - name: Restore Windows V8
         id: v8-cache
@@ -124,7 +124,7 @@ jobs:
           if ($actual -ne $env:V8_SHA256) {
             throw "V8 checksum mismatch: $actual != $env:V8_SHA256"
           }
-          Write-Host "Verified V8 $env:V8_VERSION: $actual"
+          Write-Host "Verified V8 $($env:V8_VERSION): $actual"
 
       - name: Build headed browser
         shell: pwsh
