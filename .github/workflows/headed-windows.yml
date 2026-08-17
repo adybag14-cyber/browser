@@ -8,12 +8,17 @@ on:
       - headed-mode-foundation
       - 'headed-*'
 
+permissions:
+  contents: read
+
 concurrency:
   group: headed-windows-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   ZIG_VERSION: 0.16.0
+  ZIG_ARCHIVE_SHA256: 68659EB5F1E4EB1437A722F1DD889C5A322C9954607F5EDCF337BC3684A75A7E
+  ZIG_ARCHIVE_SIZE: '97217739'
   V8_VERSION: 14.9.207.35
   V8_SHA256: CD843919F6B14056DE6043DE858141460688DD5A8CCBC2F0BE0D4C0911A46BF9
   V8_ARCHIVE_SHA256: 1F42146F8E6082E0B95B24184003984168BE0A5F69D1354820C08E3A0F05527B
@@ -28,23 +33,66 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Zig
-        uses: mlugg/setup-zig@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          version: ${{ env.ZIG_VERSION }}
+          persist-credentials: false
 
-      - name: Zig 0.16 zip-fetch workaround
+      - name: Install verified Zig
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $tmp = Join-Path $env:ZIG_GLOBAL_CACHE_DIR 'tmp'
-          New-Item -ItemType Directory -Force $tmp | Out-Null
+
+          $archiveName = "zig-x86_64-windows-$env:ZIG_VERSION.zip"
+          $archivePath = Join-Path $env:RUNNER_TEMP $archiveName
+          $installRoot = Join-Path $env:RUNNER_TEMP 'zig-install'
+          $zigDir = Join-Path $installRoot "zig-x86_64-windows-$env:ZIG_VERSION"
+          $url = "https://ziglang.org/download/$env:ZIG_VERSION/$archiveName"
+
+          Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
+          Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+          & curl.exe -L --fail --retry 4 --retry-all-errors -o $archivePath $url
+          if ($LASTEXITCODE -ne 0) {
+            throw "Zig download failed with exit code $LASTEXITCODE"
+          }
+
+          $archive = Get-Item $archivePath
+          if ($archive.Length -ne [int64]$env:ZIG_ARCHIVE_SIZE) {
+            throw "Zig archive size mismatch: $($archive.Length) != $env:ZIG_ARCHIVE_SIZE"
+          }
+
+          $actual = (Get-FileHash $archivePath -Algorithm SHA256).Hash
+          if ($actual -ne $env:ZIG_ARCHIVE_SHA256) {
+            throw "Zig archive checksum mismatch: $actual != $env:ZIG_ARCHIVE_SHA256"
+          }
+
+          New-Item -ItemType Directory -Force $installRoot | Out-Null
+          & 7z x $archivePath "-o$installRoot" -y | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "Zig extraction failed with exit code $LASTEXITCODE"
+          }
+          Remove-Item $archivePath -Force
+
+          $zigExe = Join-Path $zigDir 'zig.exe'
+          if (-not (Test-Path $zigExe -PathType Leaf)) {
+            throw "Zig executable was not extracted at $zigExe"
+          }
+
+          $zigDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          $globalCache = Join-Path $env:RUNNER_TEMP "zig-global-cache-$env:ZIG_VERSION"
+          New-Item -ItemType Directory -Force (Join-Path $globalCache 'tmp') | Out-Null
+          "ZIG_GLOBAL_CACHE_DIR=$globalCache" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $installedVersion = (& $zigExe version).Trim()
+          if ($installedVersion -ne $env:ZIG_VERSION) {
+            throw "Unexpected Zig version: $installedVersion != $env:ZIG_VERSION"
+          }
+          Write-Host "Verified Zig $installedVersion: $actual"
 
       - name: Restore Windows V8
         id: v8-cache
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ci-cache/v8/c_v8.lib
           key: headed-v8-windows-${{ env.V8_VERSION }}-${{ env.V8_SHA256 }}
@@ -56,13 +104,14 @@ jobs:
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force .ci-cache/v8 | Out-Null
           $url = "https://github.com/adybag14-cyber/zig-v8-fork/releases/download/$env:V8_RELEASE_TAG/$env:V8_ARCHIVE"
-          curl.exe -L --fail --retry 4 --retry-all-errors -o .ci-cache/v8/v8.7z $url
+          & curl.exe -L --fail --retry 4 --retry-all-errors -o .ci-cache/v8/v8.7z $url
+          if ($LASTEXITCODE -ne 0) { throw "V8 download failed with exit code $LASTEXITCODE" }
           $archiveHash = (Get-FileHash .ci-cache/v8/v8.7z -Algorithm SHA256).Hash
           if ($archiveHash -ne $env:V8_ARCHIVE_SHA256) {
             throw "V8 archive checksum mismatch: $archiveHash != $env:V8_ARCHIVE_SHA256"
           }
           $extractDir = (Resolve-Path '.ci-cache/v8').Path
-          & 7z x .ci-cache/v8/v8.7z "-o$extractDir" -y
+          & 7z x .ci-cache/v8/v8.7z "-o$extractDir" -y | Out-Host
           if ($LASTEXITCODE -ne 0) { throw "7-Zip extraction failed with exit code $LASTEXITCODE" }
           Remove-Item .ci-cache/v8/v8.7z -Force
 
@@ -99,9 +148,132 @@ jobs:
             -MemoryBudgetMb 256 `
             -MemoryGrowthBudgetMb 5
 
+      - name: Validate headed PNG and memory evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $artifacts = (Resolve-Path './ci/headed/artifacts').Path
+
+          function Read-BigEndianUInt32([byte[]]$Bytes, [int]$Offset) {
+            return [uint32](
+              ([uint32]$Bytes[$Offset] * 16777216) +
+              ([uint32]$Bytes[$Offset + 1] * 65536) +
+              ([uint32]$Bytes[$Offset + 2] * 256) +
+              [uint32]$Bytes[$Offset + 3]
+            )
+          }
+
+          function Get-EvidenceFile([string]$Name) {
+            $matches = @(Get-ChildItem -Path $artifacts -Recurse -File -Filter $Name)
+            if ($matches.Count -ne 1) {
+              throw "Expected exactly one $Name, found $($matches.Count)"
+            }
+            return $matches[0].FullName
+          }
+
+          function Get-PngInfo([string]$Name) {
+            $path = Get-EvidenceFile $Name
+            $bytes = [IO.File]::ReadAllBytes($path)
+            $signature = [byte[]](137, 80, 78, 71, 13, 10, 26, 10)
+
+            if ($bytes.Length -lt 33) {
+              throw "$Name is too small to contain a valid PNG header"
+            }
+            for ($i = 0; $i -lt $signature.Length; $i++) {
+              if ($bytes[$i] -ne $signature[$i]) {
+                throw "$Name has an invalid PNG signature"
+              }
+            }
+            if ((Read-BigEndianUInt32 $bytes 8) -ne 13 -or
+                [Text.Encoding]::ASCII.GetString($bytes, 12, 4) -ne 'IHDR') {
+              throw "$Name does not begin with a valid IHDR chunk"
+            }
+
+            $width = Read-BigEndianUInt32 $bytes 16
+            $height = Read-BigEndianUInt32 $bytes 20
+            if ($width -lt 640 -or $height -lt 480) {
+              throw "$Name has an implausibly small viewport: ${width}x${height}"
+            }
+
+            return [pscustomobject]@{
+              name = $Name
+              bytes = $bytes.Length
+              width = $width
+              height = $height
+              sha256 = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          }
+
+          $frameResultPath = Get-EvidenceFile 'frame-result.txt'
+          $frameResult = (Get-Content $frameResultPath -Raw).Trim()
+          if ($frameResult -ne 'FRAME_INTERACTION_OK') {
+            throw "Unexpected frame interaction marker: $frameResult"
+          }
+
+          $frames = @(
+            Get-PngInfo 'frame-before.png'
+            Get-PngInfo 'frame-typed.png'
+            Get-PngInfo 'frame-clicked.png'
+            Get-PngInfo 'frame-after.png'
+          )
+
+          $width = $frames[0].width
+          $height = $frames[0].height
+          foreach ($frame in $frames) {
+            if ($frame.width -ne $width -or $frame.height -ne $height) {
+              throw "PNG viewport mismatch: $($frame.name) is $($frame.width)x$($frame.height), expected ${width}x${height}"
+            }
+          }
+
+          if ($frames[0].sha256 -eq $frames[1].sha256) {
+            throw 'Typing did not change the headed PNG evidence'
+          }
+          if ($frames[0].sha256 -eq $frames[3].sha256) {
+            throw 'Verification did not change the headed PNG evidence'
+          }
+
+          $memoryPath = Get-EvidenceFile 'memory-summary.json'
+          $memory = Get-Content $memoryPath -Raw | ConvertFrom-Json
+          foreach ($property in @(
+            'peak_working_set_mb',
+            'peak_private_mb',
+            'working_set_growth_mb',
+            'private_growth_mb',
+            'sampled_seconds',
+            'memory_budget_mb',
+            'memory_growth_budget_mb'
+          )) {
+            if ($null -eq $memory.PSObject.Properties[$property]) {
+              throw "memory-summary.json is missing $property"
+            }
+          }
+          if ([double]$memory.peak_working_set_mb -gt [double]$memory.memory_budget_mb) {
+            throw "Recorded RSS exceeds its budget: $($memory.peak_working_set_mb) MiB > $($memory.memory_budget_mb) MiB"
+          }
+          if ([double]$memory.working_set_growth_mb -gt [double]$memory.memory_growth_budget_mb) {
+            throw "Recorded RSS growth exceeds its budget: $($memory.working_set_growth_mb) MiB > $($memory.memory_growth_budget_mb) MiB"
+          }
+
+          $frameSummary = [pscustomobject]@{
+            result = $frameResult
+            viewport_width = $width
+            viewport_height = $height
+            typing_changed_png = $true
+            verification_changed_png = $true
+            screenshots = $frames
+          }
+          $frameSummary | ConvertTo-Json -Depth 4 |
+            Set-Content -Encoding utf8 (Join-Path $artifacts 'frame-summary.json')
+
+          Write-Host "Validated $($frames.Count) PNGs at ${width}x${height}"
+          Write-Host "Peak RSS: $($memory.peak_working_set_mb) MiB; RSS growth: $($memory.working_set_growth_mb) MiB over $($memory.sampled_seconds) seconds"
+
       - name: Upload headed visual and memory evidence
+        id: evidence-upload
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: headed-windows-evidence-${{ github.run_id }}
           path: |
@@ -113,11 +285,80 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Publish headed evidence summary
+        if: always()
+        shell: pwsh
+        env:
+          JOB_STATUS: ${{ job.status }}
+          EVIDENCE_ARTIFACT_URL: ${{ steps.evidence-upload.outputs.artifact-url }}
+          EVIDENCE_ARTIFACT_DIGEST: ${{ steps.evidence-upload.outputs.artifact-digest }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $artifacts = './ci/headed/artifacts'
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $lines.Add('# Headed Windows evidence')
+          $lines.Add('')
+          $lines.Add("**Job status:** $env:JOB_STATUS")
+          $lines.Add('')
+
+          $framePath = Join-Path $artifacts 'frame-summary.json'
+          if (Test-Path $framePath) {
+            $frame = Get-Content $framePath -Raw | ConvertFrom-Json
+            $lines.Add('## Nested-frame interaction')
+            $lines.Add('')
+            $lines.Add("Result: **$($frame.result)**")
+            $lines.Add('')
+            $lines.Add('| Screenshot | Dimensions | Bytes | SHA-256 |')
+            $lines.Add('| --- | ---: | ---: | --- |')
+            foreach ($shot in $frame.screenshots) {
+              $shortHash = ([string]$shot.sha256).Substring(0, 16)
+              $lines.Add("| $($shot.name) | $($shot.width)x$($shot.height) | $($shot.bytes) | ``$shortHash…`` |")
+            }
+            $lines.Add('')
+          } else {
+            $lines.Add('## Nested-frame interaction')
+            $lines.Add('')
+            $lines.Add('No validated frame summary was produced. Inspect the uploaded logs and PNGs.')
+            $lines.Add('')
+          }
+
+          $memoryPath = Join-Path $artifacts 'memory-summary.json'
+          if (Test-Path $memoryPath) {
+            $memory = Get-Content $memoryPath -Raw | ConvertFrom-Json
+            $lines.Add('## Repaint memory gate')
+            $lines.Add('')
+            $lines.Add('| Metric | Observed | Budget |')
+            $lines.Add('| --- | ---: | ---: |')
+            $lines.Add("| Peak working set | $($memory.peak_working_set_mb) MiB | $($memory.memory_budget_mb) MiB |")
+            $lines.Add("| Working-set growth | $($memory.working_set_growth_mb) MiB | $($memory.memory_growth_budget_mb) MiB |")
+            $lines.Add("| Peak private bytes | $($memory.peak_private_mb) MiB | — |")
+            $lines.Add("| Private-byte growth | $($memory.private_growth_mb) MiB | — |")
+            $lines.Add("| Sample window | $($memory.sampled_seconds) s | — |")
+            $lines.Add('')
+          } else {
+            $lines.Add('## Repaint memory gate')
+            $lines.Add('')
+            $lines.Add('No memory summary was produced. Inspect the uploaded process logs.')
+            $lines.Add('')
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:EVIDENCE_ARTIFACT_URL)) {
+            $lines.Add("**Evidence artifact:** [$env:EVIDENCE_ARTIFACT_URL]($env:EVIDENCE_ARTIFACT_URL)")
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:EVIDENCE_ARTIFACT_DIGEST)) {
+            $lines.Add('')
+            $lines.Add("**Artifact digest:** ``$env:EVIDENCE_ARTIFACT_DIGEST``")
+          }
+
+          $lines -join [Environment]::NewLine |
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
       - name: Upload headed executable
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: lightpanda-headed-windows-${{ github.sha }}
           path: zig-out/bin/lightpanda-headed.exe
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
