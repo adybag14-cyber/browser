@@ -632,6 +632,21 @@ pub const KeyboardModifiers = user_input.KeyboardModifiers;
 pub const MouseClickDispatchResult = user_input.MouseClickDispatchResult;
 pub const MouseWheelDispatchResult = user_input.MouseWheelDispatchResult;
 
+/// Stable identity used by the native headed compositor/input router. This is
+/// deliberately an internal browser-frame id, not a DOM capability: exposing
+/// it to native chrome does not relax script same-origin checks.
+pub fn frameId(self: *const Frame) u32 {
+    return self._frame_id;
+}
+
+pub fn findFrameById(self: *Frame, id: u32) ?*Frame {
+    if (self._frame_id == id) return self;
+    for (self.child_frames.items) |child| {
+        if (child.findFrameById(id)) |found| return found;
+    }
+    return null;
+}
+
 pub fn triggerMouseDown(self: *Frame, x: f64, y: f64, button: MouseButton, modifiers: MouseModifiers) !void {
     return user_input.triggerMouseDownHeaded(self, x, y, button, modifiers);
 }

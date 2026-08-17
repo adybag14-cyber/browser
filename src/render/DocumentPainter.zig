@@ -14,6 +14,7 @@ const RectCommand = @import("DisplayList.zig").RectCommand;
 const TextCommand = @import("DisplayList.zig").TextCommand;
 const LinkRegion = @import("DisplayList.zig").LinkRegion;
 const ControlRegion = @import("DisplayList.zig").ControlRegion;
+const FrameRegion = @import("DisplayList.zig").FrameRegion;
 const ImageCommand = @import("DisplayList.zig").ImageCommand;
 const CanvasCommand = @import("DisplayList.zig").CanvasCommand;
 const FontFaceResource = @import("DisplayList.zig").FontFaceResource;
@@ -35,6 +36,14 @@ pub const PaintOpts = struct {
 pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts) !DisplayList {
     page.resetElementScrollMetrics();
     page.resetElementLayoutBoxes();
+    // Native painting runs outside the JS Caller lifetime that resets
+    // Frame.call_arena/local_arena. Keep all paint-only resolution scratch in
+    // a bounded arena owned by this paint invocation instead. DisplayList add*
+    // methods copy the strings/paths they retain.
+    var temp_arena = std.heap.ArenaAllocator.init(allocator);
+    defer temp_arena.deinit();
+    const temp_allocator = temp_arena.allocator();
+
     var list = DisplayList{
         .layout_scale = opts.layout_scale,
         .page_margin = opts.page_margin,
@@ -50,6 +59,7 @@ pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts)
 
     var painter = Painter{
         .allocator = allocator,
+        .temp_allocator = temp_allocator,
         .page = page,
         .opts = opts,
         .list = &list,
@@ -254,7 +264,7 @@ fn intersectBoundsWithClipRect(bounds: Bounds, clip_rect: ?ClipRect) ?Bounds {
     return bounds;
 }
 
-fn translateRecentOutput(self: *Painter, command_start: usize, link_start: usize, control_start: usize, dx: i32, dy: i32) void {
+fn translateRecentOutput(self: *Painter, command_start: usize, link_start: usize, control_start: usize, frame_start: usize, dx: i32, dy: i32) void {
     if (dx == 0 and dy == 0) {
         return;
     }
@@ -310,6 +320,14 @@ fn translateRecentOutput(self: *Painter, command_start: usize, link_start: usize
     while (control_index < self.list.control_regions.items.len) : (control_index += 1) {
         self.list.control_regions.items[control_index].x += dx;
         self.list.control_regions.items[control_index].y += dy;
+    }
+
+    var frame_index = frame_start;
+    while (frame_index < self.list.frame_regions.items.len) : (frame_index += 1) {
+        self.list.frame_regions.items[frame_index].x += dx;
+        self.list.frame_regions.items[frame_index].y += dy;
+        self.list.frame_regions.items[frame_index].origin_x += dx;
+        self.list.frame_regions.items[frame_index].origin_y += dy;
     }
 }
 
@@ -425,6 +443,7 @@ fn applyTranslateTransformToRecentOutput(
     command_start: usize,
     link_start: usize,
     control_start: usize,
+    frame_start: usize,
     raw_transform: []const u8,
     reference_width: i32,
     reference_height: i32,
@@ -439,10 +458,10 @@ fn applyTranslateTransformToRecentOutput(
     if (translate.x == 0 and translate.y == 0) {
         return;
     }
-    translateRecentOutput(self, command_start, link_start, control_start, translate.x, translate.y);
+    translateRecentOutput(self, command_start, link_start, control_start, frame_start, translate.x, translate.y);
 }
 
-fn recentOutputBounds(self: *const Painter, command_start: usize, link_start: usize, control_start: usize) ?Bounds {
+fn recentOutputBounds(self: *const Painter, command_start: usize, link_start: usize, control_start: usize, frame_start: usize) ?Bounds {
     var min_x: i32 = std.math.maxInt(i32);
     var min_y: i32 = std.math.maxInt(i32);
     var max_x: i32 = std.math.minInt(i32);
@@ -474,6 +493,14 @@ fn recentOutputBounds(self: *const Painter, command_start: usize, link_start: us
     }
 
     for (self.list.control_regions.items[control_start..]) |region| {
+        min_x = @min(min_x, region.x);
+        min_y = @min(min_y, region.y);
+        max_x = @max(max_x, region.x + region.width);
+        max_y = @max(max_y, region.y + region.height);
+        found = true;
+    }
+
+    for (self.list.frame_regions.items[frame_start..]) |region| {
         min_x = @min(min_x, region.x);
         min_y = @min(min_y, region.y);
         max_x = @max(max_x, region.x + region.width);
@@ -554,6 +581,7 @@ const PaintTextStyle = struct {
 
 const Painter = struct {
     allocator: std.mem.Allocator,
+    temp_allocator: std.mem.Allocator,
     page: *Page,
     opts: PaintOpts,
     list: *DisplayList,
@@ -606,6 +634,7 @@ const Painter = struct {
 
         var temp_painter = Painter{
             .allocator = self.allocator,
+            .temp_allocator = self.temp_allocator,
             .page = self.page,
             .opts = self.opts,
             .list = &temp_list,
@@ -640,6 +669,7 @@ const Painter = struct {
 
         var temp_painter = Painter{
             .allocator = self.allocator,
+            .temp_allocator = self.temp_allocator,
             .page = self.page,
             .opts = self.opts,
             .list = &temp_list,
@@ -787,6 +817,7 @@ const Painter = struct {
             };
             if (intersectBoundsWithClipRect(shifted, parent_clip_rect)) |clipped| {
                 try self.list.addLinkRegion(self.allocator, .{
+                    .frame_id = region.frame_id,
                     .x = clipped.x,
                     .y = clipped.y,
                     .width = clipped.width,
@@ -810,6 +841,7 @@ const Painter = struct {
             };
             if (intersectBoundsWithClipRect(shifted, parent_clip_rect)) |clipped| {
                 try self.list.addControlRegion(self.allocator, .{
+                    .frame_id = region.frame_id,
                     .x = clipped.x,
                     .y = clipped.y,
                     .width = clipped.width,
@@ -819,6 +851,73 @@ const Painter = struct {
                 });
             }
         }
+
+        for (source.frame_regions.items) |region| {
+            const shifted = Bounds{
+                .x = region.x + dx,
+                .y = region.y + dy,
+                .width = region.width,
+                .height = region.height,
+            };
+            if (intersectBoundsWithClipRect(shifted, parent_clip_rect)) |clipped| {
+                try self.list.addFrameRegion(self.allocator, .{
+                    .x = clipped.x,
+                    .y = clipped.y,
+                    .width = clipped.width,
+                    .height = clipped.height,
+                    .origin_x = region.origin_x + dx,
+                    .origin_y = region.origin_y + dy,
+                    .frame_id = region.frame_id,
+                    .depth = region.depth,
+                    .z_index = region.z_index,
+                });
+            }
+        }
+
+        for (source.font_faces.items) |font_face| {
+            try self.list.addFontFace(self.allocator, font_face);
+        }
+    }
+
+    fn appendChildFrame(
+        self: *Painter,
+        child: *Page,
+        rect: Bounds,
+        z_index: i32,
+    ) !void {
+        const width = @max(@as(i32, 1), rect.width);
+        const height = @max(@as(i32, 1), rect.height);
+        var child_list = try paintDocument(self.allocator, child, .{
+            .viewport_width = width,
+            .viewport_height = height,
+            .layout_scale = self.opts.layout_scale,
+            .page_margin = 0,
+            .block_min_width = @min(self.opts.block_min_width, width),
+            .inline_min_width = @min(self.opts.inline_min_width, width),
+            .min_height = self.opts.min_height,
+        });
+        defer child_list.deinit(self.allocator);
+
+        // Nested child regions are relative to the child display list. Bump
+        // their depth before flattening so hit testing can always prefer the
+        // deepest visible browsing context.
+        for (child_list.frame_regions.items) |*region| {
+            region.depth +|= 1;
+        }
+
+        const clip = clipRectFromBounds(rect);
+        try self.list.addFrameRegion(self.allocator, FrameRegion{
+            .x = rect.x,
+            .y = rect.y,
+            .width = rect.width,
+            .height = rect.height,
+            .origin_x = rect.x,
+            .origin_y = rect.y,
+            .frame_id = child.frameId(),
+            .depth = 1,
+            .z_index = z_index,
+        });
+        try self.appendDisplayListWithOffset(&child_list, rect.x, rect.y, clip);
     }
 
     fn applyClipRectToRecentOutput(
@@ -826,6 +925,7 @@ const Painter = struct {
         command_start: usize,
         link_start: usize,
         control_start: usize,
+        frame_start: usize,
         clip_rect: ClipRect,
     ) void {
         for (self.list.commands.items[command_start..]) |*command| {
@@ -895,6 +995,25 @@ const Painter = struct {
                 self.allocator.free(removed.dom_path);
             }
         }
+
+        var frame_index = self.list.frame_regions.items.len;
+        while (frame_index > frame_start) {
+            frame_index -= 1;
+            const region = self.list.frame_regions.items[frame_index];
+            if (intersectBoundsWithClipRect(.{
+                .x = region.x,
+                .y = region.y,
+                .width = region.width,
+                .height = region.height,
+            }, clip_rect)) |clipped| {
+                self.list.frame_regions.items[frame_index].x = clipped.x;
+                self.list.frame_regions.items[frame_index].y = clipped.y;
+                self.list.frame_regions.items[frame_index].width = clipped.width;
+                self.list.frame_regions.items[frame_index].height = clipped.height;
+            } else {
+                _ = self.list.frame_regions.orderedRemove(frame_index);
+            }
+        }
     }
 
     fn paintInlineFlowChildren(
@@ -916,6 +1035,7 @@ const Painter = struct {
 
         var temp_painter = Painter{
             .allocator = self.allocator,
+            .temp_allocator = self.temp_allocator,
             .page = self.page,
             .opts = self.opts,
             .list = &temp_list,
@@ -1180,6 +1300,7 @@ const Painter = struct {
         const element_command_start = self.list.commands.items.len;
         const element_link_start = self.list.link_regions.items.len;
         const element_control_start = self.list.control_regions.items.len;
+        const element_frame_start = self.list.frame_regions.items.len;
         const inline_content_flow = (block_like or inline_atomic_box) and try usesInlineContentFlowContainer(element, decl, self.page, display);
         const position_value = resolveCssPropertyValue(decl, self.page, element, "position");
         const out_of_flow_positioned = isOutOfFlowPositioned(position_value);
@@ -1213,12 +1334,13 @@ const Painter = struct {
 
             try self.appendInlineLinkRegionsForCommandRange(element, element_command_start);
             if (transform_value.len > 0) {
-                if (recentOutputBounds(self, element_command_start, element_link_start, element_control_start)) |bounds| {
+                if (recentOutputBounds(self, element_command_start, element_link_start, element_control_start, element_frame_start)) |bounds| {
                     applyTranslateTransformToRecentOutput(
                         self,
                         element_command_start,
                         element_link_start,
                         element_control_start,
+                        element_frame_start,
                         transform_value,
                         bounds.width,
                         bounds.height,
@@ -1302,6 +1424,7 @@ const Painter = struct {
                     element_command_start,
                     element_link_start,
                     element_control_start,
+                    element_frame_start,
                     transform_value,
                     rect.width,
                     rect.height,
@@ -1333,6 +1456,7 @@ const Painter = struct {
                     element_command_start,
                     element_link_start,
                     element_control_start,
+                    element_frame_start,
                     transform_value,
                     rect.width,
                     rect.height,
@@ -1344,6 +1468,7 @@ const Painter = struct {
             const child_command_start = self.list.commands.items.len;
             const child_link_start = self.list.link_regions.items.len;
             const child_control_start = self.list.control_regions.items.len;
+            const child_frame_start = self.list.frame_regions.items.len;
             const child_height = if (!canvas_surface_present)
                 try self.paintInlineFlowChildren(
                     element,
@@ -1379,6 +1504,7 @@ const Painter = struct {
                     child_command_start,
                     child_link_start,
                     child_control_start,
+                    child_frame_start,
                     clipRectFromBounds(rect),
                 );
             }
@@ -1398,10 +1524,10 @@ const Painter = struct {
             // Block/atomic inline-content containers return from this branch
             // before the generic box path below. Preserve their interactive
             // regions here so e.g. `a { display:block }` remains clickable.
-            if (try resolvedLinkRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+            if (try resolvedLinkRegion(self.temp_allocator, element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
                 try self.list.addLinkRegion(self.allocator, region);
             }
-            if (try resolvedControlRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+            if (try resolvedControlRegion(self.temp_allocator, self.page.frameId(), element, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
                 try self.list.addControlRegion(self.allocator, region);
             }
             if (transform_value.len > 0) {
@@ -1410,6 +1536,7 @@ const Painter = struct {
                     element_command_start,
                     element_link_start,
                     element_control_start,
+                    element_frame_start,
                     transform_value,
                     rect.width,
                     rect.height,
@@ -1449,6 +1576,7 @@ const Painter = struct {
             };
             var temp_painter = Painter{
                 .allocator = self.allocator,
+                .temp_allocator = self.temp_allocator,
                 .page = self.page,
                 .opts = self.opts,
                 .list = &temp_list,
@@ -1554,9 +1682,10 @@ const Painter = struct {
         const scrolled_command_start = self.list.commands.items.len;
         const scrolled_link_start = self.list.link_regions.items.len;
         const scrolled_control_start = self.list.control_regions.items.len;
+        const scrolled_frame_start = self.list.frame_regions.items.len;
 
         const image_command = if (tag == .img)
-            try resolvedImageCommand(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index, combined_opacity)
+            try resolvedImageCommand(self.temp_allocator, element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index, combined_opacity)
         else
             null;
         const canvas_command = if (tag == .canvas)
@@ -1568,6 +1697,13 @@ const Painter = struct {
         }
         if (canvas_command) |command| {
             try self.list.addCanvas(self.allocator, command);
+        }
+
+        if (tag == .iframe) {
+            const iframe = element.as(Element.Html.IFrame);
+            if (iframe._window) |child_window| {
+                try self.appendChildFrame(child_window._frame, rect, paint_z_index);
+            }
         }
 
         if (label.len > 0 and shouldPaintText(tag) and image_command == null and canvas_command == null) {
@@ -1642,7 +1778,7 @@ const Painter = struct {
             const content_box_height = @max(@as(i32, 0), rect.height - padding.vertical());
             const content_origin_x = rect.x + padding.left;
             const content_origin_y = rect.y + padding.top;
-            const recent_bounds = recentOutputBounds(self, scrolled_command_start, scrolled_link_start, scrolled_control_start);
+            const recent_bounds = recentOutputBounds(self, scrolled_command_start, scrolled_link_start, scrolled_control_start, scrolled_frame_start);
             const bounds_width = if (recent_bounds) |bounds|
                 @max(@as(i32, 0), bounds.x + bounds.width - content_origin_x)
             else
@@ -1665,6 +1801,7 @@ const Painter = struct {
                     scrolled_command_start,
                     scrolled_link_start,
                     scrolled_control_start,
+                    scrolled_frame_start,
                     -@as(i32, @intCast(scroll_position.x)),
                     -@as(i32, @intCast(scroll_position.y)),
                 );
@@ -1676,14 +1813,15 @@ const Painter = struct {
                 scrolled_command_start,
                 scrolled_link_start,
                 scrolled_control_start,
+                scrolled_frame_start,
                 clip_rect,
             );
         }
 
-        if (try resolvedLinkRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedLinkRegion(self.temp_allocator, element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addLinkRegion(self.allocator, region);
         }
-        if (try resolvedControlRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedControlRegion(self.temp_allocator, self.page.frameId(), element, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addControlRegion(self.allocator, region);
         }
 
@@ -1693,6 +1831,7 @@ const Painter = struct {
                 element_command_start,
                 element_link_start,
                 element_control_start,
+                element_frame_start,
                 transform_value,
                 rect.width,
                 rect.height,
@@ -1849,6 +1988,7 @@ const Painter = struct {
         const child_command_start = self.list.commands.items.len;
         const child_link_start = self.list.link_regions.items.len;
         const child_control_start = self.list.control_regions.items.len;
+        const child_frame_start = self.list.frame_regions.items.len;
         var child_y = rect.y + padding.top;
         const free_vertical_space = @max(@as(i32, 0), container_content_height - content_height);
         var gap_between_items = gap;
@@ -1969,6 +2109,7 @@ const Painter = struct {
                     child_command_start,
                     child_link_start,
                     child_control_start,
+                    child_frame_start,
                     -@as(i32, @intCast(scroll_position.x)),
                     -@as(i32, @intCast(scroll_position.y)),
                 );
@@ -1980,14 +2121,15 @@ const Painter = struct {
                 child_command_start,
                 child_link_start,
                 child_control_start,
+                child_frame_start,
                 clip_rect,
             );
         }
 
-        if (try resolvedLinkRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedLinkRegion(self.temp_allocator, element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addLinkRegion(self.allocator, region);
         }
-        if (try resolvedControlRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedControlRegion(self.temp_allocator, self.page.frameId(), element, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addControlRegion(self.allocator, region);
         }
 
@@ -2183,6 +2325,7 @@ const Painter = struct {
         const child_command_start = self.list.commands.items.len;
         const child_link_start = self.list.link_regions.items.len;
         const child_control_start = self.list.control_regions.items.len;
+        const child_frame_start = self.list.frame_regions.items.len;
         var child_y = rect.y + padding.top;
         var line_gap = cross_gap;
         var line_extra_height: i32 = 0;
@@ -2353,6 +2496,7 @@ const Painter = struct {
                     child_command_start,
                     child_link_start,
                     child_control_start,
+                    child_frame_start,
                     -@as(i32, @intCast(scroll_position.x)),
                     -@as(i32, @intCast(scroll_position.y)),
                 );
@@ -2364,14 +2508,15 @@ const Painter = struct {
                 child_command_start,
                 child_link_start,
                 child_control_start,
+                child_frame_start,
                 clip_rect,
             );
         }
 
-        if (try resolvedLinkRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedLinkRegion(self.temp_allocator, element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addLinkRegion(self.allocator, region);
         }
-        if (try resolvedControlRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+        if (try resolvedControlRegion(self.temp_allocator, self.page.frameId(), element, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
             try self.list.addControlRegion(self.allocator, region);
         }
 
@@ -2403,6 +2548,7 @@ const Painter = struct {
             const child_command_start = self.list.commands.items.len;
             const child_link_start = self.list.link_regions.items.len;
             const child_control_start = self.list.control_regions.items.len;
+            const child_frame_start = self.list.frame_regions.items.len;
             var legacy_center_width = child_width;
             var legacy_center_use_viewport_width = false;
 
@@ -2483,10 +2629,10 @@ const Painter = struct {
             try self.paintNodeWithOpacity(child, &child_cursor, opacity);
 
             if (legacy_center) {
-                if (recentOutputBounds(self, child_command_start, child_link_start, child_control_start)) |child_bounds| {
+                if (recentOutputBounds(self, child_command_start, child_link_start, child_control_start, child_frame_start)) |child_bounds| {
                     const center_width = if (legacy_center_use_viewport_width) legacy_center_width else child_width;
                     const centered_x = child_left + @max(@as(i32, 0), @divTrunc(center_width - child_bounds.width, 2));
-                    translateRecentOutput(self, child_command_start, child_link_start, child_control_start, centered_x - child_bounds.x, 0);
+                    translateRecentOutput(self, child_command_start, child_link_start, child_control_start, child_frame_start, centered_x - child_bounds.x, 0);
                 }
             }
         }
@@ -2845,8 +2991,8 @@ const Painter = struct {
         }
 
         sortCommandRowFragments(fragments.items);
-        const resolved = try URL.resolve(self.page.call_arena, self.page.base(), href, .{ .encoding = self.page.charset });
-        const dom_path = try encodeNodePath(self.page.call_arena, element.asNode());
+        const resolved = try URL.resolve(self.temp_allocator, self.page.base(), href, .{ .encoding = self.page.charset });
+        const dom_path = try encodeNodePath(self.temp_allocator, element.asNode());
         const download_filename = element.getAttributeSafe(comptime .wrap("download")) orelse "";
         const open_in_new_tab = linkOpensFreshTab(element);
         const target_name = linkTargetName(element);
@@ -2854,6 +3000,7 @@ const Painter = struct {
         const paint_z_index = try resolvePaintZIndex(element, style.asCSSStyleDeclaration(), self.page);
         for (fragments.items) |fragment| {
             try self.list.addLinkRegion(self.allocator, .{
+                .frame_id = self.page.frameId(),
                 .x = fragment.x,
                 .y = fragment.y,
                 .width = fragment.width,
@@ -3042,6 +3189,7 @@ fn containsAsciiToken(haystack: []const u8, needle: []const u8) bool {
 }
 
 fn resolvedLinkRegion(
+    temp_allocator: std.mem.Allocator,
     element: *Element,
     page: *Page,
     x: i32,
@@ -3054,10 +3202,11 @@ fn resolvedLinkRegion(
     if (href.len == 0) {
         return null;
     }
-    const resolved = try URL.resolve(page.call_arena, page.base(), href, .{ .encoding = page.charset });
-    const dom_path = try encodeNodePath(page.call_arena, element.asNode());
+    const resolved = try URL.resolve(temp_allocator, page.base(), href, .{ .encoding = page.charset });
+    const dom_path = try encodeNodePath(temp_allocator, element.asNode());
 
     return .{
+        .frame_id = page.frameId(),
         .x = x,
         .y = y,
         .width = width,
@@ -3072,8 +3221,9 @@ fn resolvedLinkRegion(
 }
 
 fn resolvedControlRegion(
+    temp_allocator: std.mem.Allocator,
+    frame_id: u32,
     element: *Element,
-    page: *Page,
     x: i32,
     y: i32,
     width: i32,
@@ -3088,12 +3238,13 @@ fn resolvedControlRegion(
     }
 
     return .{
+        .frame_id = frame_id,
         .x = x,
         .y = y,
         .width = width,
         .height = height,
         .z_index = z_index,
-        .dom_path = try encodeNodePath(page.call_arena, element.asNode()),
+        .dom_path = try encodeNodePath(temp_allocator, element.asNode()),
     };
 }
 
@@ -3294,6 +3445,7 @@ fn commandZIndexForTest(command: Command) i32 {
 }
 
 fn resolvedImageCommand(
+    temp_allocator: std.mem.Allocator,
     element: *Element,
     page: *Page,
     x: i32,
@@ -3308,9 +3460,9 @@ fn resolvedImageCommand(
         return null;
     }
 
-    const resolved = try URL.resolve(page.call_arena, page.base(), src, .{ .encoding = page.charset });
-    const resolved_z = try page.call_arena.dupeZ(u8, resolved);
-    const request_context = try resolveImageRequestContext(page, resolved_z);
+    const resolved = try URL.resolve(temp_allocator, page.base(), src, .{ .encoding = page.charset });
+    const resolved_z = try temp_allocator.dupeZ(u8, resolved);
+    const request_context = try resolveImageRequestContext(temp_allocator, page, resolved_z);
     const alt = element.getAttributeSafe(comptime .wrap("alt")) orelse "";
     const include_credentials = imageRequestIncludesCredentials(element);
     const object_position = resolveObjectPosition(
@@ -3410,13 +3562,13 @@ const ObjectPosition = struct {
     y_percent_bp: i32 = 0,
 };
 
-fn resolveImageRequestContext(page: *Page, resolved_url: [:0]const u8) !ImageRequestContext {
+fn resolveImageRequestContext(temp_allocator: std.mem.Allocator, page: *Page, resolved_url: [:0]const u8) !ImageRequestContext {
     var context = ImageRequestContext{};
 
     // Match normal subresource cookie policy: images are HTTP subresources,
     // not navigations, so SameSite=Lax is excluded cross-site while None is
     // allowed on secure requests. The page URL is the initiating site.
-    var cookie_writer: std.Io.Writer.Allocating = .init(page.call_arena);
+    var cookie_writer: std.Io.Writer.Allocating = .init(temp_allocator);
     defer cookie_writer.deinit();
     try page._session.cookieJar().forRequest(resolved_url, &cookie_writer.writer, .{
         .is_http = true,
@@ -3424,22 +3576,22 @@ fn resolveImageRequestContext(page: *Page, resolved_url: [:0]const u8) !ImageReq
         .origin_url = page.url,
     });
     if (cookie_writer.written().len > 0) {
-        context.cookie_value = try page.call_arena.dupe(u8, cookie_writer.written());
+        context.cookie_value = try temp_allocator.dupe(u8, cookie_writer.written());
     }
 
     // Use the current upstream referrer-policy implementation. about:* frames
     // inherit the first HTTP(S) ancestor as their referrer source.
     const source = headedReferrerSource(page);
     if (std.mem.startsWith(u8, source, "http")) {
-        if (try referrer.compute(page.call_arena, page.referrer_policy, source, resolved_url)) |value| {
-            context.referer_value = try page.call_arena.dupe(u8, value);
+        if (try referrer.compute(temp_allocator, page.referrer_policy, source, resolved_url)) |value| {
+            context.referer_value = try temp_allocator.dupe(u8, value);
         }
     }
 
     // Preserve headed-mode Basic-auth behavior: explicit user-info on the
     // resource wins; otherwise page user-info is inherited only same-origin.
-    if (try authorizationHeaderValueForRequest(page.call_arena, page.url, resolved_url)) |value| {
-        context.authorization_value = try page.call_arena.dupe(u8, value);
+    if (try authorizationHeaderValueForRequest(temp_allocator, page.url, resolved_url)) |value| {
+        context.authorization_value = try temp_allocator.dupe(u8, value);
     }
 
     return context;
@@ -3486,9 +3638,9 @@ fn appendResolvedBackgroundImage(
     }
 
     const image_url = extractBackgroundImageUrl(raw_background_image) orelse return;
-    const resolved = try URL.resolve(self.page.call_arena, self.page.base(), image_url, .{ .encoding = self.page.charset });
-    const resolved_z = try self.page.call_arena.dupeZ(u8, resolved);
-    const request_context = try resolveImageRequestContext(self.page, resolved_z);
+    const resolved = try URL.resolve(self.temp_allocator, self.page.base(), image_url, .{ .encoding = self.page.charset });
+    const resolved_z = try self.temp_allocator.dupeZ(u8, resolved);
+    const request_context = try resolveImageRequestContext(self.temp_allocator, self.page, resolved_z);
     const repeat = resolveBackgroundRepeat(decl, self.page);
     const position = resolveBackgroundPosition(
         decl,

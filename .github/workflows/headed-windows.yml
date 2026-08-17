@@ -1,0 +1,114 @@
+name: Headed Windows
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - headed-mode-foundation
+      - 'headed-*'
+
+concurrency:
+  group: headed-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZIG_VERSION: 0.16.0
+  V8_VERSION: 14.9.207.35
+  V8_SHA256: CD843919F6B14056DE6043DE858141460688DD5A8CCBC2F0BE0D4C0911A46BF9
+  V8_ARCHIVE_SHA256: 1F42146F8E6082E0B95B24184003984168BE0A5F69D1354820C08E3A0F05527B
+  V8_RELEASE_TAG: windows-headed-v8-14.9.207.35-1
+  V8_ARCHIVE: c_v8_14.9.207.35_windows_x86_64_debug.7z
+
+jobs:
+  headed:
+    name: Build + native headed evidence
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Restore Windows V8
+        id: v8-cache
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/v8/c_v8.lib
+          key: headed-v8-windows-${{ env.V8_VERSION }}-${{ env.V8_SHA256 }}
+
+      - name: Download immutable Windows V8
+        if: steps.v8-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force .ci-cache/v8 | Out-Null
+          $url = "https://github.com/adybag14-cyber/zig-v8-fork/releases/download/$env:V8_RELEASE_TAG/$env:V8_ARCHIVE"
+          curl.exe -L --fail --retry 4 --retry-all-errors -o .ci-cache/v8/v8.7z $url
+          $archiveHash = (Get-FileHash .ci-cache/v8/v8.7z -Algorithm SHA256).Hash
+          if ($archiveHash -ne $env:V8_ARCHIVE_SHA256) {
+            throw "V8 archive checksum mismatch: $archiveHash != $env:V8_ARCHIVE_SHA256"
+          }
+          7z x .ci-cache/v8/v8.7z -o.ci-cache/v8 -y
+          Remove-Item .ci-cache/v8/v8.7z -Force
+
+      - name: Verify Windows V8 checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = (Resolve-Path '.ci-cache/v8/c_v8.lib').Path
+          $actual = (Get-FileHash $path -Algorithm SHA256).Hash
+          if ($actual -ne $env:V8_SHA256) {
+            throw "V8 checksum mismatch: $actual != $env:V8_SHA256"
+          }
+          Write-Host "Verified V8 $env:V8_VERSION: $actual"
+
+      - name: Build headed browser
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $v8 = (Resolve-Path '.ci-cache/v8/c_v8.lib').Path
+          zig build headed -j1 -Dtarget=x86_64-windows-msvc "-Dprebuilt_v8_path=$v8"
+
+      - name: Run deterministic headed frame + RSS smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./ci/headed/run-headed-smoke.ps1 `
+            -Executable ./zig-out/bin/lightpanda-headed.exe `
+            -Artifacts ./ci/headed/artifacts `
+            -Mode All `
+            -MemoryUrl http://127.0.0.1:18773/rich.html `
+            -MemoryWarmupMs 2000 `
+            -MemorySampleCount 120 `
+            -MemorySampleIntervalMs 500 `
+            -MemoryBudgetMb 256 `
+            -MemoryGrowthBudgetMb 5
+
+      - name: Upload headed visual and memory evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headed-windows-evidence-${{ github.run_id }}
+          path: |
+            ci/headed/artifacts/**/*.png
+            ci/headed/artifacts/**/*.csv
+            ci/headed/artifacts/**/*.json
+            ci/headed/artifacts/**/*.txt
+            ci/headed/artifacts/**/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload headed executable
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lightpanda-headed-windows-${{ github.sha }}
+          path: zig-out/bin/lightpanda-headed.exe
+          if-no-files-found: error
+          retention-days: 14

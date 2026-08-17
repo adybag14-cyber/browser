@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .v8 = .{
-            .url = "https://github.com/adybag14-cyber/zig-v8-fork/archive/fae7e4cc9980e6e45c1f0b06de9c57df09525625.tar.gz",
-            .hash = "v8-0.0.0-xddH6z8VAwAhJrTHAKXp_uST1bWeIMMdJ9o0TpJ0GIE3",
+            .url = "https://github.com/adybag14-cyber/zig-v8-fork/archive/64054680622861f60fd4bbe537e21f784b72b4a1.tar.gz",
+            .hash = "v8-0.0.0-xddH67wWAwClj3Mx5-pf1g2GbWBEnE4TM2mmhGE2jSXm",
         },
         // .v8 = .{ .path = "../zig-v8-fork" },
         .brotli = .{

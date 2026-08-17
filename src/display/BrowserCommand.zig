@@ -22,6 +22,7 @@ pub const BrowserCommand = union(enum) {
     };
 
     pub const ActivateLinkRegion = struct {
+        frame_id: u32 = 0,
         x: f64,
         y: f64,
         url: []u8,
@@ -32,6 +33,7 @@ pub const BrowserCommand = union(enum) {
     };
 
     pub const ActivateControlRegion = struct {
+        frame_id: u32 = 0,
         x: f64,
         y: f64,
         dom_path: []u16,

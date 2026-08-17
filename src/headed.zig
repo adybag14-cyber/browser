@@ -95,7 +95,6 @@ const Tab = struct {
         const tab = try allocator.create(Tab);
         errdefer allocator.destroy(tab);
         tab.* = .{ .zoom_percent = std.math.clamp(zoom_percent, MIN_ZOOM, MAX_ZOOM) };
-
         tab.notification = try Notification.init(allocator);
         errdefer tab.notification.deinit();
 
@@ -195,6 +194,12 @@ const Tab = struct {
 
 const Shell = struct {
     app: *App,
+    /// Reusable backing storage for per-loop chrome/render temporaries. This is
+    /// especially important for the Windows DebugAllocator, which deliberately
+    /// avoids reusing freed addresses and otherwise turns harmless 4 ms UI
+    /// polling allocations into resident high-water growth. Nothing allocated
+    /// here may escape a synchronous Display/Profile call.
+    scratch_arena: std.heap.ArenaAllocator,
     display: Display,
     profile_dir: ?[]const u8,
     profile: Profile.Store,
@@ -248,6 +253,7 @@ const Shell = struct {
         settings.homepage_url = null;
         return .{
             .app = app,
+            .scratch_arena = std.heap.ArenaAllocator.init(app.allocator),
             .display = display,
             .profile_dir = profile_dir,
             .profile = profile,
@@ -282,6 +288,7 @@ const Shell = struct {
         if (self.homepage_url) |url| self.app.allocator.free(url);
         self.profile.deinit();
         if (self.profile_dir) |path| self.app.allocator.free(path);
+        self.scratch_arena.deinit();
     }
 
     fn restoreOrStart(self: *Shell, startup_url: ?[]const u8) !void {
@@ -324,11 +331,12 @@ const Shell = struct {
     }
 
     fn persistProfileState(self: *Shell, force_storage: bool) void {
-        const states = self.app.allocator.alloc(Profile.TabState, self.tabs.items.len) catch |err| {
+        _ = self.scratch_arena.reset(.retain_capacity);
+        const scratch = self.scratch_arena.allocator();
+        const states = scratch.alloc(Profile.TabState, self.tabs.items.len) catch |err| {
             lp.log.warn(.app, "headed session state allocation failed", .{ .err = err });
             return;
         };
-        defer self.app.allocator.free(states);
         for (self.tabs.items, 0..) |tab, index| {
             states[index] = .{ .url = tab.url(), .zoom_percent = tab.zoom_percent };
         }
@@ -432,6 +440,8 @@ const Shell = struct {
     }
 
     fn syncDisplayState(self: *Shell) !void {
+        _ = self.scratch_arena.reset(.retain_capacity);
+        const scratch = self.scratch_arena.allocator();
         const tab = self.activeTab() orelse return;
         const frame = tab.frame() orelse return;
         const navigation = tab.session.navigation;
@@ -443,21 +453,21 @@ const Shell = struct {
         );
 
         const nav_entries = navigation.entries();
-        const history = try self.app.allocator.alloc([]const u8, nav_entries.len);
-        defer self.app.allocator.free(history);
+        const history = try scratch.alloc([]const u8, nav_entries.len);
+        defer scratch.free(history);
         for (nav_entries, 0..) |entry, i| history[i] = entry.url() orelse "about:blank";
         self.display.setHistoryEntries(history, navigation.getCurrentIndex());
 
-        const entries = try self.app.allocator.alloc(Display.TabEntry, self.tabs.items.len);
-        defer self.app.allocator.free(entries);
+        const entries = try scratch.alloc(Display.TabEntry, self.tabs.items.len);
+        defer scratch.free(entries);
         var titles: std.ArrayList([]u8) = .empty;
         defer {
-            for (titles.items) |title| self.app.allocator.free(title);
-            titles.deinit(self.app.allocator);
+            for (titles.items) |title| scratch.free(title);
+            titles.deinit(scratch);
         }
-        try titles.ensureTotalCapacity(self.app.allocator, self.tabs.items.len);
+        try titles.ensureTotalCapacity(scratch, self.tabs.items.len);
         for (self.tabs.items, 0..) |candidate, i| {
-            const owned_title = try candidate.title(self.app.allocator);
+            const owned_title = try candidate.title(scratch);
             titles.appendAssumeCapacity(owned_title);
             entries[i] = .{
                 .title = titles.items[i],
@@ -469,8 +479,8 @@ const Shell = struct {
             };
         }
         self.display.setTabEntries(entries, self.active_index);
-        const download_entries = try self.downloads.toDisplayEntries(self.app.allocator);
-        defer self.downloads.freeDisplayEntries(self.app.allocator, download_entries);
+        const download_entries = try self.downloads.toDisplayEntries(scratch);
+        defer self.downloads.freeDisplayEntries(scratch, download_entries);
         self.display.setDownloadEntries(download_entries);
         self.display.setSettingsState(.{
             .restore_previous_session = self.restore_previous_session,
@@ -503,16 +513,22 @@ const Shell = struct {
             return;
         }
 
-        var body: std.Io.Writer.Allocating = .init(self.app.allocator);
-        defer body.deinit();
-        try markdown.dump(frame.window._document.asNode(), .{}, &body.writer, frame);
+        // Reuse presentation scratch capacity between frames. The Display
+        // backend clones the list synchronously in presentPageView(), so no
+        // pointers allocated from this arena escape this function.
+        _ = self.scratch_arena.reset(.retain_capacity);
+        const presentation_allocator = self.scratch_arena.allocator();
 
-        var list = try DocumentPainter.paintDocument(self.app.allocator, frame, .{
+        var body: std.Io.Writer.Allocating = .init(presentation_allocator);
+        defer body.deinit();
+        try markdown.dump(frame.window._document.asNode(), .{ .scratch_allocator = presentation_allocator }, &body.writer, frame);
+
+        var list = try DocumentPainter.paintDocument(presentation_allocator, frame, .{
             .viewport_width = @intCast(self.display.viewport.width),
             .viewport_height = @intCast(self.display.viewport.height),
             .layout_scale = tab.zoom_percent,
         });
-        defer list.deinit(self.app.allocator);
+        defer list.deinit(presentation_allocator);
 
         const title = (try frame.getTitle()) orelse "";
         const text = body.written();
@@ -546,12 +562,13 @@ const Shell = struct {
             .activate_link_region => |activation| {
                 var isolate_scope = TabIsolateScope.init(tab);
                 defer isolate_scope.deinit();
+                const target_frame = if (activation.frame_id == 0) frame else frame.findFrameById(activation.frame_id) orelse frame;
                 const pending_before = tab.session.pending_downloads.items.len;
-                try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
-                try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
-                var click = try frame.triggerMouseClickOnNodePathWithResult(activation.dom_path, activation.x, activation.y, .main, .{});
+                try target_frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
+                try target_frame.triggerMouseUp(activation.x, activation.y, .main, .{});
+                var click = try target_frame.triggerMouseClickOnNodePathWithResult(activation.dom_path, activation.x, activation.y, .main, .{});
                 if (!click.dispatched) {
-                    click = try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
+                    click = try target_frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
                 }
                 tab.last_presented_hash = 0;
                 const queued_download = tab.session.pending_downloads.items.len > pending_before;
@@ -562,9 +579,13 @@ const Shell = struct {
             .activate_control_region => |activation| {
                 var isolate_scope = TabIsolateScope.init(tab);
                 defer isolate_scope.deinit();
-                try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
-                try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
-                _ = try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
+                const target_frame = if (activation.frame_id == 0) frame else frame.findFrameById(activation.frame_id) orelse frame;
+                try target_frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
+                try target_frame.triggerMouseUp(activation.x, activation.y, .main, .{});
+                var click = try target_frame.triggerMouseClickOnNodePathWithResult(activation.dom_path, activation.x, activation.y, .main, .{});
+                if (!click.dispatched) {
+                    click = try target_frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
+                }
                 tab.last_presented_hash = 0;
             },
             .back => {

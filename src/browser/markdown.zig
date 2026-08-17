@@ -31,6 +31,10 @@ const truncateUtf8 = @import("../string.zig").truncateUtf8;
 
 pub const Opts = struct {
     max_bytes: ?u32 = null,
+    // Native callers such as headed rendering do not run inside a JS Caller
+    // boundary, so they must not use Frame.call_arena/local_arena for URL
+    // resolution scratch. Existing JS/CDP callers can leave this unset.
+    scratch_allocator: ?std.mem.Allocator = null,
 };
 
 const truncation_marker = "\n\n[truncated]\n";
@@ -189,6 +193,7 @@ const Context = struct {
     state: State,
     writer: *std.Io.Writer,
     frame: *Frame,
+    scratch_allocator: ?std.mem.Allocator,
 
     // When there's a slot-attribute, we skip rendering, unless this flag has
     // bet set to true.
@@ -366,7 +371,7 @@ const Context = struct {
                 try self.writer.writeAll("](");
                 if (el.getAttributeSafe(comptime .wrap("src"))) |src| {
                     const frame = self.frame;
-                    const absolute_src = URL.resolve(frame.call_arena, frame.base(), src, .{ .encoding = frame.charset }) catch src;
+                    const absolute_src = URL.resolve(self.scratch_allocator orelse frame.call_arena, frame.base(), src, .{ .encoding = frame.charset }) catch src;
                     try self.writer.writeAll(absolute_src);
                 }
                 try self.writer.writeAll(")");
@@ -381,7 +386,7 @@ const Context = struct {
 
                 if (!info.has_visible and label == null and href_raw == null) return;
 
-                const href = if (href_raw) |h| URL.resolve(frame.local_arena, frame.base(), h, .{ .encoding = frame.charset }) catch h else null;
+                const href = if (href_raw) |h| URL.resolve(self.scratch_allocator orelse frame.local_arena, frame.base(), h, .{ .encoding = frame.charset }) catch h else null;
 
                 if (info.has_block) {
                     try self.renderChildren(el.asNode());
@@ -564,6 +569,7 @@ pub fn dump(node: *Node, opts: Opts, writer: *std.Io.Writer, frame: *Frame) !voi
             .state = .{},
             .writer = &lw.writer,
             .frame = frame,
+            .scratch_allocator = opts.scratch_allocator,
         };
         ctx.render(node) catch |err| switch (err) {
             error.WriteFailed => {
@@ -582,6 +588,7 @@ pub fn dump(node: *Node, opts: Opts, writer: *std.Io.Writer, frame: *Frame) !voi
         .state = .{},
         .writer = writer,
         .frame = frame,
+        .scratch_allocator = opts.scratch_allocator,
     };
     try ctx.render(node);
     if (!ctx.state.last_char_was_newline) {

@@ -222,6 +222,10 @@ pub const Win32Backend = struct {
 
     input_lock: CompatMutex = .{},
     input_events: std.ArrayListUnmanaged(InputEvent) = .empty,
+    /// Frame that owns keyboard/text focus for native headed input. 0 denotes
+    /// the active tab's root frame. Updated on primary mouse-down and on
+    /// rendered link/control activation.
+    input_frame_id: std.atomic.Value(u32) = .init(0),
 
     command_lock: CompatMutex = .{},
     command_queue: std.ArrayListUnmanaged(BrowserCommand) = .empty,
@@ -806,21 +810,33 @@ pub const Win32Backend = struct {
         var key_buf: [2]u8 = undefined;
         for (pending.items) |event| {
             switch (event) {
-                .mouse_down => |mouse| try page.triggerMouseDown(mouse.x, mouse.y, mouse.button, mouse.modifiers),
+                .mouse_down => |mouse| {
+                    const input = frameInputPointForRootPagePoint(self, mouse.x, mouse.y);
+                    if (mouse.button == .main) self.input_frame_id.store(input.frame_id, .release);
+                    const target = resolveInputFrame(page, input.frame_id);
+                    try target.triggerMouseDown(input.x, input.y, mouse.button, mouse.modifiers);
+                },
                 .mouse_up => |mouse| {
-                    try page.triggerMouseUp(mouse.x, mouse.y, mouse.button, mouse.modifiers);
+                    const input = frameInputPointForRootPagePoint(self, mouse.x, mouse.y);
+                    const target = resolveInputFrame(page, input.frame_id);
+                    try target.triggerMouseUp(input.x, input.y, mouse.button, mouse.modifiers);
                     if (mouse.button == .main) {
-                        if (!mouse.rendered_interactive_hit and try page.mouseClickRequiresRenderedInteractiveTarget(mouse.x, mouse.y)) {
+                        if (!mouse.rendered_interactive_hit and try target.mouseClickRequiresRenderedInteractiveTarget(input.x, input.y)) {
                             continue;
                         }
-                        _ = try page.triggerMouseClickWithModifiers(mouse.x, mouse.y, .main, mouse.modifiers);
+                        _ = try target.triggerMouseClickWithModifiers(input.x, input.y, .main, mouse.modifiers);
                     }
                 },
-                .mouse_move => |mouse| try page.triggerMouseMove(mouse.x, mouse.y, mouse.modifiers),
+                .mouse_move => |mouse| {
+                    const input = frameInputPointForRootPagePoint(self, mouse.x, mouse.y);
+                    try resolveInputFrame(page, input.frame_id).triggerMouseMove(input.x, input.y, mouse.modifiers);
+                },
                 .mouse_wheel => |wheel| {
-                    const result = try page.triggerMouseWheel(
-                        wheel.x,
-                        wheel.y,
+                    const input = frameInputPointForRootPagePoint(self, wheel.x, wheel.y);
+                    const target = resolveInputFrame(page, input.frame_id);
+                    const result = try target.triggerMouseWheel(
+                        input.x,
+                        input.y,
                         wheel.delta_x,
                         wheel.delta_y,
                         wheel.modifiers,
@@ -832,26 +848,33 @@ pub const Win32Backend = struct {
                     }
                 },
                 .key_down => |key_down| {
+                    const target = resolveInputFrame(page, self.input_frame_id.load(.acquire));
                     const key = mapVirtualKey(key_down.vk, key_down.modifiers.shift, &key_buf) orelse continue;
-                    const default_allowed = try page.triggerKeyboardKeyDownNoTextWithRepeat(
+                    const default_allowed = try target.triggerKeyboardKeyDownNoTextWithRepeat(
                         key,
                         key_down.modifiers,
                         key_down.repeat,
                     );
                     if (default_allowed) {
                         if (clipboardShortcutAction(key_down.vk, key_down.modifiers)) |action| {
-                            try handleClipboardShortcut(self.allocator, page, action);
+                            try handleClipboardShortcut(self.allocator, target, action);
                         }
                     }
                 },
                 .key_up => |key_up| {
+                    const target = resolveInputFrame(page, self.input_frame_id.load(.acquire));
                     const key = mapVirtualKey(key_up.vk, key_up.modifiers.shift, &key_buf) orelse continue;
-                    _ = try page.triggerKeyboardKeyUp(key, key_up.modifiers);
+                    _ = try target.triggerKeyboardKeyUp(key, key_up.modifiers);
                 },
                 .text_input => |text_input| {
-                    try page.insertText(text_input.bytes[0..text_input.len]);
+                    const target = resolveInputFrame(page, self.input_frame_id.load(.acquire));
+                    try target.insertText(text_input.bytes[0..text_input.len]);
                 },
-                .window_blur => try page.triggerWindowBlur(),
+                .window_blur => {
+                    const target = resolveInputFrame(page, self.input_frame_id.load(.acquire));
+                    try target.triggerWindowBlur();
+                    self.input_frame_id.store(0, .release);
+                },
             }
         }
     }
@@ -1138,6 +1161,12 @@ const PRESENTATION_ADDRESS_LEFT_OFFSET: c_int =
     (PRESENTATION_CHROME_BUTTON_WIDTH * 3) + (PRESENTATION_CHROME_BUTTON_GAP * 3);
 
 const ClientPoint = struct {
+    x: f64,
+    y: f64,
+};
+
+const FrameInputPoint = struct {
+    frame_id: u32 = 0,
     x: f64,
     y: f64,
 };
@@ -1445,6 +1474,76 @@ fn presentationClientToPage(
     };
 }
 
+fn frameInputPointAtDisplayListPoint(display_list: *const DisplayList, point: ClientPoint) FrameInputPoint {
+    const px: i32 = @intFromFloat(point.x);
+    const py: i32 = @intFromFloat(point.y);
+    var best: ?DisplayList.FrameRegion = null;
+    var best_depth: u16 = 0;
+    var best_z: i32 = std.math.minInt(i32);
+    var best_index: usize = 0;
+
+    for (display_list.frame_regions.items, 0..) |region, index| {
+        if (px < region.x or py < region.y or px >= region.x + region.width or py >= region.y + region.height) continue;
+        const better = best == null or region.depth > best_depth or
+            (region.depth == best_depth and regionHitOrderBetter(region.z_index, index, best_z, best_index));
+        if (better) {
+            best = region;
+            best_depth = region.depth;
+            best_z = region.z_index;
+            best_index = index;
+        }
+    }
+
+    if (best) |region| {
+        return .{
+            .frame_id = region.frame_id,
+            .x = point.x - @as(f64, @floatFromInt(region.origin_x)),
+            .y = point.y - @as(f64, @floatFromInt(region.origin_y)),
+        };
+    }
+    return .{
+        .frame_id = 0,
+        .x = point.x - @as(f64, @floatFromInt(display_list.page_margin)),
+        .y = point.y - @as(f64, @floatFromInt(display_list.page_margin)),
+    };
+}
+
+fn frameInputPointForOwnedFrame(display_list: *const DisplayList, point: ClientPoint, frame_id: u32) FrameInputPoint {
+    if (frame_id != 0) {
+        for (display_list.frame_regions.items) |region| {
+            if (region.frame_id != frame_id) continue;
+            return .{
+                .frame_id = frame_id,
+                .x = point.x - @as(f64, @floatFromInt(region.origin_x)),
+                .y = point.y - @as(f64, @floatFromInt(region.origin_y)),
+            };
+        }
+    }
+
+    // Root-frame interactive regions have no enclosing FrameRegion. Legacy
+    // display lists also use frame_id=0; both use root page coordinates.
+    return .{
+        .frame_id = frame_id,
+        .x = point.x - @as(f64, @floatFromInt(display_list.page_margin)),
+        .y = point.y - @as(f64, @floatFromInt(display_list.page_margin)),
+    };
+}
+
+fn frameInputPointForRootPagePoint(backend: *Win32Backend, x: f64, y: f64) FrameInputPoint {
+    backend.presentation_lock.lock();
+    defer backend.presentation_lock.unlock();
+    const display_list = &(backend.presentation_display_list orelse return .{ .x = x, .y = y });
+    return frameInputPointAtDisplayListPoint(display_list, .{
+        .x = x + @as(f64, @floatFromInt(display_list.page_margin)),
+        .y = y + @as(f64, @floatFromInt(display_list.page_margin)),
+    });
+}
+
+fn resolveInputFrame(root: *Page, frame_id: u32) *Page {
+    if (frame_id == 0) return root;
+    return root.findFrameById(frame_id) orelse root;
+}
+
 fn presentationHasNavigateAtClientPoint(backend: *Win32Backend, x: f64, y: f64) bool {
     backend.presentation_lock.lock();
     defer backend.presentation_lock.unlock();
@@ -1489,9 +1588,12 @@ fn presentationNavigateCommandAtClientPoint(backend: *Win32Backend, x: f64, y: f
     };
     errdefer backend.allocator.free(owned_target_name);
 
+    const input = frameInputPointForOwnedFrame(&display_list, point, region.frame_id);
+    backend.input_frame_id.store(input.frame_id, .release);
     return .{ .activate_link_region = .{
-        .x = point.x - @as(f64, @floatFromInt(display_list.page_margin)),
-        .y = point.y - @as(f64, @floatFromInt(display_list.page_margin)),
+        .frame_id = input.frame_id,
+        .x = input.x,
+        .y = input.y,
         .url = owned_url,
         .dom_path = owned_dom_path,
         .suggested_filename = owned_filename,
@@ -1512,9 +1614,12 @@ fn presentationControlCommandAtClientPoint(backend: *Win32Backend, x: f64, y: f6
         return null;
     };
 
+    const input = frameInputPointForOwnedFrame(&display_list, point, region.frame_id);
+    backend.input_frame_id.store(input.frame_id, .release);
     return .{ .activate_control_region = .{
-        .x = point.x - @as(f64, @floatFromInt(display_list.page_margin)),
-        .y = point.y - @as(f64, @floatFromInt(display_list.page_margin)),
+        .frame_id = input.frame_id,
+        .x = input.x,
+        .y = input.y,
         .dom_path = owned_dom_path,
     } };
 }
@@ -6356,6 +6461,13 @@ fn handlePresentationShortcutKey(
         return false;
     }
 
+    // PrintScreen is deliberately modifier-free so headed runs in service/CI
+    // sessions can request visual evidence with a direct window message; it
+    // also gives interactive users the conventional screenshot key.
+    if (vk == c.VK_SNAPSHOT) {
+        return savePresentationPngAuto(backend);
+    }
+
     if (modifiers.ctrl and modifiers.shift and vk == 'S') {
         return savePresentationBitmapAuto(backend);
     }
@@ -9107,6 +9219,7 @@ test "win32 topmostLinkRegionAtDisplayListPoint prefers higher z-index then late
         .y = 16,
         .width = 60,
         .height = 40,
+        .frame_id = 77,
         .z_index = 3,
         .url = later_url[0..],
         .dom_path = empty_path[0..],
@@ -9117,6 +9230,7 @@ test "win32 topmostLinkRegionAtDisplayListPoint prefers higher z-index then late
 
     const region = topmostLinkRegionAtDisplayListPoint(&display_list, 30, 30) orelse return error.TopmostLinkRegionMissing;
     try std.testing.expectEqualStrings("http://later/", region.url);
+    try std.testing.expectEqual(@as(u32, 77), region.frame_id);
 }
 
 test "win32 topmostControlRegionAtDisplayListPoint prefers higher z-index then later region" {
@@ -9148,12 +9262,38 @@ test "win32 topmostControlRegionAtDisplayListPoint prefers higher z-index then l
         .y = 12,
         .width = 50,
         .height = 30,
+        .frame_id = 88,
         .z_index = 2,
         .dom_path = path_later[0..],
     });
 
     const region = topmostControlRegionAtDisplayListPoint(&display_list, 20, 20) orelse return error.TopmostControlRegionMissing;
     try std.testing.expectEqualSlices(u16, &.{ 5, 6 }, region.dom_path);
+    try std.testing.expectEqual(@as(u32, 88), region.frame_id);
+}
+
+test "win32 owned frame input point uses the rendered frame origin" {
+    var display_list = DisplayList{ .page_margin = 20 };
+    defer display_list.deinit(std.testing.allocator);
+    try display_list.addFrameRegion(std.testing.allocator, .{
+        .x = 100,
+        .y = 200,
+        .width = 300,
+        .height = 180,
+        .origin_x = 80,
+        .origin_y = 170,
+        .frame_id = 42,
+    });
+
+    const child = frameInputPointForOwnedFrame(&display_list, .{ .x = 140, .y = 240 }, 42);
+    try std.testing.expectEqual(@as(u32, 42), child.frame_id);
+    try std.testing.expectEqual(@as(f64, 60), child.x);
+    try std.testing.expectEqual(@as(f64, 70), child.y);
+
+    const root = frameInputPointForOwnedFrame(&display_list, .{ .x = 140, .y = 240 }, 7);
+    try std.testing.expectEqual(@as(u32, 7), root.frame_id);
+    try std.testing.expectEqual(@as(f64, 120), root.x);
+    try std.testing.expectEqual(@as(f64, 220), root.y);
 }
 
 test "win32 translucent fill rect alpha blends against background" {

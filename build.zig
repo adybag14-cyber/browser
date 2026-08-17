@@ -227,7 +227,7 @@ pub fn build(b: *Build) !void {
         // Dedicated headed-mode compile gate. This deliberately avoids making
         // unrelated agent/server helpers prerequisites for the Windows browser.
         const headed_exe = b.addExecutable(.{
-            .name = "lightpanda-headed-check",
+            .name = "lightpanda-headed",
             .use_llvm = use_llvm,
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/main_headed.zig"),

@@ -117,15 +117,44 @@ pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const
 }
 
 fn resolvedDimension(element: *Element, dimension: enum { width, height }, frame: *Frame) []const u8 {
-    var visibility_cache: Element.VisibilityCache = .{};
-    if (!element.checkVisibilityCached(&visibility_cache, frame)) {
-        return "auto";
-    }
-    const value = switch (dimension) {
-        .width => element.getClientWidthWithCache(frame, &visibility_cache),
-        .height => element.getClientHeightWithCache(frame, &visibility_cache),
+    // Do not use Element.getClient*WithCache here. Its visibility cache is
+    // intentionally allocated from frame.call_arena and normally reclaimed by
+    // the JS caller boundary. Native headed painting also reads computed styles
+    // but has no such boundary, so each repaint would permanently grow that
+    // arena. Mirror the synthetic client-size calculation without an allocated
+    // cache; direct-child scans are small and this path is correctness-first.
+    if (!element.checkVisibilityCached(null, frame)) return "auto";
+
+    const dims = element.getElementDimensions(frame);
+    const tag = element.getTag();
+    var value = switch (dimension) {
+        .width => dims.width,
+        .height => dims.height,
     };
-    return std.fmt.allocPrint(frame.local_arena, "{d}px", .{value}) catch "auto";
+
+    const explicit = switch (dimension) {
+        .width => dims.explicit_width,
+        .height => dims.explicit_height,
+    };
+    if (tag != .html and tag != .body and !explicit) {
+        var content_extent: f64 = 0;
+        var child = element.asNode().firstChild();
+        while (child) |node| : (child = node.nextSibling()) {
+            const child_element = node.is(Element) orelse continue;
+            if (!child_element.checkVisibilityCached(null, frame)) continue;
+            const child_dims = child_element.getElementDimensions(frame);
+            content_extent += switch (dimension) {
+                .width => child_dims.width,
+                .height => child_dims.height,
+            };
+        }
+        value = @max(value, content_extent);
+    }
+
+    // Computed dimensions are consumed synchronously by the JS bridge/native
+    // renderer. frame.buf is explicitly a short-lived scratch buffer and avoids
+    // leaking formatting allocations outside a JS invocation.
+    return std.fmt.bufPrint(&frame.buf, "{d}px", .{value}) catch "auto";
 }
 
 pub fn getSpecifiedPropertyValue(self: *const CSSStyleDeclaration, property_name: []const u8, frame: *Frame) []const u8 {

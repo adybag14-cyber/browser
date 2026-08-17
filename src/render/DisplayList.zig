@@ -46,6 +46,7 @@ pub const TextCommand = struct {
 };
 
 pub const LinkRegion = struct {
+    frame_id: u32 = 0,
     x: i32,
     y: i32,
     width: i32,
@@ -59,12 +60,31 @@ pub const LinkRegion = struct {
 };
 
 pub const ControlRegion = struct {
+    frame_id: u32 = 0,
     x: i32,
     y: i32,
     width: i32,
     height: i32,
     z_index: i32 = 0,
     dom_path: []u16 = &.{},
+};
+
+/// A rendered child browsing context. Coordinates are in the owning display
+/// list coordinate space; translating a root-window point by (-x, -y) yields
+/// coordinates local to the child Frame. Nested frame regions are flattened
+/// into the root list and carry increasing depth so input can select the
+/// deepest visible browsing context without crossing DOM same-origin APIs.
+pub const FrameRegion = struct {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    /// Unclipped display-list origin used to translate pointer coordinates.
+    origin_x: i32,
+    origin_y: i32,
+    frame_id: u32,
+    depth: u16 = 1,
+    z_index: i32 = 0,
 };
 
 pub const ImageCommand = struct {
@@ -279,6 +299,7 @@ pub const DisplayList = @This();
 commands: std.ArrayListUnmanaged(Command) = .empty,
 link_regions: std.ArrayListUnmanaged(LinkRegion) = .empty,
 control_regions: std.ArrayListUnmanaged(ControlRegion) = .empty,
+frame_regions: std.ArrayListUnmanaged(FrameRegion) = .empty,
 font_faces: std.ArrayListUnmanaged(FontFaceResource) = .empty,
 content_height: i32 = 0,
 layout_scale: i32 = 100,
@@ -300,6 +321,7 @@ pub fn deinit(self: *DisplayList, allocator: std.mem.Allocator) void {
         allocator.free(region.dom_path);
     }
     self.control_regions.deinit(allocator);
+    self.frame_regions.deinit(allocator);
     for (self.font_faces.items) |font_face| {
         allocator.free(font_face.family);
         allocator.free(font_face.bytes);
@@ -327,6 +349,7 @@ pub fn cloneOwned(self: *const DisplayList, allocator: std.mem.Allocator) !Displ
             .y = region.y,
             .width = region.width,
             .height = region.height,
+            .frame_id = region.frame_id,
             .z_index = region.z_index,
             .url = try allocator.dupe(u8, region.url),
             .dom_path = try allocator.dupe(u16, region.dom_path),
@@ -342,9 +365,14 @@ pub fn cloneOwned(self: *const DisplayList, allocator: std.mem.Allocator) !Displ
             .y = region.y,
             .width = region.width,
             .height = region.height,
+            .frame_id = region.frame_id,
             .z_index = region.z_index,
             .dom_path = try allocator.dupe(u16, region.dom_path),
         });
+    }
+    try copy.frame_regions.ensureTotalCapacity(allocator, self.frame_regions.items.len);
+    for (self.frame_regions.items) |region| {
+        try copy.frame_regions.append(allocator, region);
     }
     try copy.font_faces.ensureTotalCapacity(allocator, self.font_faces.items.len);
     for (self.font_faces.items) |font_face| {
@@ -449,6 +477,7 @@ pub fn addCanvas(self: *DisplayList, allocator: std.mem.Allocator, canvas: Canva
 
 pub fn addLinkRegion(self: *DisplayList, allocator: std.mem.Allocator, region: LinkRegion) !void {
     try self.link_regions.append(allocator, .{
+        .frame_id = region.frame_id,
         .x = region.x,
         .y = region.y,
         .width = region.width,
@@ -465,6 +494,7 @@ pub fn addLinkRegion(self: *DisplayList, allocator: std.mem.Allocator, region: L
 
 pub fn addControlRegion(self: *DisplayList, allocator: std.mem.Allocator, region: ControlRegion) !void {
     try self.control_regions.append(allocator, .{
+        .frame_id = region.frame_id,
         .x = region.x,
         .y = region.y,
         .width = region.width,
@@ -473,6 +503,11 @@ pub fn addControlRegion(self: *DisplayList, allocator: std.mem.Allocator, region
         .dom_path = try allocator.dupe(u16, region.dom_path),
     });
     self.content_height = @max(self.content_height, region.y + region.height);
+}
+
+pub fn addFrameRegion(self: *DisplayList, allocator: std.mem.Allocator, region: FrameRegion) !void {
+    if (region.width <= 0 or region.height <= 0) return;
+    try self.frame_regions.append(allocator, region);
 }
 
 pub fn addFontFace(self: *DisplayList, allocator: std.mem.Allocator, font_face: FontFaceResource) !void {
@@ -590,6 +625,7 @@ pub fn hashInto(self: *const DisplayList, hasher: anytype) void {
 
     for (self.link_regions.items) |region| {
         hasher.update("link_region");
+        hasher.update(std.mem.asBytes(&region.frame_id));
         hasher.update(std.mem.asBytes(&region.x));
         hasher.update(std.mem.asBytes(&region.y));
         hasher.update(std.mem.asBytes(&region.width));
@@ -603,6 +639,7 @@ pub fn hashInto(self: *const DisplayList, hasher: anytype) void {
     }
     for (self.control_regions.items) |region| {
         hasher.update("control_region");
+        hasher.update(std.mem.asBytes(&region.frame_id));
         hasher.update(std.mem.asBytes(&region.x));
         hasher.update(std.mem.asBytes(&region.y));
         hasher.update(std.mem.asBytes(&region.width));
@@ -610,6 +647,19 @@ pub fn hashInto(self: *const DisplayList, hasher: anytype) void {
         hasher.update(std.mem.asBytes(&region.z_index));
         hasher.update(std.mem.sliceAsBytes(region.dom_path));
     }
+    for (self.frame_regions.items) |region| {
+        hasher.update("frame_region");
+        hasher.update(std.mem.asBytes(&region.x));
+        hasher.update(std.mem.asBytes(&region.y));
+        hasher.update(std.mem.asBytes(&region.width));
+        hasher.update(std.mem.asBytes(&region.height));
+        hasher.update(std.mem.asBytes(&region.origin_x));
+        hasher.update(std.mem.asBytes(&region.origin_y));
+        hasher.update(std.mem.asBytes(&region.frame_id));
+        hasher.update(std.mem.asBytes(&region.depth));
+        hasher.update(std.mem.asBytes(&region.z_index));
+    }
+
     for (self.font_faces.items) |font_face| {
         hasher.update("font_face");
         hasher.update(font_face.family);
