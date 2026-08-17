@@ -455,8 +455,10 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
     if (selector_text.len == 0) return;
 
     var props = VisibilityProperties{};
+    var has_declarations = false;
     var it = CssParser.parseDeclarationsList(block_text);
     while (it.next()) |decl| {
+        has_declarations = true;
         const name = decl.name;
         const val = decl.value;
         if (std.ascii.eqlIgnoreCase(name, "display")) {
@@ -470,7 +472,11 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
         }
     }
 
-    if (!props.isRelevant()) return;
+    // Keep all author declarations, not only visibility rules. Headed rendering
+    // resolves layout/paint properties through getComputedStyle(), so dropping
+    // width, height, borders, colors, flex/positioning, etc. here leaves loaded
+    // external widgets effectively unstyled.
+    if (!has_declarations) return;
 
     const selectors = SelectorParser.parseList(self.arena.allocator(), selector_text) catch return;
     for (selectors) |selector| {
@@ -479,6 +485,8 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
         const rule = VisibilityRule{
             .props = props,
             .selector = selector,
+            .style = null,
+            .raw_block = block_text,
             .priority = (@as(u64, computeSpecificity(selector)) << SPEC_SHIFT) | @min(self.next_doc_order, MAX_DOC_ORDER),
         };
         self.next_doc_order += 1;
@@ -935,12 +943,11 @@ fn addRule(self: *StyleManager, build_arena: Allocator, style_rule: *CSSStyleRul
         return;
     }
 
-    // Check if the rule has visibility-relevant properties
+    // Preserve the complete declaration block. Visibility properties remain
+    // pre-extracted for the hot visibility APIs, while computedStyleValue()
+    // resolves every other property from the same selector/cascade index.
     const style = style_rule._style orelse return;
     const props = extractVisibilityProperties(style);
-    if (!props.isRelevant()) {
-        return;
-    }
 
     // Parse the selector list
     const selectors = SelectorParser.parseList(self.arena.allocator(), selector_text) catch return;
@@ -963,6 +970,8 @@ fn addRule(self: *StyleManager, build_arena: Allocator, style_rule: *CSSStyleRul
         const rule = VisibilityRule{
             .props = props,
             .selector = selector,
+            .style = style,
+            .raw_block = "",
             .priority = (@as(u64, computeSpecificity(selector)) << SPEC_SHIFT) | @min(self.next_doc_order, MAX_DOC_ORDER),
         };
         self.next_doc_order += 1;
@@ -1139,6 +1148,11 @@ const VisibilityProperties = struct {
 const VisibilityRule = struct {
     selector: Selector.Selector, // Single selector, not a list
     props: VisibilityProperties,
+    // Parsed CSSStyleRule declarations (external sheets / CSSOM rules), or a
+    // raw declaration block for inline <style>/nested @media/@layer rules.
+    // Exactly one source is populated for author rules.
+    style: ?*CSSStyleProperties = null,
+    raw_block: []const u8 = "",
 
     // Packed priority: layer_rank:12 | specificity:30 | doc_order:22.
     // The rank bits are 0 until finalizeLayerRanks stamps them (the rank
@@ -1210,6 +1224,250 @@ fn getInlineStyleProperty(el: *Element, property_name: String, frame: *Frame) ?*
 pub fn inlineStyleValue(self: *StyleManager, el: *Element, property_name: String) ?[]const u8 {
     const property = getInlineStyleProperty(el, property_name, self.frame) orelse return null;
     return property._value.str();
+}
+
+const CascadedProperty = struct {
+    value: []const u8,
+    important: bool,
+};
+
+const BorderShorthandComponent = enum { width, style, color };
+
+fn isBorderStyleKeyword(token: []const u8) bool {
+    inline for (.{ "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset" }) |keyword| {
+        if (std.ascii.eqlIgnoreCase(token, keyword)) return true;
+    }
+    return false;
+}
+
+fn looksLikeBorderWidth(token: []const u8) bool {
+    if (std.ascii.eqlIgnoreCase(token, "thin") or
+        std.ascii.eqlIgnoreCase(token, "medium") or
+        std.ascii.eqlIgnoreCase(token, "thick"))
+    {
+        return true;
+    }
+    if (std.mem.eql(u8, token, "0")) return true;
+    const parsed = units.parse(token) catch return false;
+    return parsed.value >= 0 and parsed.unit != .percentage;
+}
+
+fn borderTokenForComponent(token: []const u8, component: BorderShorthandComponent) ?[]const u8 {
+    const is_style = isBorderStyleKeyword(token);
+    const is_width = looksLikeBorderWidth(token);
+    return switch (component) {
+        .style => if (is_style) token else null,
+        .width => if (is_width and !is_style) token else null,
+        .color => if (!is_style and !is_width) token else null,
+    };
+}
+
+fn borderShorthandComponent(raw: []const u8, component: BorderShorthandComponent) ?[]const u8 {
+    const value = std.mem.trim(u8, raw, &std.ascii.whitespace);
+    if (value.len == 0) return null;
+
+    // Split only on top-level whitespace so functional colors such as
+    // `rgb(120, 80, 20)` remain one component.
+    var start: ?usize = null;
+    var depth: usize = 0;
+    var i: usize = 0;
+    while (i < value.len) : (i += 1) {
+        const c = value[i];
+        const is_space = std.ascii.isWhitespace(c);
+        if (start == null) {
+            if (is_space) continue;
+            start = i;
+        }
+        if (c == '(') {
+            depth += 1;
+        } else if (c == ')' and depth > 0) {
+            depth -= 1;
+        } else if (is_space and depth == 0) {
+            const token = value[start.?..i];
+            if (borderTokenForComponent(token, component)) |matched| return matched;
+            start = null;
+        }
+    }
+    if (start) |token_start| {
+        return borderTokenForComponent(value[token_start..], component);
+    }
+    return null;
+}
+
+fn backgroundShorthandComponent(raw: []const u8, property_name: []const u8) ?[]const u8 {
+    const value = std.mem.trim(u8, raw, &std.ascii.whitespace);
+    if (value.len == 0) return null;
+
+    if (std.ascii.eqlIgnoreCase(property_name, "background-image")) {
+        const url_start = std.ascii.indexOfIgnoreCase(value, "url(") orelse return null;
+        const close_rel = std.mem.indexOfScalar(u8, value[url_start + 4 ..], ')') orelse return null;
+        return value[url_start .. url_start + 4 + close_rel + 1];
+    }
+    if (std.ascii.eqlIgnoreCase(property_name, "background-color")) {
+        // Common browser/widget shorthands use a lone color here. Avoid
+        // pretending gradients/images are colors; mixed-layer shorthand can
+        // fall back to the renderer's existing defaults until full CSS
+        // shorthand expansion exists.
+        if (std.ascii.indexOfIgnoreCase(value, "url(") != null or
+            std.ascii.indexOfIgnoreCase(value, "gradient(") != null)
+        {
+            return null;
+        }
+        var tokens = std.mem.tokenizeAny(u8, value, " \t\r\n");
+        const first = tokens.next() orelse return null;
+        if (tokens.next() == null) return first;
+        if (std.ascii.startsWithIgnoreCase(value, "rgb(") or
+            std.ascii.startsWithIgnoreCase(value, "rgba(") or
+            std.ascii.startsWithIgnoreCase(value, "hsl(") or
+            std.ascii.startsWithIgnoreCase(value, "hsla("))
+        {
+            return value;
+        }
+    }
+    return null;
+}
+
+fn shorthandLonghandValue(shorthand_name: []const u8, raw: []const u8, property_name: []const u8) ?[]const u8 {
+    if (std.ascii.eqlIgnoreCase(shorthand_name, "background")) {
+        return backgroundShorthandComponent(raw, property_name);
+    }
+    if (std.ascii.eqlIgnoreCase(shorthand_name, "border")) {
+        if (std.ascii.eqlIgnoreCase(property_name, "border-width")) return borderShorthandComponent(raw, .width);
+        if (std.ascii.eqlIgnoreCase(property_name, "border-style")) return borderShorthandComponent(raw, .style);
+        if (std.ascii.eqlIgnoreCase(property_name, "border-color")) return borderShorthandComponent(raw, .color);
+    }
+    return null;
+}
+
+fn styleRuleProperty(style: *CSSStyleProperties, property_name: String) ?CascadedProperty {
+    const decl = style.asCSSStyleDeclaration();
+    if (decl.findProperty(property_name)) |property| {
+        return .{ .value = property._value.str(), .important = property._important };
+    }
+
+    const requested = property_name.str();
+    for ([_][]const u8{ "background", "border" }) |shorthand| {
+        const property = decl.findProperty(.wrap(shorthand)) orelse continue;
+        const value = shorthandLonghandValue(shorthand, property._value.str(), requested) orelse continue;
+        return .{ .value = value, .important = property._important };
+    }
+    return null;
+}
+
+fn inlineRuleProperty(el: *Element, property_name: String, frame: *Frame) ?CascadedProperty {
+    const style = frame._element_styles.get(el) orelse blk: {
+        if (el.getAttributeSafe(comptime .wrap("style")) == null) return null;
+        break :blk el.getOrCreateStyle(frame) catch |err| {
+            log.err(.browser, "StyleManager getOrCreateStyle", .{ .err = err });
+            return null;
+        };
+    };
+    return styleRuleProperty(style, property_name);
+}
+
+fn rawRuleProperty(block: []const u8, property_name: String) ?CascadedProperty {
+    var result: ?CascadedProperty = null;
+    var it = CssParser.parseDeclarationsList(block);
+    while (it.next()) |decl| {
+        const value = if (std.ascii.eqlIgnoreCase(decl.name, property_name.str()))
+            decl.value
+        else
+            shorthandLonghandValue(decl.name, decl.value, property_name.str()) orelse continue;
+
+        // Within one declaration block, !important beats normal declarations;
+        // otherwise the later declaration wins.
+        if (result) |current| {
+            if (current.important and !decl.important) continue;
+        }
+        result = .{ .value = value, .important = decl.important };
+    }
+    return result;
+}
+
+/// Resolve an author-origin property from inline style and matching stylesheet
+/// rules. The rule index already carries selector specificity, source order and
+/// normal cascade-layer rank; this extends that same index beyond the historical
+/// display/visibility-only subset so native headed painting sees real CSS.
+pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: String) ?[]const u8 {
+    self.rebuildIfDirty() catch return self.inlineStyleValue(el, property_name);
+
+    var best_value: ?[]const u8 = null;
+    var best_important = false;
+    var best_priority: u64 = 0;
+
+    if (inlineRuleProperty(el, property_name, self.frame)) |property| {
+        best_value = property.value;
+        best_important = property.important;
+        best_priority = INLINE_PRIORITY;
+        if (best_important) return best_value;
+    }
+
+    const Ctx = struct {
+        value: *?[]const u8,
+        important: *bool,
+        priority: *u64,
+        el: *Element,
+        property_name: String,
+        frame: *Frame,
+
+        fn checkRules(ctx: @This(), rules: *const RuleList) void {
+            const priorities = rules.items(.priority);
+            const selectors = rules.items(.selector);
+            const styles = rules.items(.style);
+            const raw_blocks = rules.items(.raw_block);
+
+            for (priorities, selectors, styles, raw_blocks) |priority, selector, style, raw_block| {
+                // A normal stylesheet declaration cannot beat an inline normal
+                // declaration (INLINE_PRIORITY), nor any !important winner.
+                if (ctx.important.* and priority <= ctx.priority.*) continue;
+
+                if (!matchesSelector(ctx.el, selector, ctx.frame)) continue;
+
+                const candidate = if (style) |properties|
+                    styleRuleProperty(properties, ctx.property_name) orelse continue
+                else
+                    rawRuleProperty(raw_block, ctx.property_name) orelse continue;
+
+                if (candidate.important) {
+                    if (!ctx.important.* or priority > ctx.priority.*) {
+                        ctx.value.* = candidate.value;
+                        ctx.important.* = true;
+                        ctx.priority.* = priority;
+                    }
+                    continue;
+                }
+
+                if (ctx.important.*) continue;
+                if (priority > ctx.priority.*) {
+                    ctx.value.* = candidate.value;
+                    ctx.priority.* = priority;
+                }
+            }
+        }
+    };
+
+    const ctx = Ctx{
+        .value = &best_value,
+        .important = &best_important,
+        .priority = &best_priority,
+        .el = el,
+        .property_name = property_name,
+        .frame = self.frame,
+    };
+
+    if (el.getAttributeSafe(comptime .wrap("id"))) |id| {
+        if (self.id_rules.get(id)) |rules| ctx.checkRules(&rules);
+    }
+    if (el.getAttributeSafe(comptime .wrap("class"))) |class_attr| {
+        var it = std.mem.tokenizeAny(u8, class_attr, &std.ascii.whitespace);
+        while (it.next()) |class| {
+            if (self.class_rules.get(class)) |rules| ctx.checkRules(&rules);
+        }
+    }
+    if (self.tag_rules.get(el.getTag())) |rules| ctx.checkRules(&rules);
+    ctx.checkRules(&self.other_rules);
+
+    return best_value;
 }
 
 /// Bounds computedFontSize's ancestor recursion (the parent walk and

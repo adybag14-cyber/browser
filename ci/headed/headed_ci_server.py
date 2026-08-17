@@ -15,9 +15,12 @@ CHILD = b"""<!doctype html><html><head><meta charset='utf-8'><title>Challenge Fr
 <style>body{font-family:Arial,sans-serif;background:#fff6dc;color:#222;margin:18px}h2{font-size:23px}.box{border:3px solid #d97706;border-radius:10px;padding:12px}iframe{display:block;width:650px;height:245px;border:4px solid #b91c1c;border-radius:8px;background:white}</style></head>
 <body><div class='box'><h2>Human verification</h2><p>CROSS-ORIGIN CHILD FRAME VISIBLE</p><iframe id='nested' width='650' height='245' src='http://127.0.0.1:18775/nested.html' title='Nested verification'></iframe></div></body></html>"""
 
+NESTED_CSS = b"""body{font-family:Arial,sans-serif;background:#e8fff0;color:#123;margin:18px}label{font-weight:700}input{display:block;width:360px;height:38px;font-size:18px;margin:10px 0;border:2px solid #087f5b}button{font-size:20px;font-weight:700;padding:10px 24px;border:2px solid #14532d;background:#dcfce7}#status{font-size:18px;font-weight:700;margin-top:10px;background:url('/nested-dot.png');background-repeat:no-repeat;padding-left:24px}"""
+
 NESTED = b"""<!doctype html><html><head><meta charset='utf-8'><title>Nested Challenge</title>
-<style>body{font-family:Arial,sans-serif;background:#e8fff0;color:#123;margin:18px}label{font-weight:700}input{display:block;width:360px;height:38px;font-size:18px;margin:10px 0;border:2px solid #087f5b}button{font-size:20px;font-weight:700;padding:10px 24px;border:2px solid #14532d;background:#dcfce7}#status{font-size:18px;font-weight:700;margin-top:10px}</style></head>
-<body><p>NESTED CROSS-ORIGIN FRAME VISIBLE</p><label for='answer'>Type the human phrase</label><input id='answer' value='' placeholder='type the phrase here'><button id='verify' onclick=\"var a=document.getElementById('answer');var s=document.getElementById('status');if(a.value==='brown fox'){this.textContent='VERIFIED';s.textContent='HUMAN VERIFICATION PASSED';document.title='Nested Verified';fetch('/verified',{method:'POST'}).catch(function(){})}else{s.textContent='TRY AGAIN: '+a.value}\">I AM HUMAN</button><div id='status'>WAITING FOR HUMAN INPUT</div></body></html>"""
+<link rel='stylesheet' href='/nested.css'></head>
+<body><p>NESTED CROSS-ORIGIN FRAME VISIBLE</p><label for='answer'>Type the human phrase</label><input id='answer' value='' placeholder='type the phrase here'><button id='verify' onclick=\"var a=document.getElementById('answer');var s=document.getElementById('status');if(a.value==='brown fox'){this.textContent='VERIFIED';s.textContent='HUMAN VERIFICATION PASSED';document.title='Nested Verified';fetch('/verified',{method:'POST'}).catch(function(){})}else{s.textContent='TRY AGAIN: '+a.value}\">I AM HUMAN</button><div id='status'>WAITING FOR HUMAN INPUT</div>
+<script>addEventListener('load',function(){var a=document.getElementById('answer');var b=document.getElementById('verify');var ac=getComputedStyle(a);var bc=getComputedStyle(b);var sc=getComputedStyle(document.getElementById('status'));if(ac.getPropertyValue('width')==='360px'&&ac.getPropertyValue('height')==='38px'&&bc.getPropertyValue('background-color')==='#dcfce7'&&bc.getPropertyValue('border-width')==='2px'&&bc.getPropertyValue('border-style')==='solid'&&bc.getPropertyValue('border-color')==='#14532d'&&sc.getPropertyValue('background-image').indexOf('nested-dot.png')!==-1){fetch('/styled',{method:'POST'}).catch(function(){})}});</script></body></html>"""
 
 TRIVIAL = b"""<!doctype html><html><head><meta charset='utf-8'><title>RSS Baseline</title></head><body><h1>RSS baseline</h1><p>The quick brown fox jumps over the lazy dog.</p></body></html>"""
 
@@ -53,6 +56,7 @@ ASSET_PNG = base64.b64decode(
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     verified_file: str | None = None
+    styled_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -81,9 +85,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, CHILD, "text/html; charset=utf-8")
         if port == 18775 and self.path == "/nested.html":
             return self._body(200, NESTED, "text/html; charset=utf-8")
+        if port == 18775 and self.path == "/nested.css":
+            return self._body(200, NESTED_CSS, "text/css; charset=utf-8")
+        if port == 18775 and self.path == "/nested-dot.png":
+            return self._body(200, ASSET_PNG, "image/png")
         self.send_error(404)
 
     def do_POST(self):
+        if self.server.server_port == 18775 and self.path == "/styled":
+            if self.styled_file:
+                path = pathlib.Path(self.styled_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("styled\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18775 and self.path == "/verified":
             if self.verified_file:
                 path = pathlib.Path(self.verified_file)
@@ -100,8 +114,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ready-file")
     parser.add_argument("--verified-file")
+    parser.add_argument("--styled-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
+    Handler.styled_file = args.styled_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

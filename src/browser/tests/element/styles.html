@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <script src="../testing.js"></script>
 
+<style>
+.computed-sheet-rule {
+  width: 304px;
+  height: 78px;
+  display: flex;
+  color: rgb(12, 34, 56);
+  background-color: rgb(240, 241, 242);
+}
+#computed-sheet-target { width: 320px; }
+.computed-sheet-important { color: green !important; }
+.computed-sheet-shorthand { background: #aabbcc; border: 3px solid #445566; }
+</style>
+
 <div id="test-div"></div>
 
 <script id="styles">
@@ -242,5 +255,42 @@
   document.body.appendChild(impDiv);
   testing.expectEqual('red', window.getComputedStyle(impDiv).getPropertyValue('color'));
   testing.expectEqual('red', impDiv.style.getPropertyValue('color'));
+}
+</script>
+
+<script id="computedStyleStylesheetCascade">
+{
+  const target = document.createElement('div');
+  target.id = 'computed-sheet-target';
+  target.setAttribute('class', 'computed-sheet-rule');
+  document.body.appendChild(target);
+
+  const cs = window.getComputedStyle(target);
+  // Non-visibility stylesheet declarations must participate in computed style.
+  // The id selector also proves the existing specificity/source-order index is
+  // reused instead of merely returning the first matching class declaration.
+  testing.expectEqual('320px', cs.getPropertyValue('width'));
+  testing.expectEqual('78px', cs.getPropertyValue('height'));
+  testing.expectEqual('flex', cs.getPropertyValue('display'));
+  testing.expectEqual('rgb(12, 34, 56)', cs.getPropertyValue('color'));
+  testing.expectEqual('rgb(240, 241, 242)', cs.getPropertyValue('background-color'));
+
+  const important = document.createElement('div');
+  important.setAttribute('class', 'computed-sheet-important');
+  important.style.setProperty('color', 'red');
+  document.body.appendChild(important);
+  testing.expectEqual('green', window.getComputedStyle(important).getPropertyValue('color'));
+
+  important.style.setProperty('color', 'blue', 'important');
+  testing.expectEqual('blue', window.getComputedStyle(important).getPropertyValue('color'));
+
+  const shorthand = document.createElement('div');
+  shorthand.setAttribute('class', 'computed-sheet-shorthand');
+  document.body.appendChild(shorthand);
+  const shorthandStyle = window.getComputedStyle(shorthand);
+  testing.expectEqual('#aabbcc', shorthandStyle.getPropertyValue('background-color'));
+  testing.expectEqual('3px', shorthandStyle.getPropertyValue('border-width'));
+  testing.expectEqual('solid', shorthandStyle.getPropertyValue('border-style'));
+  testing.expectEqual('#445566', shorthandStyle.getPropertyValue('border-color'));
 }
 </script>

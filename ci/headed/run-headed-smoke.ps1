@@ -5,10 +5,10 @@ param(
     [int]$MemoryBudgetMb = 0,
     [double]$MemoryGrowthBudgetMb = 0,
     [int]$MemoryWarmupMs = 2000,
-    [int]$InputX = 70,
-    [int]$InputY = 390,
-    [int]$ButtonX = 70,
-    [int]$ButtonY = 425,
+    [int]$InputX = 294,
+    [int]$InputY = 487,
+    [int]$ButtonX = 154,
+    [int]$ButtonY = 535,
     [int]$MemorySampleCount = 20,
     [int]$MemorySampleIntervalMs = 500,
     [string]$MemoryUrl = 'http://127.0.0.1:18773/trivial.html'
@@ -22,7 +22,8 @@ $state = Join-Path $Artifacts 'state'
 New-Item -ItemType Directory -Force -Path $state | Out-Null
 $ready = Join-Path $state 'server-ready.txt'
 $verified = Join-Path $state 'verified.txt'
-Remove-Item $ready,$verified -Force -ErrorAction SilentlyContinue
+$styled = Join-Path $state 'styled.txt'
+Remove-Item $ready,$verified,$styled -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -125,25 +126,27 @@ $serverErr = Join-Path $Artifacts 'server.stderr.log'
 $server = Start-Process -FilePath $python -ArgumentList @(
     (Join-Path $PSScriptRoot 'headed_ci_server.py'),
     '--ready-file', $ready,
-    '--verified-file', $verified
+    '--verified-file', $verified,
+    '--styled-file', $styled
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
     [void](Wait-File $ready 20 1)
 
     if ($Mode -in @('Frame','All')) {
-        Remove-Item $verified -Force -ErrorAction SilentlyContinue
+        Remove-Item $verified,$styled -Force -ErrorAction SilentlyContinue
         $profile = Join-Path $state 'frame-profile'
         Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
         $shot = Join-Path $Artifacts 'frame-current.png'
         Remove-Item $shot -Force -ErrorAction SilentlyContinue
         $stdout = Join-Path $Artifacts 'frame.stdout.log'
         $stderr = Join-Path $Artifacts 'frame.stderr.log'
-        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile,'--screenshot-png',$shot)
+        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile,'--screenshot-png',$shot,'--enable-external-stylesheets')
         $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         $hwnd = [IntPtr]::Zero
         try {
             $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $styled 30 1)
             [void](Wait-File $shot 30 1024)
             # Root readiness can precede nested iframe completion. Evidence is
             # captured only after a short settle, via a modifier-free PrintScreen.

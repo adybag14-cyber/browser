@@ -83,6 +83,10 @@ pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const
             } else if (wrapped.eql(comptime .wrap("visibility"))) {
                 if (frame._style_manager.hasVisibilityHiddenInherited(element)) return "hidden";
             }
+
+            if (frame._style_manager.computedStyleValue(element, wrapped)) |value| {
+                return value;
+            }
         }
     }
 
