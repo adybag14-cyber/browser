@@ -1395,6 +1395,15 @@ const Painter = struct {
                     .color = stroke,
                 });
             }
+            // Block/atomic inline-content containers return from this branch
+            // before the generic box path below. Preserve their interactive
+            // regions here so e.g. `a { display:block }` remains clickable.
+            if (try resolvedLinkRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+                try self.list.addLinkRegion(self.allocator, region);
+            }
+            if (try resolvedControlRegion(element, self.page, rect.x, rect.y, rect.width, rect.height, paint_z_index)) |region| {
+                try self.list.addControlRegion(self.allocator, region);
+            }
             if (transform_value.len > 0) {
                 applyTranslateTransformToRecentOutput(
                     self,
@@ -3409,7 +3418,7 @@ fn resolveImageRequestContext(page: *Page, resolved_url: [:0]const u8) !ImageReq
     // allowed on secure requests. The page URL is the initiating site.
     var cookie_writer: std.Io.Writer.Allocating = .init(page.call_arena);
     defer cookie_writer.deinit();
-    try page._session.cookie_jar.forRequest(resolved_url, &cookie_writer.writer, .{
+    try page._session.cookieJar().forRequest(resolved_url, &cookie_writer.writer, .{
         .is_http = true,
         .is_navigation = false,
         .origin_url = page.url,
@@ -6235,6 +6244,37 @@ test "paintDocument emits same-context link region with dom path" {
     }
 
     try std.testing.expect(found);
+}
+
+test "paintDocument keeps block interactive regions" {
+    var page = try testing.pageTest("page/block_interactive_regions.html", .{});
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 960,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    var found_link = false;
+    for (display_list.link_regions.items) |region| {
+        if (!std.mem.endsWith(u8, region.url, "/src/browser/tests/page/original-target.html")) continue;
+        try std.testing.expect(region.width >= 400);
+        try std.testing.expect(region.height >= 100);
+        try std.testing.expect(region.open_in_new_tab);
+        try std.testing.expect(region.dom_path.len > 0);
+        found_link = true;
+        break;
+    }
+    try std.testing.expect(found_link);
+
+    var found_control = false;
+    for (display_list.control_regions.items) |region| {
+        if (region.width >= 300 and region.height >= 80 and region.dom_path.len > 0) {
+            found_control = true;
+            break;
+        }
+    }
+    try std.testing.expect(found_control);
 }
 
 test "paintDocument emits control region for file input" {

@@ -286,7 +286,14 @@ pub fn setPerformance(self: *Window, value: js.Value) void {
     self.replaceGlobalProperty(value, "performance");
 }
 
-fn bucketForOrigin(self: *Window) *storage.Bucket {
+fn localBucketForOrigin(self: *Window) *storage.Bucket {
+    return self._frame._session.localStorageShed().getOrPut(
+        self._frame._session.browser.app.allocator,
+        self._frame.js.origin.key,
+    ) catch @panic("OOM");
+}
+
+fn sessionBucketForOrigin(self: *Window) *storage.Bucket {
     return self._frame._session.storage_shed.getOrPut(
         self._frame._session.browser.app.allocator,
         self._frame.js.origin.key,
@@ -294,11 +301,11 @@ fn bucketForOrigin(self: *Window) *storage.Bucket {
 }
 
 pub fn getLocalStorage(self: *Window) *storage.Lookup {
-    return &self.bucketForOrigin().local;
+    return &self.localBucketForOrigin().local;
 }
 
 pub fn getSessionStorage(self: *Window) *storage.Lookup {
-    return &self.bucketForOrigin().session;
+    return &self.sessionBucketForOrigin().session;
 }
 
 pub fn getCookieStore(self: *Window, exec: *Execution) !*CookieStore {
@@ -794,7 +801,7 @@ pub fn close(self: *Window) void {
         }
     }
 
-    page.session.idb.detachContext(frame.js);
+    page.session.idbManager().detachContext(frame.js);
     frame.js.scheduler.reset();
     frame.abortTransfers();
 

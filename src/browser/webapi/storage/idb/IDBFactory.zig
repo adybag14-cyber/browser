@@ -202,7 +202,7 @@ const OpenContext = struct {
         // origin being null was already guarded against, so this should be
         // unreachable, but this is safer.
         const origin = self.exec.origin() orelse return error.SecurityError;
-        return self.exec.session.idb.engineForOrigin(origin);
+        return self.exec.session.idbManager().engineForOrigin(origin);
     }
 
     // Returns true when an upgrade drain is now pending: the versionchange
@@ -375,7 +375,7 @@ const DeleteContext = struct {
 
     fn resolveEngine(self: *DeleteContext) !*Engine {
         const origin = self.exec.origin() orelse return error.SecurityError;
-        return self.exec.session.idb.engineForOrigin(origin);
+        return self.exec.session.idbManager().engineForOrigin(origin);
     }
 
     fn runDelete(self: *DeleteContext, engine: *Engine) !void {

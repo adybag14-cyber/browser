@@ -51,13 +51,16 @@ arena: *lp.Arena,
 history: History,
 navigation: *Navigation,
 storage_shed: storage.Shed,
+shared_local_storage_shed: ?*storage.Shed = null,
 // Per-origin IndexedDB engines
 idb: IdbManager,
+shared_idb: ?*IdbManager = null,
 // Backs `globalThis.lp.*`; values pre-stringified so the prelude splices
 // them in without re-encoding.
 bridge_store: std.StringHashMapUnmanaged([]const u8) = .empty,
 notification: *Notification,
 cookie_jar: storage.Cookie.Jar,
+shared_cookie_jar: ?*storage.Cookie.Jar = null,
 /// User-provided scripts to inject into header.
 inject_scripts: []const []const u8 = &.{},
 
@@ -246,6 +249,18 @@ pub fn takePendingDownloads(self: *Session) std.ArrayListUnmanaged(PendingDownlo
 }
 
 /// Register the console listener so `drainConsoleMessages` returns output. Idempotent.
+pub fn cookieJar(self: *Session) *storage.Cookie.Jar {
+    return self.shared_cookie_jar orelse &self.cookie_jar;
+}
+
+pub fn localStorageShed(self: *Session) *storage.Shed {
+    return self.shared_local_storage_shed orelse &self.storage_shed;
+}
+
+pub fn idbManager(self: *Session) *IdbManager {
+    return self.shared_idb orelse &self.idb;
+}
+
 pub fn enableConsoleCapture(self: *Session) !void {
     if (self._console_capture) return;
     try self.notification.register(.console_message, self, onConsoleMessage);

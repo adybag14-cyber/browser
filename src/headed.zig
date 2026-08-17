@@ -15,8 +15,11 @@ const DocumentPainter = lp.DocumentPainter;
 const BrowserCommand = Display.BrowserCommand;
 const HostPaths = @import("HostPaths.zig");
 const Downloads = @import("headed_downloads.zig").Manager;
+const Profile = @import("headed_profile.zig");
 const markdown = @import("browser/markdown.zig");
 const js = lp.js;
+const storage = @import("browser/webapi/storage/storage.zig");
+const IdbManager = @import("browser/webapi/storage/idb/idb.zig").Manager;
 
 const Allocator = std.mem.Allocator;
 const DEFAULT_ZOOM: i32 = 100;
@@ -53,6 +56,21 @@ const NavigationScopeGuard = struct {
     }
 };
 
+const TabIsolateScope = struct {
+    isolate: js.Isolate,
+
+    fn init(tab: *Tab) TabIsolateScope {
+        const isolate = tab.browser.env.isolate;
+        tab.session.cookieJar().notification = tab.notification;
+        isolate.enter();
+        return .{ .isolate = isolate };
+    }
+
+    fn deinit(self: *TabIsolateScope) void {
+        self.isolate.exit();
+    }
+};
+
 const Tab = struct {
     browser: Browser = undefined,
     notification: *Notification = undefined,
@@ -63,7 +81,16 @@ const Tab = struct {
     last_presented_hash: u64 = 0,
     last_error: ?anyerror = null,
 
-    fn init(app: *App, initial_url: ?[]const u8, zoom_percent: i32, width: u32, height: u32) !*Tab {
+    fn init(
+        app: *App,
+        initial_url: ?[]const u8,
+        zoom_percent: i32,
+        width: u32,
+        height: u32,
+        shared_cookie_jar: *storage.Cookie.Jar,
+        shared_local_storage_shed: *storage.Shed,
+        shared_idb: *IdbManager,
+    ) !*Tab {
         const allocator = app.allocator;
         const tab = try allocator.create(Tab);
         errdefer allocator.destroy(tab);
@@ -77,17 +104,30 @@ const Tab = struct {
         tab.browser.viewport_override = .{ .width = width, .height = height };
 
         tab.session = try tab.browser.newSession(tab.notification);
+        tab.session.shared_cookie_jar = shared_cookie_jar;
+        tab.session.shared_local_storage_shed = shared_local_storage_shed;
+        tab.session.shared_idb = shared_idb;
         tab.handle = try tab.session.createPage();
 
         if (initial_url) |raw| {
             if (!isBlankAddress(raw)) {
-                try tab.navigate(raw);
+                try tab.navigateEntered(raw);
             }
         }
+
+        // Env.init keeps its isolate entered for the Browser lifetime. Headed
+        // mode owns multiple Browsers on one OS thread, so leaving every isolate
+        // entered makes the most recently-created tab's LocalHeap current while
+        // older tabs are ticked. Detach between browser operations and enter the
+        // owning isolate explicitly at each headed call boundary.
+        tab.browser.env.isolate.exit();
         return tab;
     }
 
     fn deinit(self: *Tab, allocator: Allocator) void {
+        // Restore Env's lifetime-enter invariant so Browser.deinit/Env.deinit can
+        // tear down V8 and perform their matching isolate.exit().
+        self.browser.env.isolate.enter();
         self.browser.deinit();
         self.notification.deinit();
         allocator.destroy(self);
@@ -103,6 +143,8 @@ const Tab = struct {
     }
 
     fn title(self: *Tab, allocator: Allocator) ![]u8 {
+        var isolate_scope = TabIsolateScope.init(self);
+        defer isolate_scope.deinit();
         const active_frame = self.frame() orelse return allocator.dupe(u8, "New Tab");
         if (try active_frame.getTitle()) |page_title| {
             const trimmed = std.mem.trim(u8, page_title, &std.ascii.whitespace);
@@ -113,6 +155,12 @@ const Tab = struct {
     }
 
     fn navigate(self: *Tab, raw: []const u8) !void {
+        var isolate_scope = TabIsolateScope.init(self);
+        defer isolate_scope.deinit();
+        return self.navigateEntered(raw);
+    }
+
+    fn navigateEntered(self: *Tab, raw: []const u8) !void {
         const active_frame = self.frame() orelse return error.FrameNotLoaded;
         const normalized = try normalizeAddress(active_frame.call_arena, raw);
         self.loading = true;
@@ -130,6 +178,8 @@ const Tab = struct {
     }
 
     fn tick(self: *Tab) void {
+        var isolate_scope = TabIsolateScope.init(self);
+        defer isolate_scope.deinit();
         var runner = self.session.runner(.{});
         const result = runner.tickForFrame(self.handle.frame_id, 4, .{ .until = .done }) catch |err| {
             self.loading = false;
@@ -147,7 +197,12 @@ const Shell = struct {
     app: *App,
     display: Display,
     profile_dir: ?[]const u8,
+    profile: Profile.Store,
     downloads: Downloads,
+    shared_cookie_jar: storage.Cookie.Jar,
+    shared_local_storage_shed: storage.Shed = .{},
+    shared_idb: IdbManager,
+    profile_storage_ticks: u8 = 0,
     tabs: std.ArrayList(*Tab) = .empty,
     closed_tabs: std.ArrayList(ClosedTab) = .empty,
     active_index: usize = 0,
@@ -170,19 +225,47 @@ const Shell = struct {
             .screenshot_png_path = opts.screenshot_png,
         }, null);
         display.setAppDataPath(profile_dir);
+        var profile = Profile.Store.init(app.allocator, profile_dir);
+        errdefer profile.deinit();
+        var settings = profile.loadSettings();
+        errdefer settings.deinit(app.allocator);
         var downloads = try Downloads.init(app, profile_dir);
         errdefer downloads.deinit();
+        var shared_cookie_jar = storage.Cookie.Jar.init(app.allocator, null);
+        errdefer shared_cookie_jar.deinit();
+        profile.loadCookies(&shared_cookie_jar);
+        var shared_local_storage_shed: storage.Shed = .{};
+        errdefer shared_local_storage_shed.deinit(app.allocator);
+        profile.loadLocalStorage(&shared_local_storage_shed);
+        const idb_dir = HostPaths.resolveProfileSubdir(app.allocator, profile_dir, "indexeddb");
+        defer if (idb_dir) |dir| app.allocator.free(dir);
+        var shared_idb = if (idb_dir) |dir|
+            try IdbManager.initPersistent(app.allocator, dir)
+        else
+            IdbManager.init(app.allocator);
+        errdefer shared_idb.deinit();
+        const homepage_url = settings.homepage_url;
+        settings.homepage_url = null;
         return .{
             .app = app,
             .display = display,
             .profile_dir = profile_dir,
+            .profile = profile,
             .downloads = downloads,
+            .shared_cookie_jar = shared_cookie_jar,
+            .shared_local_storage_shed = shared_local_storage_shed,
+            .shared_idb = shared_idb,
+            .default_zoom_percent = settings.default_zoom_percent,
+            .homepage_url = homepage_url,
+            .restore_previous_session = settings.restore_previous_session,
+            .allow_script_popups = settings.allow_script_popups,
             .width = width,
             .height = height,
         };
     }
 
     fn deinit(self: *Shell) void {
+        self.persistProfileState(true);
         self.downloads.deinit();
         while (self.tabs.items.len > 0) {
             const tab = self.tabs.pop().?;
@@ -193,8 +276,76 @@ const Shell = struct {
         for (self.closed_tabs.items) |*closed| closed.deinit(self.app.allocator);
         self.closed_tabs.deinit(self.app.allocator);
         self.display.deinit();
+        self.shared_idb.deinit();
+        self.shared_local_storage_shed.deinit(self.app.allocator);
+        self.shared_cookie_jar.deinit();
         if (self.homepage_url) |url| self.app.allocator.free(url);
+        self.profile.deinit();
         if (self.profile_dir) |path| self.app.allocator.free(path);
+    }
+
+    fn restoreOrStart(self: *Shell, startup_url: ?[]const u8) !void {
+        if (!self.restore_previous_session) {
+            self.profile.persistSession(&.{}, 0, false);
+            try self.newTab(startup_url, true);
+            return;
+        }
+
+        var saved = self.profile.loadSession();
+        defer saved.deinit(self.app.allocator);
+        if (saved.tabs.items.len == 0) {
+            try self.newTab(startup_url, true);
+            return;
+        }
+
+        for (saved.tabs.items) |saved_tab| {
+            const restored_url: ?[]const u8 = if (isBlankAddress(saved_tab.url)) null else saved_tab.url;
+            try self.newTab(restored_url, false);
+            self.tabs.items[self.tabs.items.len - 1].zoom_percent = saved_tab.zoom_percent;
+        }
+        self.active_index = @min(saved.active_index, self.tabs.items.len - 1);
+
+        if (startup_url) |url| {
+            const trimmed = std.mem.trim(u8, url, &std.ascii.whitespace);
+            if (trimmed.len > 0 and !isBlankAddress(trimmed) and !self.hasTabUrl(trimmed)) {
+                try self.newTab(trimmed, true);
+                return;
+            }
+        }
+        self.tabs.items[self.active_index].last_presented_hash = 0;
+        try self.syncDisplayState();
+    }
+
+    fn hasTabUrl(self: *const Shell, url: []const u8) bool {
+        for (self.tabs.items) |tab| {
+            if (std.mem.eql(u8, tab.url(), url)) return true;
+        }
+        return false;
+    }
+
+    fn persistProfileState(self: *Shell, force_storage: bool) void {
+        const states = self.app.allocator.alloc(Profile.TabState, self.tabs.items.len) catch |err| {
+            lp.log.warn(.app, "headed session state allocation failed", .{ .err = err });
+            return;
+        };
+        defer self.app.allocator.free(states);
+        for (self.tabs.items, 0..) |tab, index| {
+            states[index] = .{ .url = tab.url(), .zoom_percent = tab.zoom_percent };
+        }
+        self.profile.persistSession(states, self.active_index, self.restore_previous_session);
+        self.profile.persistSettings(.{
+            .restore_previous_session = self.restore_previous_session,
+            .allow_script_popups = self.allow_script_popups,
+            .default_zoom_percent = self.default_zoom_percent,
+            .homepage_url = self.homepage_url,
+        });
+        if (force_storage or self.profile_storage_ticks >= 63) {
+            self.profile.persistCookies(&self.shared_cookie_jar);
+            self.profile.persistLocalStorage(&self.shared_local_storage_shed);
+            self.profile_storage_ticks = 0;
+        } else {
+            self.profile_storage_ticks += 1;
+        }
     }
 
     fn activeTab(self: *Shell) ?*Tab {
@@ -204,7 +355,16 @@ const Shell = struct {
     }
 
     fn newTab(self: *Shell, url: ?[]const u8, activate: bool) !void {
-        const tab = try Tab.init(self.app, url, self.default_zoom_percent, self.width, self.height);
+        const tab = try Tab.init(
+            self.app,
+            url,
+            self.default_zoom_percent,
+            self.width,
+            self.height,
+            &self.shared_cookie_jar,
+            &self.shared_local_storage_shed,
+            &self.shared_idb,
+        );
         errdefer tab.deinit(self.app.allocator);
         try self.tabs.append(self.app.allocator, tab);
         self.display.onPageCreated();
@@ -214,13 +374,28 @@ const Shell = struct {
 
     fn closeTab(self: *Shell, index: usize, remember: bool) !void {
         if (index >= self.tabs.items.len) return;
+        const previous_active = self.active_index;
         const tab = self.tabs.orderedRemove(index);
         self.downloads.cancelForSource(tab);
         if (remember) try self.pushClosed(tab);
         self.display.onPageRemoved();
         tab.deinit(self.app.allocator);
         if (self.tabs.items.len == 0) return;
-        if (self.active_index >= self.tabs.items.len) self.active_index = self.tabs.items.len - 1;
+
+        if (index < previous_active) {
+            // Preserve the active tab's identity after entries before it shift left.
+            self.active_index = previous_active - 1;
+        } else if (index == previous_active) {
+            // Prefer the tab that slid into the closed tab's slot; when the last
+            // tab was closed, fall back to the new last tab.
+            self.active_index = @min(index, self.tabs.items.len - 1);
+        } else {
+            self.active_index = @min(previous_active, self.tabs.items.len - 1);
+        }
+        // Even a previously rendered survivor must repaint after becoming the
+        // active surface, otherwise its cached hash leaves the Win32 title/body
+        // from the closed tab visible.
+        self.tabs.items[self.active_index].last_presented_hash = 0;
         try self.syncDisplayState();
     }
 
@@ -248,6 +423,8 @@ const Shell = struct {
         for (self.tabs.items) |tab| {
             tab.tick();
             if (tab.frame()) |frame| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 try self.downloads.processPendingRequests(self.app, frame, tab.session, tab.notification, tab);
             }
         }
@@ -301,12 +478,14 @@ const Shell = struct {
             .default_zoom_percent = self.default_zoom_percent,
             .homepage_url = self.homepage_url orelse "",
         });
-        self.display.setImageRequestCookieJar(&tab.session.cookie_jar);
+        self.display.setImageRequestCookieJar(tab.session.cookieJar());
         _ = frame;
     }
 
     fn present(self: *Shell) !void {
         const tab = self.activeTab() orelse return;
+        var isolate_scope = TabIsolateScope.init(tab);
+        defer isolate_scope.deinit();
         const frame = tab.frame() orelse return;
 
         if (tab.last_error) |err| {
@@ -345,7 +524,7 @@ const Shell = struct {
         const hash = hasher.final();
         if (hash == tab.last_presented_hash) return;
         tab.last_presented_hash = hash;
-        self.display.setImageRequestCookieJar(&tab.session.cookie_jar);
+        self.display.setImageRequestCookieJar(tab.session.cookieJar());
         try self.display.presentPageView(title, frame.url, text, &list);
     }
 
@@ -365,6 +544,8 @@ const Shell = struct {
             .navigate_new_tab => |url| try self.newTab(url, true),
             .navigate_target_tab => |target| try self.newTab(target.url, true),
             .activate_link_region => |activation| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 const pending_before = tab.session.pending_downloads.items.len;
                 try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
                 try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
@@ -379,12 +560,16 @@ const Shell = struct {
                 }
             },
             .activate_control_region => |activation| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 try frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
                 try frame.triggerMouseUp(activation.x, activation.y, .main, .{});
                 _ = try frame.triggerMouseClickWithModifiers(activation.x, activation.y, .main, .{});
                 tab.last_presented_hash = 0;
             },
             .back => {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 if (tab.session.navigation.getCanGoBack()) {
                     var nav_scope: NavigationScopeGuard = undefined;
                     nav_scope.init(frame);
@@ -395,6 +580,8 @@ const Shell = struct {
                 }
             },
             .forward => {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 if (tab.session.navigation.getCanGoForward()) {
                     var nav_scope: NavigationScopeGuard = undefined;
                     nav_scope.init(frame);
@@ -405,6 +592,8 @@ const Shell = struct {
                 }
             },
             .reload => {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 if (!isBlankAddress(frame.url)) {
                     var nav_scope: NavigationScopeGuard = undefined;
                     nav_scope.init(frame);
@@ -415,11 +604,15 @@ const Shell = struct {
                 }
             },
             .stop => {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 frame.abortTransfers();
                 tab.loading = false;
                 tab.last_presented_hash = 0;
             },
             .history_traverse => |index| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 const entries = tab.session.navigation.entries();
                 if (index < entries.len) {
                     var nav_scope: NavigationScopeGuard = undefined;
@@ -431,6 +624,8 @@ const Shell = struct {
                 }
             },
             .history_open_new_tab => |index| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 const entries = tab.session.navigation.entries();
                 if (index < entries.len) if (entries[index].url()) |url| try self.newTab(url, true);
             },
@@ -457,6 +652,8 @@ const Shell = struct {
             .tab_reload_index => |index| if (index < self.tabs.items.len) {
                 const candidate = self.tabs.items[index];
                 if (candidate.frame()) |candidate_frame| {
+                    var isolate_scope = TabIsolateScope.init(candidate);
+                    defer isolate_scope.deinit();
                     var nav_scope: NavigationScopeGuard = undefined;
                     nav_scope.init(candidate_frame);
                     defer nav_scope.deinit();
@@ -497,18 +694,33 @@ const Shell = struct {
             },
             .bookmark_add_current, .bookmark_open_visible_new_tabs, .bookmark_sort_set, .bookmark_filter_set, .bookmark_filter_clear, .bookmark_open, .bookmark_open_new_tab, .bookmark_move_up, .bookmark_move_down, .bookmark_remove => {},
             .history_clear_session, .history_remove, .history_remove_before, .history_remove_after, .history_sort_set, .history_filter_set, .history_filter_clear => {},
-            .download => |request| try self.downloads.startDownloadFromValues(self.app, frame, tab.session, tab.notification, tab, request.url, request.suggested_filename),
+            .download => |request| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
+                try self.downloads.startDownloadFromValues(self.app, frame, tab.session, tab.notification, tab, request.url, request.suggested_filename);
+            },
             .download_source => |index| if (self.downloads.entryUrl(index)) |url| try tab.navigate(url),
             .download_source_new_tab => |index| if (self.downloads.entryUrl(index)) |url| try self.newTab(url, true),
             .download_retry => |index| if (self.downloads.entryUrl(index)) |url| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 const filename = self.downloads.entrySuggestedFilename(index) orelse "";
                 try self.downloads.startDownloadFromValues(self.app, frame, tab.session, tab.notification, tab, url, filename);
             },
             .download_remove => |index| _ = self.downloads.removeEntry(index),
             .download_clear => self.downloads.clearCompleted(),
             .download_open_file, .download_reveal_file, .download_open_folder, .download_sort_set, .download_filter_set, .download_filter_clear => {},
-            .settings_clear_cookies => tab.session.cookie_jar.clearRetainingCapacity(),
-            .settings_clear_local_storage, .settings_clear_indexed_db => {},
+            .settings_clear_cookies => {
+                tab.session.cookieJar().clearRetainingCapacity();
+                self.profile.persistCookies(&self.shared_cookie_jar);
+            },
+            .settings_clear_local_storage => {
+                // Keep existing Bucket/Lookup addresses stable: V8 Storage wrappers
+                // may still reference them after the clear action.
+                self.shared_local_storage_shed.clearLocal();
+                self.profile.persistLocalStorage(&self.shared_local_storage_shed);
+            },
+            .settings_clear_indexed_db => {},
             .error_retry => if (tab.last_error != null) try tab.navigate(tab.url()),
         }
         try self.syncDisplayState();
@@ -519,10 +731,12 @@ pub fn browse(app: *App, opts: anytype) !void {
     var shell = try Shell.init(app, opts);
     defer shell.deinit();
 
-    try shell.newTab(opts.url, true);
+    try shell.restoreOrStart(opts.url);
     while (shell.tabs.items.len > 0 and !shell.display.userClosed()) {
         if (shell.activeTab()) |tab| {
             if (tab.frame()) |frame| {
+                var isolate_scope = TabIsolateScope.init(tab);
+                defer isolate_scope.deinit();
                 shell.display.dispatchNativeInput(frame) catch |err| {
                     lp.log.warn(.app, "headed input", .{ .err = err });
                 };
@@ -533,6 +747,7 @@ pub fn browse(app: *App, opts: anytype) !void {
         try shell.tick();
         try shell.syncDisplayState();
         try shell.present();
+        shell.persistProfileState(false);
         lp.io.sleep(.fromMilliseconds(4), .awake) catch {};
     }
 }

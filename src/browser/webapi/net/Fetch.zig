@@ -91,8 +91,8 @@ pub fn init(input: Input, options: ?InitOpts, exec: *const Execution) !js.Promis
 
     const cookie_jar = switch (request._credentials) {
         .omit => null,
-        .include => &session.cookie_jar,
-        .@"same-origin" => if (exec.isSameOrigin(request._url)) &session.cookie_jar else null,
+        .include => session.cookieJar(),
+        .@"same-origin" => if (exec.isSameOrigin(request._url)) session.cookieJar() else null,
     };
 
     const transfer = exec.newRequest(.{

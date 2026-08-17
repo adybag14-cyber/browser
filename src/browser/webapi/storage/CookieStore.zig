@@ -371,14 +371,14 @@ fn matchCookies(
         return error.SecurityError;
     }
 
-    session.cookie_jar.removeExpired(null);
+    session.cookieJar().removeExpired(null);
 
     // Cookie names are normalized. Apply the same normalization to the input
     // we're matching
     const normalized_name: ?[]const u8 = if (name) |n| std.mem.trim(u8, n, " \t") else null;
 
     var items: std.ArrayList(CookieListItem) = .empty;
-    for (session.cookie_jar.cookies.items) |*cookie| {
+    for (session.cookieJar().cookies.items) |*cookie| {
         // CookieStore exposes only cookies that script would see for the
         // current document. HttpOnly cookies stay hidden.
         if (cookie.appliesTo(&target, true, true, false) == false) {
@@ -525,7 +525,7 @@ fn storeCookie(exec: *const Execution, init_: CookieInit, is_delete: bool) !void
     // The errdefer only protects construction failures. Once we `break :blk`
     // with the Cookie value, `Jar.add` owns its lifetime.
     const cookie: Cookie = blk: {
-        var arena = std.heap.ArenaAllocator.init(session.cookie_jar.allocator);
+        var arena = std.heap.ArenaAllocator.init(session.cookieJar().allocator);
         errdefer arena.deinit();
         const aa = arena.allocator();
 
@@ -557,7 +557,7 @@ fn storeCookie(exec: *const Execution, init_: CookieInit, is_delete: bool) !void
     };
 
     // CookieStore is a script API, so is_http = false.
-    try session.cookie_jar.add(cookie, lp.datetime.timestamp(.real), false);
+    try session.cookieJar().add(cookie, lp.datetime.timestamp(.real), false);
 }
 
 // Control characters (U+0000–U+001F and U+007F DEL) and `;` cannot appear in

@@ -230,7 +230,7 @@ pub fn fetch(app: *App, browser: *Browser, urls: []const [:0]const u8, opts: Fet
 
     defer {
         if (app.config.cookieJarFile()) |cookie_jar_path| {
-            cookies.saveToFile(&session.cookie_jar, cookie_jar_path);
+            cookies.saveToFile(session.cookieJar(), cookie_jar_path);
         }
     }
 

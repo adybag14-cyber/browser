@@ -194,7 +194,7 @@ fn deleteCookies(cmd: *CDP.Command) !void {
     }
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    const cookies = &bc.session.cookie_jar.cookies;
+    const cookies = &bc.session.cookieJar().cookies;
 
     var index = cookies.items.len;
     while (index > 0) {
@@ -235,7 +235,7 @@ fn clearBrowserCookies(cmd: *CDP.Command) !void {
     // include an empty `"params":{}` object on every command for ergonomics.
     // Chrome accepts that and clears the jar; reject only on truly malformed JSON.
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    bc.session.cookie_jar.clearRetainingCapacity();
+    bc.session.cookieJar().clearRetainingCapacity();
     return cmd.sendResult(null, .{});
 }
 
@@ -245,7 +245,7 @@ fn setCookie(cmd: *CDP.Command) !void {
     )) orelse return error.InvalidParams;
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    try CdpStorage.setCdpCookie(&bc.session.cookie_jar, params);
+    try CdpStorage.setCdpCookie(bc.session.cookieJar(), params);
 
     try cmd.sendResult(.{ .success = true }, .{});
 }
@@ -257,7 +257,7 @@ fn setCookies(cmd: *CDP.Command) !void {
 
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
     for (params.cookies) |param| {
-        try CdpStorage.setCdpCookie(&bc.session.cookie_jar, param);
+        try CdpStorage.setCdpCookie(bc.session.cookieJar(), param);
     }
 
     try cmd.sendResult(null, .{});
@@ -279,7 +279,7 @@ fn getCookies(cmd: *CDP.Command) !void {
         urls.appendAssumeCapacity(CdpStorage.PreparedUri.init(url));
     }
 
-    var jar = &bc.session.cookie_jar;
+    var jar = bc.session.cookieJar();
     jar.removeExpired(null);
     const writer = CdpStorage.CookieWriter{ .cookies = jar.cookies.items, .urls = urls.items };
     try cmd.sendResult(.{ .cookies = writer }, .{});
@@ -291,7 +291,7 @@ fn getAllCookies(cmd: *CDP.Command) !void {
     // the latter's browserContextId filter, since Network commands are scoped
     // to the current browser context already).
     const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
-    var jar = &bc.session.cookie_jar;
+    var jar = bc.session.cookieJar();
     jar.removeExpired(null);
     const writer = CdpStorage.CookieWriter{ .cookies = jar.cookies.items };
     try cmd.sendResult(.{ .cookies = writer }, .{});

@@ -257,7 +257,7 @@ fn connect(self: *WebSocket, protocols: [][]const u8) !void {
 
     {
         var buf: std.Io.Writer.Allocating = .init(allocator);
-        try exec.session.cookie_jar.forRequest(resolved_url, &buf.writer, .{
+        try exec.session.cookieJar().forRequest(resolved_url, &buf.writer, .{
             .is_http = true,
             .is_navigation = false,
             .origin_url = exec.url.*,

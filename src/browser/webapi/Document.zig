@@ -292,7 +292,7 @@ pub fn getCookie(self: *Document, frame: *Frame) ![]const u8 {
         return "";
     }
     var aw: std.Io.Writer.Allocating = .init(frame.local_arena);
-    try frame._session.cookie_jar.forRequest(frame.url, &aw.writer, .{
+    try frame._session.cookieJar().forRequest(frame.url, &aw.writer, .{
         .is_http = false,
         .is_navigation = true,
     });
@@ -306,7 +306,7 @@ pub fn setCookie(self: *Document, cookie_str: []const u8, frame: *Frame) ![]cons
     // we use the cookie jar's allocator to parse the cookie because it
     // outlives the frame's arena.
     const Cookie = @import("storage/Cookie.zig");
-    const c = Cookie.parse(frame._session.cookie_jar.allocator, frame.url, cookie_str) catch {
+    const c = Cookie.parse(frame._session.cookieJar().allocator, frame.url, cookie_str) catch {
         // Invalid cookies should be silently ignored, not throw errors
         return "";
     };
@@ -314,7 +314,7 @@ pub fn setCookie(self: *Document, cookie_str: []const u8, frame: *Frame) ![]cons
         c.deinit();
         return ""; // HttpOnly cookies cannot be set from JS
     }
-    try frame._session.cookie_jar.add(c, lp.datetime.timestamp(.real), false);
+    try frame._session.cookieJar().add(c, lp.datetime.timestamp(.real), false);
     return cookie_str;
 }
 

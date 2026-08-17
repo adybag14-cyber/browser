@@ -1914,7 +1914,7 @@ fn execGetCookies(arena: std.mem.Allocator, session: *lp.Session, arguments: ?st
     const Params = struct { url: ?[]const u8 = null, all: bool = false };
     const args = try parseArgsOrDefault(Params, arena, arguments);
 
-    const cookies = session.cookie_jar.cookies.items;
+    const cookies = session.cookieJar().cookies.items;
     if (cookies.len == 0) return "No cookies.";
 
     const filter_url: ?[:0]const u8 = blk: {

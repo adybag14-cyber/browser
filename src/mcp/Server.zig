@@ -152,7 +152,7 @@ pub fn closeSession(self: *Self, id: []const u8) bool {
 fn destroySession(self: *Self, entry: *Session) void {
     if (entry.isDefault()) {
         if (self.app.config.cookieJarFile()) |cookie_jar_path| {
-            lp.cookies.saveToFile(&entry.session.cookie_jar, cookie_jar_path);
+            lp.cookies.saveToFile(entry.session.cookieJar(), cookie_jar_path);
         }
     }
 

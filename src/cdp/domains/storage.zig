@@ -53,7 +53,7 @@ fn clearCookies(cmd: *CDP.Command) !void {
         }
     }
 
-    bc.session.cookie_jar.clearRetainingCapacity();
+    bc.session.cookieJar().clearRetainingCapacity();
 
     return cmd.sendResult(null, .{});
 }
@@ -67,8 +67,8 @@ fn getCookies(cmd: *CDP.Command) !void {
             return error.UnknownBrowserContextId;
         }
     }
-    bc.session.cookie_jar.removeExpired(null);
-    const writer = CookieWriter{ .cookies = bc.session.cookie_jar.cookies.items };
+    bc.session.cookieJar().removeExpired(null);
+    const writer = CookieWriter{ .cookies = bc.session.cookieJar().cookies.items };
     try cmd.sendResult(.{ .cookies = writer }, .{});
 }
 
@@ -86,7 +86,7 @@ fn setCookies(cmd: *CDP.Command) !void {
     }
 
     for (params.cookies) |param| {
-        try setCdpCookie(&bc.session.cookie_jar, param);
+        try setCdpCookie(bc.session.cookieJar(), param);
     }
 
     try cmd.sendResult(null, .{});

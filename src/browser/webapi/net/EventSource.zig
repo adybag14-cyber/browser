@@ -182,7 +182,7 @@ fn connect(self: *EventSource) !void {
         .method = .GET,
         .frame_id = exec.frameId(),
         .loader_id = exec.loaderId(),
-        .cookie_jar = if (cookie_support) &session.cookie_jar else null,
+        .cookie_jar = if (cookie_support) session.cookieJar() else null,
         .cookie_origin = exec.url.*,
         .resource_type = .eventsource,
         .streaming = true,

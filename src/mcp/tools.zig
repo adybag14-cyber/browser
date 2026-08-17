@@ -1398,8 +1398,8 @@ test "MCP - getCookies: defaults to current page, url filter, all flag" {
     const server = try testLoadPage("http://localhost:9582/src/browser/tests/mcp_press_form.htm", &out.writer);
     defer server.deinit();
 
-    try server.active_session.session.cookie_jar.populateFromResponse("http://localhost:9582", "session=abc; Path=/");
-    try server.active_session.session.cookie_jar.populateFromResponse("http://other.test/", "tracking=xyz; Path=/");
+    try server.active_session.session.cookieJar().populateFromResponse("http://localhost:9582", "session=abc; Path=/");
+    try server.active_session.session.cookieJar().populateFromResponse("http://other.test/", "tracking=xyz; Path=/");
 
     const default_msg =
         \\{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getCookies"}}
@@ -1437,7 +1437,7 @@ test "MCP - getCookies without a loaded page refuses instead of dumping the jar"
     var server = try Server.init(testing.allocator, testing.test_app, &out.writer);
     defer server.deinit();
 
-    try server.active_session.session.cookie_jar.populateFromResponse("http://example.com/", "session=abc; Path=/");
+    try server.active_session.session.cookieJar().populateFromResponse("http://example.com/", "session=abc; Path=/");
 
     const msg =
         \\{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getCookies"}}

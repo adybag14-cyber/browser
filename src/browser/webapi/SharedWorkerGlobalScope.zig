@@ -107,7 +107,7 @@ pub fn init(frame: *Frame, url: [:0]const u8, name: []const u8, worker_type: Wor
         .frame_id = self._frame_id,
         .loader_id = self._loader_id,
         .resource_type = .script,
-        .cookie_jar = &session.cookie_jar,
+        .cookie_jar = session.cookieJar(),
         .cookie_origin = owned_url,
         .notification = session.notification,
         .header_callback = httpHeaderCallback,
@@ -186,7 +186,7 @@ pub fn close(self: *SharedWorkerGlobalScope) void {
     // Once closed, new SharedWorker(url, name) must create a fresh instance.
     self.unregister();
     // TODO: we should also stop new tasks from being scheduled
-    self._proto._session.idb.detachContext(self._proto.js);
+    self._proto._session.idbManager().detachContext(self._proto.js);
     self._proto.js.scheduler.reset();
     self._closed = true;
 }

@@ -40,6 +40,13 @@ pub const Shed = struct {
         self._origins.deinit(allocator);
     }
 
+    pub fn clearLocal(self: *Shed) void {
+        var it = self._origins.valueIterator();
+        while (it.next()) |bucket| {
+            bucket.*.local.clear();
+        }
+    }
+
     pub fn getOrPut(self: *Shed, allocator: Allocator, origin: []const u8) !*Bucket {
         const gop = try self._origins.getOrPut(allocator, origin);
         if (gop.found_existing) return gop.value_ptr.*;

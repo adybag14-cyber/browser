@@ -26,9 +26,17 @@ const Manager = @This();
 
 allocator: Allocator,
 engines: std.StringHashMapUnmanaged(*Engine) = .empty,
+storage_dir: ?[]u8 = null,
 
 pub fn init(allocator: Allocator) Manager {
     return .{ .allocator = allocator };
+}
+
+pub fn initPersistent(allocator: Allocator, storage_dir: []const u8) !Manager {
+    return .{
+        .allocator = allocator,
+        .storage_dir = try allocator.dupe(u8, storage_dir),
+    };
 }
 
 pub fn deinit(self: *Manager) void {
@@ -39,6 +47,8 @@ pub fn deinit(self: *Manager) void {
         self.allocator.free(kv.key_ptr.*);
     }
     self.engines.deinit(self.allocator);
+    if (self.storage_dir) |storage_dir| self.allocator.free(storage_dir);
+    self.* = undefined;
 }
 
 // A js Context is being torn down (navigation, popup close, worker close):
@@ -62,7 +72,24 @@ pub fn engineForOrigin(self: *Manager, origin: []const u8) !*Engine {
     const engine = try self.allocator.create(Engine);
     errdefer self.allocator.destroy(engine);
 
-    engine.* = try Engine.open(":memory:");
+    const engine_path: [:0]const u8 = if (self.storage_dir) |storage_dir| blk: {
+        var digest: [32]u8 = undefined;
+        std.crypto.hash.sha2.Sha256.hash(origin, &digest, .{});
+        const alphabet = "0123456789abcdef";
+        var hex: [digest.len * 2]u8 = undefined;
+        for (digest, 0..) |byte, index| {
+            hex[index * 2] = alphabet[byte >> 4];
+            hex[index * 2 + 1] = alphabet[byte & 0x0f];
+        }
+        const filename = try std.fmt.allocPrint(self.allocator, "origin-{s}.sqlite", .{hex[0..]});
+        defer self.allocator.free(filename);
+        const path = try std.fs.path.join(self.allocator, &.{ storage_dir, filename });
+        defer self.allocator.free(path);
+        break :blk try self.allocator.dupeZ(u8, path);
+    } else ":memory:";
+    defer if (self.storage_dir != null) self.allocator.free(engine_path);
+
+    engine.* = try Engine.open(engine_path);
     errdefer engine.close();
 
     gop.key_ptr.* = try self.allocator.dupe(u8, origin);
@@ -94,18 +121,31 @@ test "IDB - Manager: in-memory engines are origin-isolated" {
     try testing.expectEqual(null, try b.databaseVersion("db"));
 }
 
-test "IDB - Manager: on-disk engines hash to per-origin files, isolated" {
-    var mgr = Manager.init(testing.allocator);
-    defer mgr.deinit();
+test "IDB - Manager: persistent engines survive restart and remain origin-isolated" {
+    const rel_dir = ".zig-cache/tmp/idb-manager-persistent-test";
+    const cwd = std.Io.Dir.cwd();
+    cwd.deleteTree(testing.io, rel_dir) catch {};
+    try cwd.createDirPath(testing.io, rel_dir);
+    defer cwd.deleteTree(testing.io, rel_dir) catch {};
+    const abs_dir = try cwd.realPathFileAlloc(testing.io, rel_dir, testing.allocator);
+    defer testing.allocator.free(abs_dir);
 
-    // A long origin (hostname near the 253-byte limit) must still open: the
-    // hashed file name stays well under NAME_MAX where a transcribed one would
-    // not.
     const long_host = "https://" ++ ("a" ** 250) ++ ".com";
-    const a = try mgr.engineForOrigin(long_host);
-    _ = try a.upsertDatabase("db", 7);
+    {
+        var mgr = try Manager.initPersistent(testing.allocator, abs_dir);
+        defer mgr.deinit();
+        const a = try mgr.engineForOrigin(long_host);
+        _ = try a.upsertDatabase("db", 7);
+        const b = try mgr.engineForOrigin("https://b.com");
+        try testing.expectEqual(null, try b.databaseVersion("db"));
+    }
 
-    const b = try mgr.engineForOrigin("https://b.com");
-    try testing.expectEqual(null, try b.databaseVersion("db"));
-    try testing.expectEqual(7, (try a.databaseVersion("db")).?);
+    {
+        var mgr = try Manager.initPersistent(testing.allocator, abs_dir);
+        defer mgr.deinit();
+        const a = try mgr.engineForOrigin(long_host);
+        try testing.expectEqual(7, (try a.databaseVersion("db")).?);
+        const b = try mgr.engineForOrigin("https://b.com");
+        try testing.expectEqual(null, try b.databaseVersion("db"));
+    }
 }

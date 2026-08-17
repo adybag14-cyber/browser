@@ -50,7 +50,7 @@ fn _loadFromFile(session: *Session, path: []const u8) !void {
         return;
     };
 
-    const jar = &session.cookie_jar;
+    const jar = session.cookieJar();
     const now = lp.datetime.timestamp(.real);
 
     var loaded: usize = 0;

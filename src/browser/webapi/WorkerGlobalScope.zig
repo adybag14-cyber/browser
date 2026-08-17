@@ -422,7 +422,7 @@ fn importScript(self: *WorkerGlobalScope, arena: Allocator, url: [:0]const u8) !
         .frame_id = self._frame_id,
         .document_frame_id = self._frame._frame_id,
         .loader_id = self._loader_id,
-        .cookie_jar = &session.cookie_jar,
+        .cookie_jar = session.cookieJar(),
         .cookie_origin = self.url,
         .resource_type = .script,
         .notification = session.notification,
