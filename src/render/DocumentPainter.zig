@@ -4319,7 +4319,7 @@ fn resolvedDisplayValue(
 
 fn defaultDisplayForTag(tag: Element.Tag) []const u8 {
     return switch (tag) {
-        .span, .anchor, .strong, .em, .code, .label => "inline",
+        .span, .anchor, .strong, .em, .code, .label, .iframe => "inline",
         .img, .input, .button, .select, .textarea, .canvas => "inline-block",
         .table => "table",
         .caption => "table-caption",
@@ -5135,6 +5135,15 @@ fn resolveLayoutWidth(
     }
     preferred = @max(preferred, min_width);
     if (max_width) |limit| preferred = @min(preferred, limit);
+    return clampInlinePreferredWidth(tag, explicit_width, preferred, available_width);
+}
+
+fn clampInlinePreferredWidth(tag: Element.Tag, explicit_width: i32, preferred: i32, available_width: i32) i32 {
+    // Replaced inline content with an explicit width is allowed to overflow the
+    // remaining line/containing width. Shrinking an iframe from 304px to the
+    // ~80px currently left on the line clips embedded widgets such as
+    // reCAPTCHA. Keep the conservative clamp for auto-sized content.
+    if (tag == .iframe and explicit_width > 0) return @max(@as(i32, 1), preferred);
     return std.math.clamp(preferred, 60, available_width);
 }
 
@@ -10037,4 +10046,10 @@ test "paintDocument threads nested opacity through painted commands" {
     try std.testing.expectEqual(@as(u8, 64), inner_box.opacity);
     try std.testing.expectEqual(@as(u8, 128), outer_label.opacity);
     try std.testing.expectEqual(@as(u8, 64), inner_label.opacity);
+}
+
+test "explicit iframe width is not shrunk to remaining inline width" {
+    try std.testing.expectEqualStrings("inline", defaultDisplayForTag(.iframe));
+    try std.testing.expectEqual(@as(i32, 304), clampInlinePreferredWidth(.iframe, 304, 304, 80));
+    try std.testing.expectEqual(@as(i32, 80), clampInlinePreferredWidth(.span, 0, 180, 80));
 }

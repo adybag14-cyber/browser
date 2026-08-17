@@ -137,19 +137,19 @@ try {
         Remove-Item $verified,$styled -Force -ErrorAction SilentlyContinue
         $profile = Join-Path $state 'frame-profile'
         Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
-        $shot = Join-Path $Artifacts 'frame-current.png'
-        Remove-Item $shot -Force -ErrorAction SilentlyContinue
         $stdout = Join-Path $Artifacts 'frame.stdout.log'
         $stderr = Join-Path $Artifacts 'frame.stderr.log'
-        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile,'--screenshot-png',$shot,'--enable-external-stylesheets')
+        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile,'--enable-external-stylesheets')
         $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         $hwnd = [IntPtr]::Zero
         try {
             $hwnd = Get-LightpandaWindow $browser.Id 30
             [void](Wait-File $styled 30 1)
-            [void](Wait-File $shot 30 1024)
-            # Root readiness can precede nested iframe completion. Evidence is
-            # captured only after a short settle, via a modifier-free PrintScreen.
+            # The native browser must paint incrementally even while subframes or
+            # workers keep Session.Runner in a loading state. Do not gate this
+            # smoke on --screenshot-png, whose one-shot contract deliberately
+            # waits for load completion; PrintScreen captures the actual headed
+            # surface and therefore proves the in-progress document is visible.
             Start-Sleep -Milliseconds 1800
             [void](Request-PngEvidence $hwnd $Artifacts 'frame-before.png')
 

@@ -24,3 +24,41 @@
   const i = 100;
   testing.expectEqual(100, i);
 </script>
+
+<iframe id=namedFrameElement name=namedFrame src="about:blank"></iframe>
+<script id=named_access_child_frame>
+  const namedFrameWindow = namedFrameElement.contentWindow;
+  testing.expectTrue(window.frames === window);
+  testing.expectEqual('namedFrame', namedFrameWindow.name);
+  testing.expectEqual('inline', getComputedStyle(namedFrameElement).display);
+  testing.expectTrue(window.frames.namedFrame === namedFrameWindow);
+  testing.expectTrue(window.frames['namedFrame'] === namedFrameWindow);
+  testing.expectEqual('function', typeof window.frames.namedFrame.postMessage);
+  testing.expectEqual(undefined, window.frames.missingNamedFrame);
+
+  // Named access tracks the child navigable target name. window.name changes
+  // that target name; mutating the container's name attribute after creation
+  // does not retroactively rename the already-created child navigable.
+  namedFrameWindow.name = 'renamedFrame';
+  testing.expectEqual('renamedFrame', namedFrameWindow.name);
+  testing.expectEqual(undefined, window.frames.namedFrame);
+  testing.expectTrue(window.frames.renamedFrame === namedFrameWindow);
+  namedFrameElement.name = 'attributeOnlyName';
+  testing.expectEqual('renamedFrame', namedFrameWindow.name);
+  testing.expectEqual(undefined, window.frames.attributeOnlyName);
+  testing.expectTrue(window.frames.renamedFrame === namedFrameWindow);
+</script>
+
+<iframe id=anchorSibling name=a-widget-test src="about:blank"></iframe>
+<iframe id=challengeCaller name=c-widget-test src="about:blank"></iframe>
+<script id=named_access_parent_frames_from_child_realm>
+  // Match reCAPTCHA's same-origin bframe pattern: code in the `c-*` child
+  // derives the `a-*` sibling name from window.name, then messages it through
+  // parent.frames[name].
+  const anchorWindow = anchorSibling.contentWindow;
+  const challengeWindow = challengeCaller.contentWindow;
+  testing.expectEqual('c-widget-test', challengeWindow.eval('window.name'));
+  testing.expectTrue(challengeWindow.eval("parent.frames[window.name.replace(/^c-/, 'a-')]") === anchorWindow);
+  testing.expectEqual('function', challengeWindow.eval("typeof parent.frames[window.name.replace(/^c-/, 'a-')].postMessage"));
+  testing.expectEqual('undefined', challengeWindow.eval('typeof parent.frames.missingSiblingFrame'));
+</script>

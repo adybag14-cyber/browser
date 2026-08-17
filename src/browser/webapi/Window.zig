@@ -911,6 +911,25 @@ pub fn getFramesLength(self: *const Window) u32 {
     return @intCast(self._frame.child_frames.items.len);
 }
 
+/// Named child browsing contexts are Window named properties. This is the
+/// ordinary-object counterpart to the special global handler in js/bridge.zig:
+/// it is needed when script indexes a same-origin Window from another realm,
+/// e.g. `window.parent.frames[name]`.
+pub fn getFrameByName(self: *Window, name: []const u8, frame: *Frame) !Access {
+    if (name.len == 0) return error.NotHandled;
+    for (self._frame.child_frames.items) |child| {
+        const target_name = child.window.getName();
+        if (target_name.len == 0 or !std.mem.eql(u8, target_name, name)) continue;
+        const iframe = child.iframe orelse return error.NotHandled;
+        const access = iframe.getContentWindow(frame) orelse return error.NotHandled;
+        return switch (access) {
+            .window => access,
+            .cross_origin => error.NotHandled,
+        };
+    }
+    return error.NotHandled;
+}
+
 pub fn getScrollX(self: *const Window) u32 {
     return self._scroll_pos.x;
 }
@@ -1235,6 +1254,7 @@ pub const JsApi = struct {
 
     pub const frames = bridge.accessor(Window.getWindow, Window.setFrames, .{});
     pub const index = bridge.indexed(Window.getFrame, null, .{ .null_as_undefined = true });
+    pub const @"[str]" = bridge.namedIndexed(Window.getFrameByName, null, null, null, null, .{});
     pub const length = bridge.accessor(Window.getFramesLength, Window.setLength, .{});
     pub const scrollX = bridge.accessor(Window.getScrollX, Window.setScrollX, .{});
     pub const scrollY = bridge.accessor(Window.getScrollY, Window.setScrollY, .{});

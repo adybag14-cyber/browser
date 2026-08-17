@@ -662,13 +662,39 @@ pub fn unknownWindowPropertyCallback(c_name: ?*const v8.Name, handle: ?*const v8
         return js.Intercepted.no;
     };
 
-    // Only Page contexts have document.getElementById lookup
+    // Window named properties belong to the Window receiving the lookup, not
+    // necessarily the currently executing realm. This matters for same-origin
+    // cross-realm code such as `childWindow.parent.frames[name]`: V8 invokes
+    // this global-template callback while the child context is current, but
+    // PropertyCallbackInfo::This is the parent Window global. Resolve that
+    // receiver first so we inspect the correct browsing context.
     switch (local.ctx.global) {
-        .frame => |frame| {
-            const document = frame.document;
-            if (document.getElementById(property, frame)) |el| {
+        .frame => |execution_frame| {
+            var pc = Caller.PropertyCallbackInfo{ .handle = handle.? };
+            const receiver_value = js.Value{ .local = local, .handle = @ptrCast(pc.getThis()) };
+            const WindowType = @import("../webapi/Window.zig");
+            const receiver_window = local.jsValueToZig(*WindowType, receiver_value) catch execution_frame.window;
+            const receiver_frame = receiver_window._frame;
+
+            // Child browsing contexts take precedence over named document
+            // elements. getContentWindow(execution_frame) deliberately uses the
+            // caller realm when selecting the full/cross-origin Window.Access
+            // wrapper; receiver_frame is used only to choose which children are
+            // being named.
+            for (receiver_frame.child_frames.items) |child| {
+                const target_name = child.window.getName();
+                if (target_name.len == 0 or !std.mem.eql(u8, target_name, property)) continue;
+                const iframe = child.iframe orelse return js.Intercepted.no;
+                const access = iframe.getContentWindow(execution_frame) orelse return js.Intercepted.no;
+                if (access == .cross_origin) return js.Intercepted.no;
+                const js_val = local.zigValueToJs(access, .{}) catch return js.Intercepted.no;
+                pc.getReturnValue().set(js_val);
+                return js.Intercepted.yes;
+            }
+
+            const document = receiver_frame.document;
+            if (document.getElementById(property, receiver_frame)) |el| {
                 const js_val = local.zigValueToJs(el, .{}) catch return js.Intercepted.no;
-                var pc = Caller.PropertyCallbackInfo{ .handle = handle.? };
                 pc.getReturnValue().set(js_val);
                 return js.Intercepted.yes;
             }

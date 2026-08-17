@@ -70,11 +70,18 @@ pub fn item(self: *const DOMTokenList, index: usize, frame: *Frame) !?[]const u8
 }
 
 /// https://dom.spec.whatwg.org/#dom-domtokenlist-supports
-/// Only `rel` defines supported tokens here; per spec every other backing
-/// attribute throws. Loaders probe `relList.supports("modulepreload")` and
-/// fall back to fetch()-based legacy loading when it fails.
+/// Specifications define supported-token sets for particular attributes.
+/// `rel` has the loading tokens implemented below. HTML also defines a token
+/// set for iframe.sandbox; Lightpanda does not currently enforce any sandbox
+/// flags, so it must truthfully report every sandbox token as unsupported
+/// rather than throw TypeError (which is reserved for attributes with no
+/// supported-token set, such as classList).
 pub fn supports(self: *const DOMTokenList, token: []const u8, frame: *Frame) !bool {
-    if (!std.ascii.eqlIgnoreCase(self._attribute_name.str(), "rel")) {
+    const attribute = self._attribute_name.str();
+    if (std.ascii.eqlIgnoreCase(attribute, "sandbox")) {
+        return false;
+    }
+    if (!std.ascii.eqlIgnoreCase(attribute, "rel")) {
         return error.TypeError;
     }
     const supported = [_][]const u8{ "stylesheet", "preload", "modulepreload" };

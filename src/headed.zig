@@ -504,10 +504,12 @@ const Shell = struct {
             try self.display.presentDocument("Lightpanda Browser", tab.url(), message);
             return;
         }
-        if (tab.loading) {
-            try self.display.presentDocument("Lightpanda Browser", tab.url(), "Loading page...");
-            return;
-        }
+        // Real browsers paint incrementally while subresources/subframes are
+        // still loading. Blocking presentation on Session.Runner `.done` makes
+        // long-lived widgets (for example reCAPTCHA, workers, streaming pages)
+        // leave the native window stuck on a synthetic "Loading page..." even
+        // after their DOM is ready. Keep the navigation spinner state, but paint
+        // the current document on every stable hash while loading continues.
         if (isBlankAddress(frame.url)) {
             try self.display.presentDocument("New Tab", "about:blank", "Open a page with Ctrl+L or the address bar.");
             return;

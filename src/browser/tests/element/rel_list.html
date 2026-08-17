@@ -19,5 +19,13 @@
 {
   // classList's backing attribute defines no supported tokens.
   testing.expectError('TypeError', () => $('#d1').classList.supports('foo'));
+
+  // HTML defines a supported-token set for iframe.sandbox. Lightpanda does
+  // not currently enforce sandbox flags, so every token is unsupported, but
+  // supports() must return false instead of throwing TypeError.
+  const iframe = document.createElement('iframe');
+  testing.expectEqual(false, iframe.sandbox.supports('allow-scripts'));
+  testing.expectEqual(false, iframe.sandbox.supports('allow-popups-to-escape-sandbox'));
+  testing.expectEqual(false, iframe.sandbox.supports('allow-storage-access-by-user-activation'));
 }
 </script>

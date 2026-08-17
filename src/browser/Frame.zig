@@ -2018,6 +2018,9 @@ pub fn iframeAddedCallback(self: *Frame, iframe: *IFrame) !void {
     new_frame.iframe = iframe;
     iframe._window = new_frame.window;
     errdefer iframe._window = null;
+    if (iframe.asElement().getAttributeSafe(comptime .wrap("name"))) |context_name| {
+        try new_frame.window.setName(context_name, new_frame);
+    }
 
     // on first load, dispatch frame_created event
     self._session.notification.dispatch(.frame_child_frame_created, &.{
