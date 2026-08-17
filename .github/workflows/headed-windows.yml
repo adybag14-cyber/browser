@@ -54,7 +54,9 @@ jobs:
           if ($archiveHash -ne $env:V8_ARCHIVE_SHA256) {
             throw "V8 archive checksum mismatch: $archiveHash != $env:V8_ARCHIVE_SHA256"
           }
-          7z x .ci-cache/v8/v8.7z -o.ci-cache/v8 -y
+          $extractDir = (Resolve-Path '.ci-cache/v8').Path
+          & 7z x .ci-cache/v8/v8.7z "-o$extractDir" -y
+          if ($LASTEXITCODE -ne 0) { throw "7-Zip extraction failed with exit code $LASTEXITCODE" }
           Remove-Item .ci-cache/v8/v8.7z -Force
 
       - name: Verify Windows V8 checksum
