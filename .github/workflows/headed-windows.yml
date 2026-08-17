@@ -136,14 +136,25 @@ jobs:
       - name: Reject unsupported headed commands without crashing
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Continue'
-          $output = & ./zig-out/bin/lightpanda-headed.exe fetch https://example.com 2>&1
-          $exitCode = $LASTEXITCODE
-          $text = ($output | Out-String)
-          $output | Out-Host
+          $ErrorActionPreference = 'Stop'
+          $stdout = Join-Path $env:RUNNER_TEMP 'headed-unsupported.stdout.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'headed-unsupported.stderr.txt'
+          Remove-Item $stdout,$stderr -Force -ErrorAction SilentlyContinue
 
-          if ($exitCode -ne 2) {
-            throw "Expected unsupported headed command to exit 2, got $exitCode"
+          $process = Start-Process `
+            -FilePath './zig-out/bin/lightpanda-headed.exe' `
+            -ArgumentList @('fetch', 'https://example.com') `
+            -PassThru -Wait -NoNewWindow `
+            -RedirectStandardOutput $stdout `
+            -RedirectStandardError $stderr
+
+          $stdoutText = if (Test-Path $stdout) { Get-Content $stdout -Raw } else { '' }
+          $stderrText = if (Test-Path $stderr) { Get-Content $stderr -Raw } else { '' }
+          $text = $stdoutText + "`n" + $stderrText
+          Write-Host $text
+
+          if ($process.ExitCode -ne 2) {
+            throw "Expected unsupported headed command to exit 2, got $($process.ExitCode)"
           }
           if ($text -notmatch 'supports only the browse command') {
             throw 'Unsupported-command diagnostic was not emitted'
@@ -380,4 +391,4 @@ jobs:
           path: zig-out/bin/lightpanda-headed.exe
           if-no-files-found: error
           retention-days: 14
-          compression-level: 0
+          compression-level: 6
