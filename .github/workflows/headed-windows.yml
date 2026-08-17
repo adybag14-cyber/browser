@@ -133,6 +133,25 @@ jobs:
           $v8 = (Resolve-Path '.ci-cache/v8/c_v8.lib').Path
           zig build headed -j1 -Dtarget=x86_64-windows-msvc "-Dprebuilt_v8_path=$v8"
 
+      - name: Reject unsupported headed commands without crashing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $output = & ./zig-out/bin/lightpanda-headed.exe fetch https://example.com 2>&1
+          $exitCode = $LASTEXITCODE
+          $text = ($output | Out-String)
+          $output | Out-Host
+
+          if ($exitCode -ne 2) {
+            throw "Expected unsupported headed command to exit 2, got $exitCode"
+          }
+          if ($text -notmatch 'supports only the browse command') {
+            throw 'Unsupported-command diagnostic was not emitted'
+          }
+          if ($text -match 'debug-only-panic|Lightpanda has crashed') {
+            throw 'Unsupported headed command triggered the crash handler'
+          }
+
       - name: Run deterministic headed frame + RSS smoke
         shell: pwsh
         run: |

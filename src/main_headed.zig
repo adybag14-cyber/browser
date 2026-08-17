@@ -34,8 +34,12 @@ pub fn main(init: std.process.Init) !void {
             return;
         },
         else => {
-            lp.log.err(.app, "headed executable supports browse mode", .{ .hint = "use: lightpanda-headed browse [URL]" });
-            return error.UnsupportedMode;
+            var stderr = std.Io.File.stderr().writerStreaming(lp.io, &.{});
+            try stderr.interface.print(
+                "lightpanda-headed supports only the browse command.\nUse: lightpanda-headed browse [URL]\n",
+                .{},
+            );
+            std.process.exit(2);
         },
     };
 
