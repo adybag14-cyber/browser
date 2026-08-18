@@ -1376,6 +1376,13 @@ pub fn getElementDimensions(self: *Element, frame: *Frame) Dimensions {
                     dims.explicit_height = true;
                 } else |_| {}
             }
+            if (tag == .iframe) {
+                // Replaced iframe fallback size when neither CSS nor HTML
+                // dimensions specify an axis. Keep these non-explicit so
+                // authored percentage/style sizing can still override them.
+                if (dims.width == 5.0) dims.width = 300.0;
+                if (dims.height == 5.0) dims.height = 150.0;
+            }
         }
     }
 

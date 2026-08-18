@@ -6,9 +6,9 @@ param(
     [double]$MemoryGrowthBudgetMb = 0,
     [int]$MemoryWarmupMs = 2000,
     [int]$InputX = 294,
-    [int]$InputY = 487,
-    [int]$ButtonX = 154,
-    [int]$ButtonY = 535,
+    [int]$InputY = 449,
+    [int]$ButtonX = 421,
+    [int]$ButtonY = 507,
     [int]$MemorySampleCount = 20,
     [int]$MemorySampleIntervalMs = 500,
     [string]$MemoryUrl = 'http://127.0.0.1:18773/trivial.html'

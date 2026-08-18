@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const String = @import("lightpanda").String;
 const Page = @import("../browser/Frame.zig");
 const URL = @import("../browser/URL.zig");
 const referrer = @import("../browser/referrer.zig");
@@ -1368,9 +1369,9 @@ const Painter = struct {
             return;
         }
         const content_box_sizing = isContentBoxSizing(decl, self.page);
-        const has_explicit_width = hasExplicitDimensionValue(decl, self.page, "width");
+        const has_explicit_width = hasExplicitDimensionValue(element, self.page, "width");
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
-        const has_explicit_height = hasExplicitDimensionValue(decl, self.page, "height") or has_forced_height;
+        const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
         const box_sizing_extra_width = if (content_box_sizing and has_explicit_width) padding.horizontal() else 0;
         const box_sizing_extra_height = if (content_box_sizing and has_explicit_height and !has_forced_height) padding.vertical() else 0;
         width += box_sizing_extra_width;
@@ -1880,6 +1881,9 @@ const Painter = struct {
             var flex_shrink: f32 = 1;
             var order: i32 = 0;
             var align_self: FlexCrossAlignment = .auto;
+            var explicit_width: i32 = 0;
+            var min_width: i32 = 0;
+            var max_width: ?i32 = null;
             var min_height: i32 = 0;
             var max_height: ?i32 = null;
             var flex_basis: ?i32 = null;
@@ -1890,6 +1894,9 @@ const Painter = struct {
                 flex_shrink = resolveFlexShrink(child_decl, self.page);
                 order = resolveFlexOrder(child_decl, self.page);
                 align_self = resolveFlexCrossAlignment(resolveCssPropertyValue(child_decl, self.page, child_element, "align-self"));
+                explicit_width = resolveExplicitWidth(self, child_element, child_decl, self.page, child_element.getTag(), content_width);
+                min_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width) orelse 0;
+                max_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width);
                 flex_basis = resolveFlexBasisHeightPx(self, child_element, child_decl, self.opts.viewport_height);
                 min_height = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-height", self.page), self.opts.viewport_height, self.opts.viewport_height) orelse 0;
                 max_height = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-height", self.page), self.opts.viewport_height, self.opts.viewport_height);
@@ -1897,6 +1904,12 @@ const Painter = struct {
 
             const measurement = try self.measureNodePaintedBox(child, content_width);
             if (measurement.width <= 0 and measurement.height <= 0) continue;
+
+            var measured_width = if (explicit_width > 0) explicit_width else measurement.width;
+            measured_width = @max(measured_width, min_width);
+            if (max_width) |limit| {
+                measured_width = @min(measured_width, limit);
+            }
 
             var measured_height = flex_basis orelse measurement.height;
             measured_height = @max(measured_height, min_height);
@@ -1906,7 +1919,7 @@ const Painter = struct {
 
             try measured_children.append(self.allocator, .{
                 .node = child,
-                .width = std.math.clamp(measurement.width, @as(i32, 0), content_width),
+                .width = std.math.clamp(measured_width, @as(i32, 0), content_width),
                 .height = measured_height,
                 .order = order,
                 .flex_grow = flex_grow,
@@ -1930,7 +1943,7 @@ const Painter = struct {
         const max_height_css = resolveCssMaxHeightPx(self, element, decl, self.page, self.opts.viewport_height);
         const min_required_height = @max(resolveMinimumHeight(self, tag, block_like, 0), min_height_css);
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
-        const has_explicit_height = hasExplicitDimensionValue(decl, self.page, "height") or has_forced_height;
+        const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
         const box_sizing_extra_height = if (isContentBoxSizing(decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
 
         const rect: Bounds = .{
@@ -2268,7 +2281,7 @@ const Painter = struct {
         const max_height_css = resolveCssMaxHeightPx(self, element, decl, self.page, self.opts.viewport_height);
         const min_required_height = @max(resolveMinimumHeight(self, tag, block_like, 0), min_height_css);
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
-        const has_explicit_height = hasExplicitDimensionValue(decl, self.page, "height") or has_forced_height;
+        const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
         const box_sizing_extra_height = if (isContentBoxSizing(decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
 
         const rect: Bounds = .{
@@ -2941,9 +2954,16 @@ const Painter = struct {
                 continue;
             }
             if (child.is(Element)) |child_el| {
+                if (switch (child_el.getTag()) {
+                    .script, .style, .template, .head, .meta, .link, .title => true,
+                    else => false,
+                }) continue;
+                if (isHiddenFormControl(child_el)) continue;
+
                 const child_style = try self.page.window.getComputedStyle(child_el, null, self.page);
                 const child_decl = child_style.asCSSStyleDeclaration();
                 const child_display = resolvedDisplayValue(child_decl, self.page, child_el);
+                if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, child_display, &std.ascii.whitespace), "none")) continue;
                 if (!isInlineFlowDisplayForElement(child_el, child_display)) {
                     return false;
                 }
@@ -4261,8 +4281,12 @@ fn isContentBoxSizing(decl: anytype, page: *Page) bool {
     return std.ascii.eqlIgnoreCase(box_sizing, "content-box");
 }
 
-fn hasExplicitDimensionValue(decl: anytype, page: *Page, property_name: []const u8) bool {
-    const raw_value = std.mem.trim(u8, decl.getPropertyValue(property_name, page), &std.ascii.whitespace);
+fn authoredCssPropertyValue(element: *Element, page: *Page, property_name: []const u8) []const u8 {
+    return page._style_manager.computedStyleValue(element, String.wrap(property_name)) orelse "";
+}
+
+fn hasExplicitDimensionValue(element: *Element, page: *Page, property_name: []const u8) bool {
+    const raw_value = std.mem.trim(u8, authoredCssPropertyValue(element, page, property_name), &std.ascii.whitespace);
     return raw_value.len > 0 and !std.ascii.eqlIgnoreCase(raw_value, "auto");
 }
 
@@ -4921,7 +4945,10 @@ fn resolveFlexBasisPx(self: *const Painter, element: *Element, decl: anytype, av
         }
     }
 
-    return resolveExplicitWidth(self, element, decl, self.page, element.getTag(), available_width);
+    if (hasExplicitDimensionValue(element, self.page, "width")) {
+        return resolveExplicitWidth(self, element, decl, self.page, element.getTag(), available_width);
+    }
+    return null;
 }
 
 fn resolveFlexBasisHeightPx(self: *const Painter, element: *Element, decl: anytype, available_height: i32) ?i32 {
@@ -4943,7 +4970,10 @@ fn resolveFlexBasisHeightPx(self: *const Painter, element: *Element, decl: anyty
         }
     }
 
-    return resolveExplicitHeight(self, element, decl, self.page, element.getTag(), available_height);
+    if (hasExplicitDimensionValue(element, self.page, "height")) {
+        return resolveExplicitHeight(self, element, decl, self.page, element.getTag(), available_height);
+    }
+    return null;
 }
 
 fn resolveFlexCrossAlignment(value: []const u8) FlexCrossAlignment {
@@ -5130,6 +5160,7 @@ fn resolveLayoutWidth(
                 };
             },
             .select => 180,
+            .iframe => 300,
             else => @max(self.opts.inline_min_width, estimateStyledTextWidth(painted_label, font_size, font_family, font_weight, italic, text_style.letter_spacing, text_style.word_spacing) + 16),
         };
     }
@@ -5282,7 +5313,8 @@ fn resolveOwnContentHeight(
 }
 
 fn resolveExplicitWidth(self: *const Painter, element: *Element, decl: anytype, page: *Page, tag: Element.Tag, available_width: i32) i32 {
-    if (parseCssLengthPxWithContext(decl.getPropertyValue("width", page), available_width, self.opts.viewport_width)) |width| {
+    _ = decl;
+    if (parseCssLengthPxWithContext(authoredCssPropertyValue(element, page, "width"), available_width, self.opts.viewport_width)) |width| {
         return width;
     }
     if (tag == .canvas) {
@@ -5299,10 +5331,11 @@ fn resolveExplicitWidth(self: *const Painter, element: *Element, decl: anytype, 
 }
 
 fn resolveExplicitHeight(self: *const Painter, element: *Element, decl: anytype, page: *Page, tag: Element.Tag, available_height: i32) i32 {
+    _ = decl;
     if (self.forced_item_node == element.asNode() and self.forced_item_height > 0) {
         return @min(@max(self.forced_item_height, 1), @max(@as(i32, 1), available_height));
     }
-    const raw_height = decl.getPropertyValue("height", page);
+    const raw_height = authoredCssPropertyValue(element, page, "height");
     const height_basis = if (std.mem.indexOfScalar(u8, raw_height, '%') != null)
         resolveAncestorExplicitHeight(self, element, page, available_height)
     else
@@ -5431,6 +5464,7 @@ fn resolveMinimumHeight(self: *const Painter, tag: Element.Tag, block_like: bool
     }
     if (tag == .textarea) return 100;
     if (tag == .img) return 120;
+    if (tag == .iframe) return 150;
     if (tag == .input or tag == .button or tag == .select) return 30;
     return if (block_like) self.opts.min_height else 20;
 }
@@ -10052,4 +10086,78 @@ test "explicit iframe width is not shrunk to remaining inline width" {
     try std.testing.expectEqualStrings("inline", defaultDisplayForTag(.iframe));
     try std.testing.expectEqual(@as(i32, 304), clampInlinePreferredWidth(.iframe, 304, 304, 80));
     try std.testing.expectEqual(@as(i32, 80), clampInlinePreferredWidth(.span, 0, 180, 80));
+}
+
+test "paintDocument honors iframe HTML width and height attributes" {
+    var page = try testing.pageTest("page/iframe_attribute_dimensions_layout.html");
+    defer page._session.removePage();
+
+    const iframe = (try page.window._document.querySelector(.wrap("#challenge-frame"), page)).?;
+    const default_iframe = (try page.window._document.querySelector(.wrap("#default-frame"), page)).?;
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 640,
+        .viewport_height = 400,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const layout = page._element_layout_boxes.get(iframe) orelse return error.IFrameAttributeLayoutMissing;
+    try std.testing.expectEqual(@as(i32, 304), layout.width);
+    try std.testing.expectEqual(@as(i32, 78), layout.height);
+    const explicit_dims = iframe.getElementDimensions(page);
+    try std.testing.expectEqual(@as(f64, 304), explicit_dims.width);
+    try std.testing.expectEqual(@as(f64, 78), explicit_dims.height);
+    try std.testing.expect(explicit_dims.explicit_width);
+    try std.testing.expect(explicit_dims.explicit_height);
+
+    const default_layout = page._element_layout_boxes.get(default_iframe) orelse return error.IFrameDefaultLayoutMissing;
+    try std.testing.expectEqual(@as(i32, 300), default_layout.width);
+    try std.testing.expectEqual(@as(i32, 150), default_layout.height);
+    const default_dims = default_iframe.getElementDimensions(page);
+    try std.testing.expectEqual(@as(f64, 300), default_dims.width);
+    try std.testing.expectEqual(@as(f64, 150), default_dims.height);
+    try std.testing.expect(!default_dims.explicit_width);
+    try std.testing.expect(!default_dims.explicit_height);
+
+    var saw_explicit = false;
+    var saw_default = false;
+    for (display_list.frame_regions.items) |region| {
+        if (region.width == 304 and region.height == 78) saw_explicit = true;
+        if (region.width == 300 and region.height == 150) saw_default = true;
+    }
+    try std.testing.expect(saw_explicit);
+    try std.testing.expect(saw_default);
+}
+
+test "paintDocument keeps percent action row wide inside centered flex column" {
+    var page = try testing.pageTest("page/flex_centered_percent_actions_layout.html");
+    defer page._session.removePage();
+
+    const box = (try page.window._document.querySelector(.wrap(".consent-box"), page)).?;
+    const actions = (try page.window._document.querySelector(.wrap(".consent-actions"), page)).?;
+
+    // The JS-facing computed width may synthesize client metrics for auto width,
+    // but native layout must distinguish that from an author-specified width.
+    try std.testing.expectEqualStrings("", authoredCssPropertyValue(box, page, "width"));
+    try std.testing.expectEqualStrings("100%", authoredCssPropertyValue(actions, page, "width"));
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 1200,
+        .viewport_height = 800,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const box_layout = page._element_layout_boxes.get(box) orelse return error.ConsentBoxLayoutMissing;
+    const actions_layout = page._element_layout_boxes.get(actions) orelse return error.ConsentActionsLayoutMissing;
+    try std.testing.expect(box_layout.width >= 600);
+    try std.testing.expect(actions_layout.width >= 600);
+    // The copy child has auto height but >280px of intrinsic painted content.
+    // flex-basis:auto must use that content size instead of collapsing to 0.
+    try std.testing.expect(box_layout.height >= 360);
+
+    try std.testing.expectEqual(@as(usize, 2), display_list.control_regions.items.len);
+    const reject = display_list.control_regions.items[0];
+    const accept = display_list.control_regions.items[1];
+    try std.testing.expect(reject.width >= 182);
+    try std.testing.expect(accept.width >= 182);
+    try std.testing.expect(reject.x + reject.width <= accept.x);
 }

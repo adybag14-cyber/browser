@@ -907,9 +907,19 @@ pub const Win32Backend = struct {
         if (next_display_list) |*list| {
             try ensureDisplayListPrivateFontsRegistered(self, list);
         }
+        const visible_height = presentationVisibleHeightPx(self);
+        const next_max_scroll = if (next_display_list) |list|
+            @max(0, scalePresentationValue(list.content_height, list.layout_scale) - visible_height)
+        else
+            0;
 
         self.presentation_lock.lock();
         defer self.presentation_lock.unlock();
+
+        const preserve_scroll = self.presentation_display_list != null and
+            next_display_list != null and
+            std.mem.eql(u8, self.presentation_url, next_url);
+        const previous_scroll = self.presentation_scroll_px;
 
         self.allocator.free(self.presentation_title);
         self.allocator.free(self.presentation_url);
@@ -922,8 +932,11 @@ pub const Win32Backend = struct {
         self.presentation_url = next_url;
         self.presentation_body = next_body;
         self.presentation_display_list = next_display_list;
-        self.presentation_scroll_px = 0;
-        self.presentation_max_scroll_px = 0;
+        self.presentation_max_scroll_px = next_max_scroll;
+        self.presentation_scroll_px = if (preserve_scroll)
+            std.math.clamp(previous_scroll, 0, next_max_scroll)
+        else
+            0;
         _ = self.presentation_seq.fetchAdd(1, .acq_rel);
     }
 
@@ -3209,6 +3222,15 @@ fn addressBarHitTest(x: f64, y: f64) bool {
         y <= @as(f64, @floatFromInt(PRESENTATION_ADDRESS_BOTTOM + 4));
 }
 
+fn presentationVisibleHeightPx(backend: *Win32Backend) i32 {
+    // requested_height is the requested *client* height (setClientSize adjusts
+    // the outer window around it). This gives presentation updates a safe scroll
+    // range before WM_PAINT runs; the paint path later refines the clamp using
+    // GetClientRect in case the OS supplied a different actual client size.
+    const requested_height = clampU32ToCInt(backend.requested_height.load(.acquire));
+    return @max(0, requested_height - PRESENTATION_HEADER_HEIGHT - PRESENTATION_MARGIN);
+}
+
 fn updatePresentationMaxScroll(backend: *Win32Backend, max_scroll: i32) i32 {
     backend.presentation_lock.lock();
     defer backend.presentation_lock.unlock();
@@ -4558,7 +4580,17 @@ fn loadCachedImageLocked(
         return;
     };
     const cache_path = source.path;
-    errdefer backend.allocator.free(cache_path);
+    var source_transferred = false;
+    defer if (!source_transferred) {
+        if (source.owns_file and cache_path.len > 0) {
+            if (std.fs.path.isAbsolute(cache_path)) {
+                std.Io.Dir.deleteFileAbsolute(lp.io, cache_path) catch {};
+            } else {
+                std.Io.Dir.cwd().deleteFile(lp.io, cache_path) catch {};
+            }
+        }
+        backend.allocator.free(cache_path);
+    };
 
     const wide_path = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, cache_path) catch |err| {
         log.warn(.app, "win image path encode failed", .{ .path = cache_path, .err = err });
@@ -4592,6 +4624,7 @@ fn loadCachedImageLocked(
     image.height = height;
     image.owns_cache_file = source.owns_file;
     image.state = .loaded;
+    source_transferred = true;
 }
 
 fn imagePlaceholderText(image: ImageCommand) []const u8 {
@@ -8288,6 +8321,34 @@ test "win32 find collects multiple matches within one text run" {
     try std.testing.expect(matches.items[0].x < matches.items[1].x);
     try std.testing.expect(matches.items[0].width > 0);
     try std.testing.expect(matches.items[1].width > 0);
+}
+
+test "win32 presentPageView initializes and preserves same-document scroll range" {
+    var backend = Win32Backend.init(std.testing.allocator, 1200, 800);
+    defer backend.deinit();
+
+    var tall: DisplayList = .{ .content_height = 1700, .layout_scale = 100 };
+    try backend.presentPageView("Consent", "https://example.test/consent", "", &tall);
+
+    const visible_height = @max(@as(i32, 0), 800 - PRESENTATION_HEADER_HEIGHT - PRESENTATION_MARGIN);
+    try std.testing.expectEqual(@as(i32, 1700 - visible_height), backend.presentation_max_scroll_px);
+    try std.testing.expectEqual(@as(i32, 0), backend.presentation_scroll_px);
+
+    backend.presentation_scroll_px = 640;
+    var updated: DisplayList = .{ .content_height = 1500, .layout_scale = 100 };
+    try backend.presentPageView("Consent updated", "https://example.test/consent", "", &updated);
+    try std.testing.expectEqual(@as(i32, 1500 - visible_height), backend.presentation_max_scroll_px);
+    try std.testing.expectEqual(@as(i32, 640), backend.presentation_scroll_px);
+
+    backend.presentation_scroll_px = 900;
+    var shorter: DisplayList = .{ .content_height = 900, .layout_scale = 100 };
+    try backend.presentPageView("Consent shorter", "https://example.test/consent", "", &shorter);
+    try std.testing.expectEqual(@as(i32, 900 - visible_height), backend.presentation_max_scroll_px);
+    try std.testing.expectEqual(backend.presentation_max_scroll_px, backend.presentation_scroll_px);
+
+    var navigated: DisplayList = .{ .content_height = 1700, .layout_scale = 100 };
+    try backend.presentPageView("Other", "https://example.test/other", "", &navigated);
+    try std.testing.expectEqual(@as(i32, 0), backend.presentation_scroll_px);
 }
 
 test "win32 rendered target link queues activate_link_region" {

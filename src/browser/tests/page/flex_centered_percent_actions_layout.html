@@ -1,0 +1,55 @@
+<!doctype html>
+<style>
+  .consent-container {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 716px;
+  }
+  .consent-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    max-width: 700px;
+    padding: 20px 16px;
+  }
+  .consent-copy {
+    max-width: 500px;
+  }
+  .consent-copy > div {
+    height: 72px;
+  }
+  .consent-actions {
+    display: inline-block;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .consent-actions form {
+    display: inline;
+  }
+  .consent-action {
+    display: inline-flex;
+    min-width: 182px;
+    height: 40px;
+    margin: 4px;
+    padding: 0 24px;
+    box-sizing: border-box;
+    border: none;
+    background-color: #0b57d0;
+  }
+</style>
+<div class="consent-container">
+  <div class="consent-box">
+    <div class="consent-copy">
+      <div>Long consent section one.</div>
+      <div>Long consent section two.</div>
+      <div>Long consent section three.</div>
+      <div>Long consent section four.</div>
+    </div>
+    <div class="consent-actions">
+      <form><input type="hidden" name="token" value="reject"><input class="consent-action" type="submit" value="Reject all"></form>
+      <form><input type="hidden" name="token" value="accept"><input type="hidden" name="setting" value="1"><input class="consent-action" type="submit" value="Accept all"></form>
+    </div>
+  </div>
+</div>
