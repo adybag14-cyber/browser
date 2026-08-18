@@ -432,12 +432,21 @@ fn initOwnedCookie(
     var arena = std.heap.ArenaAllocator.init(allocator);
     errdefer arena.deinit();
     const aa = arena.allocator();
+
+    // Allocate first, then copy the final ArenaAllocator state into Cookie.
+    // Copying `arena` into the struct literal before these dupes would capture
+    // an empty/stale state and make Cookie.deinit unable to release the blocks.
+    const owned_name = try aa.dupe(u8, name);
+    const owned_value = try aa.dupe(u8, value);
+    const owned_domain = try aa.dupe(u8, domain);
+    const owned_path = try aa.dupe(u8, cookie_path);
+
     return .{
         .arena = arena,
-        .name = try aa.dupe(u8, name),
-        .value = try aa.dupe(u8, value),
-        .domain = try aa.dupe(u8, domain),
-        .path = try aa.dupe(u8, cookie_path),
+        .name = owned_name,
+        .value = owned_value,
+        .domain = owned_domain,
+        .path = owned_path,
         .expires = expires,
         .secure = secure,
         .http_only = http_only,
@@ -575,4 +584,24 @@ fn hashSavedSession(session: SavedSession) u64 {
         hasher.update(std.mem.asBytes(&tab.zoom_percent));
     }
     return hasher.final();
+}
+
+test "headed profile owned cookie releases its arena" {
+    const cookie = try initOwnedCookie(
+        std.testing.allocator,
+        "__Secure-example",
+        "persistent-value-with-enough-bytes-to-force-arena-storage",
+        ".example.com",
+        "/",
+        null,
+        true,
+        true,
+        .lax,
+    );
+    defer cookie.deinit();
+
+    try std.testing.expectEqualStrings("__Secure-example", cookie.name);
+    try std.testing.expectEqualStrings("persistent-value-with-enough-bytes-to-force-arena-storage", cookie.value);
+    try std.testing.expectEqualStrings(".example.com", cookie.domain);
+    try std.testing.expectEqualStrings("/", cookie.path);
 }
