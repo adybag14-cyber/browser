@@ -67,11 +67,22 @@ jobs:
           key: v1
 
       - name: run end to end integration tests
+        id: integration
         continue-on-error: true
+        env:
+          MASSIVE_PROXY_RESIDENTIAL_US: ${{ secrets.MASSIVE_PROXY_RESIDENTIAL_US }}
         run: |
-          ./lightpanda serve --http-cache-dir /tmp/lp-cache --http-proxy ${{ secrets.MASSIVE_PROXY_RESIDENTIAL_US }} --log-level error & echo $! > LPD.pid
-          go run integration/main.go |tee result.log
-          kill `cat LPD.pid`
+          proxy_args=()
+          if [ -n "${MASSIVE_PROXY_RESIDENTIAL_US:-}" ]; then
+            proxy_args=(--http-proxy "$MASSIVE_PROXY_RESIDENTIAL_US")
+          fi
+          ./lightpanda serve --http-cache-dir /tmp/lp-cache "${proxy_args[@]}" --log-level error &
+          echo $! > LPD.pid
+          set +e
+          go run integration/main.go | tee result.log
+          integration_status=${PIPESTATUS[0]}
+          kill "$(cat LPD.pid)" 2>/dev/null || true
+          exit "$integration_status"
 
       - name: Send result to slack
         # Slack credentials are intentionally not available to forks. Keep the
@@ -87,3 +98,7 @@ jobs:
             initial_comment: "Last e2e integration tests"
             file: "./result.log"
             filename: "e2e-integration-${{ github.sha }}.txt"
+
+      - name: Fail if integration tests failed
+        if: steps.integration.outcome == 'failure'
+        run: exit 1
