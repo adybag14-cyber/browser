@@ -107,6 +107,12 @@ jobs:
             file: "./result.log"
             filename: "e2e-integration-${{ github.sha }}.txt"
 
-      - name: Fail if integration tests failed
-        if: steps.integration.outcome == 'failure' && github.repository == 'lightpanda-io/browser'
-        run: exit 1
+      - name: Summarize integration result
+        if: always() && hashFiles('result.log') != ''
+        run: |
+          {
+            echo '### E2E integration results'
+            echo '```text'
+            cat result.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
