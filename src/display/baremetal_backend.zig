@@ -52,6 +52,12 @@ const modifier_shift = 1 << 0;
 const modifier_ctrl = 1 << 1;
 const modifier_alt = 1 << 2;
 const modifier_meta = 1 << 3;
+const key_backspace: u32 = 8;
+const key_tab: u32 = 9;
+const key_enter: u32 = 13;
+const key_escape: u32 = 27;
+const key_home: u32 = 36;
+const key_delete: u32 = 46;
 const bare_metal_input_mailbox_file = "bare-metal-input-v1.txt";
 const presentation_origin_x = 16;
 const presentation_origin_y = 36;
@@ -291,7 +297,7 @@ pub const BareMetalBackend = struct {
                             try self.queueBrowserCommand(.page_downloads);
                             continue;
                         }
-                        if (std.mem.startsWith(u8, self.last_url, "browser://downloads") and key.code == c.VK_DELETE and !modifiers.ctrl and !modifiers.alt and !modifiers.meta and !modifiers.shift) {
+                        if (std.mem.startsWith(u8, self.last_url, "browser://downloads") and key.code == key_delete and !modifiers.ctrl and !modifiers.alt and !modifiers.meta and !modifiers.shift) {
                             if (self.firstRemovableDownloadIndex()) |index| {
                                 try self.queueBrowserCommand(.{ .download_remove = index });
                             }
@@ -429,7 +435,7 @@ pub const BareMetalBackend = struct {
             try self.queueBrowserCommand(.tab_reopen_closed);
             return true;
         }
-        if (modifiers.ctrl and !modifiers.alt and !modifiers.meta and key == c.VK_TAB) {
+        if (modifiers.ctrl and !modifiers.alt and !modifiers.meta and key == key_tab) {
             try self.queueBrowserCommand(if (modifiers.shift) .tab_previous else .tab_next);
             return true;
         }
@@ -447,7 +453,7 @@ pub const BareMetalBackend = struct {
             try self.queueBrowserCommand(.{ .tab_close = self.active_tab_index });
             return true;
         }
-        if ((modifiers.alt or modifiers.meta) and !modifiers.ctrl and !modifiers.shift and key == c.VK_HOME) {
+        if ((modifiers.alt or modifiers.meta) and !modifiers.ctrl and !modifiers.shift and key == key_home) {
             try self.queueBrowserCommand(.home);
             return true;
         }
@@ -593,9 +599,9 @@ pub const BareMetalBackend = struct {
             return false;
         }
         return switch (key) {
-            27 => self.cancelAddressEdit(), // Escape
-            13 => try self.commitAddressEdit(), // Enter
-            8 => self.deleteLastAddressCodepoint(), // Backspace
+            key_escape => self.cancelAddressEdit(),
+            key_enter => try self.commitAddressEdit(),
+            key_backspace => self.deleteLastAddressCodepoint(),
             else => try self.appendAddressCodePoint(key),
         };
     }
@@ -2481,14 +2487,14 @@ test "bare metal shortcut keys enqueue browser commands" {
     };
 
     var page = FakePage{};
-    try host.input.pushKey(std.testing.allocator, c.VK_HOME, true, modifier_alt);
-    try host.input.pushKey(std.testing.allocator, c.VK_HOME, false, modifier_alt);
+    try host.input.pushKey(std.testing.allocator, key_home, true, modifier_alt);
+    try host.input.pushKey(std.testing.allocator, key_home, false, modifier_alt);
     try host.input.pushKey(std.testing.allocator, 'T', true, modifier_ctrl);
     try host.input.pushKey(std.testing.allocator, 'T', false, modifier_ctrl);
-    try host.input.pushKey(std.testing.allocator, c.VK_TAB, true, modifier_ctrl);
-    try host.input.pushKey(std.testing.allocator, c.VK_TAB, false, modifier_ctrl);
-    try host.input.pushKey(std.testing.allocator, c.VK_TAB, true, modifier_ctrl | modifier_shift);
-    try host.input.pushKey(std.testing.allocator, c.VK_TAB, false, modifier_ctrl | modifier_shift);
+    try host.input.pushKey(std.testing.allocator, key_tab, true, modifier_ctrl);
+    try host.input.pushKey(std.testing.allocator, key_tab, false, modifier_ctrl);
+    try host.input.pushKey(std.testing.allocator, key_tab, true, modifier_ctrl | modifier_shift);
+    try host.input.pushKey(std.testing.allocator, key_tab, false, modifier_ctrl | modifier_shift);
     try host.input.pushKey(std.testing.allocator, 'W', true, modifier_ctrl);
     try host.input.pushKey(std.testing.allocator, 'W', false, modifier_ctrl);
 
@@ -2580,8 +2586,8 @@ test "bare metal address edit ctrl+l commits typed navigation" {
         try host.input.pushKey(std.testing.allocator, ch, true, 0);
         try host.input.pushKey(std.testing.allocator, ch, false, 0);
     }
-    try host.input.pushKey(std.testing.allocator, c.VK_RETURN, true, 0);
-    try host.input.pushKey(std.testing.allocator, c.VK_RETURN, false, 0);
+    try host.input.pushKey(std.testing.allocator, key_enter, true, 0);
+    try host.input.pushKey(std.testing.allocator, key_enter, false, 0);
 
     try backend.dispatchInput(&page);
 
