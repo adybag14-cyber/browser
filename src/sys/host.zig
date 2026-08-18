@@ -35,7 +35,6 @@ pub const Host = struct {
     input: input.Input = .{},
     timer: timer.Timer = .{},
     serial_log: serial_log.SerialLog = .{},
-    net: net.Transport = .{},
     boot: boot.Boot = .{},
 
     pub fn initHosted(allocator: Allocator) Host {
@@ -46,7 +45,6 @@ pub const Host = struct {
             .input = .{},
             .timer = timer.Timer.hosted(),
             .serial_log = serial_log.SerialLog.init(),
-            .net = net.Transport.hosted(),
             .boot = boot.Boot.init(),
         };
     }
@@ -59,7 +57,6 @@ pub const Host = struct {
             .input = .{},
             .timer = timer.Timer.mock(0),
             .serial_log = serial_log.SerialLog.init(),
-            .net = net.Transport.mock(),
             .boot = boot.Boot.init(),
         };
     }
@@ -72,7 +69,6 @@ pub const Host = struct {
             .input = .{},
             .timer = timer.Timer.mock(0),
             .serial_log = serial_log.SerialLog.init(),
-            .net = net.Transport.mock(),
             .boot = boot.Boot.init(),
         } else initHosted(allocator);
     }

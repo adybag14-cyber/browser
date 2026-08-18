@@ -18,6 +18,7 @@
 
 const builtin = @import("builtin");
 const std = @import("std");
+const lp = @import("lightpanda");
 
 const BrowserCommand = @import("BrowserCommand.zig").BrowserCommand;
 const Display = @import("Display.zig");
@@ -990,11 +991,11 @@ fn keyNameFromCode(buf: *[8]u8, code: u32) []const u8 {
     };
 }
 
-fn openProfileDir(path: []const u8) !std.fs.Dir {
+fn openProfileDir(path: []const u8) !std.Io.Dir {
     return if (std.fs.path.isAbsolute(path))
-        std.fs.openDirAbsolute(path, .{})
+        std.Io.Dir.openDirAbsolute(lp.io, path, .{})
     else
-        std.fs.cwd().openDir(path, .{});
+        std.Io.Dir.cwd().openDir(lp.io, path, .{});
 }
 
 fn parseMailboxBool(value: []const u8) !bool {
@@ -1090,21 +1091,23 @@ fn processMailboxLine(self: *BareMetalBackend, line: []const u8) !void {
 fn pollMailboxInput(self: *BareMetalBackend) !void {
     const app_data_path = self.app_data_path orelse return;
     var dir = openProfileDir(app_data_path) catch return;
-    defer dir.close();
+    defer dir.close(lp.io);
 
-    const file = dir.openFile(bare_metal_input_mailbox_file, .{}) catch |err| switch (err) {
+    const file = dir.openFile(lp.io, bare_metal_input_mailbox_file, .{}) catch |err| switch (err) {
         error.FileNotFound => return,
         else => return,
     };
-    defer file.close();
+    defer file.close(lp.io);
 
-    const stat = file.stat() catch return;
+    const stat = file.stat(lp.io) catch return;
     if (self.input_mailbox_offset > stat.size) {
         self.input_mailbox_offset = 0;
     }
-    try file.seekTo(self.input_mailbox_offset);
 
-    const data = file.readToEndAlloc(self.host.allocator, 64 * 1024) catch return;
+    var read_buffer: [4096]u8 = undefined;
+    var file_reader = file.reader(lp.io, &read_buffer);
+    file_reader.seekTo(self.input_mailbox_offset) catch return;
+    const data = file_reader.interface.allocRemaining(self.host.allocator, .limited(64 * 1024)) catch return;
     defer self.host.allocator.free(data);
     if (data.len == 0) {
         return;
