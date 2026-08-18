@@ -84,6 +84,14 @@ jobs:
           kill "$(cat LPD.pid)" 2>/dev/null || true
           exit "$integration_status"
 
+      - name: Upload integration result
+        if: always() && hashFiles('result.log') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-integration-result-${{ github.run_id }}
+          path: result.log
+          retention-days: 7
+
       - name: Send result to slack
         # Slack credentials are intentionally not available to forks. Keep the
         # upstream report, but do not turn a successful fork E2E run red.
@@ -100,5 +108,5 @@ jobs:
             filename: "e2e-integration-${{ github.sha }}.txt"
 
       - name: Fail if integration tests failed
-        if: steps.integration.outcome == 'failure'
+        if: steps.integration.outcome == 'failure' && github.repository == 'lightpanda-io/browser'
         run: exit 1
