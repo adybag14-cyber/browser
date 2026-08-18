@@ -30,8 +30,8 @@ const win_sock = if (native_os == .windows) @import("win32") else struct {};
 
 pub const socket_t = posix.socket_t;
 pub const IpAddress = std.Io.net.IpAddress;
-pub const SOCK_NONBLOCK: u32 = if (native_os == .windows) 0 else SOCK_NONBLOCK;
-pub const SOCK_CLOEXEC: u32 = if (native_os == .windows) 0 else SOCK_CLOEXEC;
+pub const SOCK_NONBLOCK: u32 = if (native_os == .windows) 0 else posix.SOCK.NONBLOCK;
+pub const SOCK_CLOEXEC: u32 = if (native_os == .windows) 0 else posix.SOCK.CLOEXEC;
 
 pub fn family(a: *const IpAddress) u32 {
     return switch (a.*) {
