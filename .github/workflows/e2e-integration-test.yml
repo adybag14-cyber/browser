@@ -74,6 +74,9 @@ jobs:
           kill `cat LPD.pid`
 
       - name: Send result to slack
+        # Slack credentials are intentionally not available to forks. Keep the
+        # upstream report, but do not turn a successful fork E2E run red.
+        if: github.repository == 'lightpanda-io/browser'
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
         with:
           errors: true
