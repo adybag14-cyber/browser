@@ -17,73 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
-const builtin = @import("builtin");
+const lp = @import("lightpanda");
+
+const HostPaths = @import("../HostPaths.zig");
 
 const Allocator = std.mem.Allocator;
 
 fn storageResolveProfileDir(allocator: Allocator, override_path: ?[]const u8) ?[]const u8 {
-    if (override_path) |path| {
-        return copyAndPrepareDir(allocator, path) catch return null;
-    }
-
-    if (builtin.is_test) {
-        return allocator.dupe(u8, "/tmp") catch unreachable;
-    }
-
-    if (!supportsProfileDirFilesystem()) {
-        return null;
-    }
-
-    const app_dir_path = std.fs.getAppDataDir(allocator, "lightpanda") catch return null;
-
-    std.fs.cwd().makePath(app_dir_path) catch |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => {
-            allocator.free(app_dir_path);
-            return null;
-        },
-    };
-    return app_dir_path;
-}
-
-fn copyAndPrepareDir(allocator: Allocator, path: []const u8) ![]const u8 {
-    const owned = try allocator.dupe(u8, path);
-    errdefer allocator.free(owned);
-    if (supportsProfileDirFilesystem()) {
-        std.fs.cwd().makePath(owned) catch |err| switch (err) {
-            error.PathAlreadyExists => return owned,
-            else => return err,
-        };
-    }
-    return owned;
-}
-
-fn resolveProfileFile(allocator: Allocator, profile_root: ?[]const u8, name: []const u8) ?[]u8 {
-    const root = profile_root orelse return null;
-    return std.fs.path.join(allocator, &.{ root, name }) catch null;
+    return HostPaths.resolveProfileDir(allocator, override_path);
 }
 
 fn storageResolveProfileSubdir(allocator: Allocator, profile_root: ?[]const u8, subdir: []const u8) ?[]u8 {
-    const path = resolveProfileFile(allocator, profile_root, subdir) orelse return null;
-    if (!supportsProfileDirFilesystem()) {
-        return path;
-    }
-
-    std.fs.cwd().makePath(path) catch |err| switch (err) {
-        error.PathAlreadyExists => return path,
-        else => {
-            allocator.free(path);
-            return null;
-        },
-    };
-    return path;
-}
-
-fn supportsProfileDirFilesystem() bool {
-    return switch (builtin.os.tag) {
-        .windows, .linux, .macos, .ios, .tvos, .watchos, .visionos, .freebsd, .netbsd, .openbsd, .dragonfly, .haiku => true,
-        else => false,
-    };
+    return HostPaths.resolveProfileSubdir(allocator, profile_root, subdir);
 }
 
 pub const Storage = struct {
@@ -153,12 +98,13 @@ pub const Storage = struct {
     pub fn writeFile(self: *Storage, allocator: Allocator, path: []const u8, data: []const u8) !void {
         switch (self.mode) {
             .hosted => {
-                var file = if (std.fs.path.isAbsolute(path))
-                    try std.fs.createFileAbsolute(path, .{ .truncate = true })
+                const file = if (std.fs.path.isAbsolute(path))
+                    try std.Io.Dir.createFileAbsolute(lp.io, path, .{ .truncate = true })
                 else
-                    try std.fs.cwd().createFile(path, .{ .truncate = true });
-                defer file.close();
-                try file.writeAll(data);
+                    try std.Io.Dir.cwd().createFile(lp.io, path, .{ .truncate = true });
+                defer file.close(lp.io);
+                var writer = file.writerStreaming(lp.io, &.{});
+                try writer.interface.writeAll(data);
             },
             .mock => {
                 if (self.indexOf(path)) |index| {
@@ -184,12 +130,14 @@ pub const Storage = struct {
     pub fn readFile(self: *Storage, allocator: Allocator, path: []const u8) ![]u8 {
         switch (self.mode) {
             .hosted => {
-                var file = if (std.fs.path.isAbsolute(path))
-                    try std.fs.openFileAbsolute(path, .{})
+                const file = if (std.fs.path.isAbsolute(path))
+                    try std.Io.Dir.openFileAbsolute(lp.io, path, .{})
                 else
-                    try std.fs.cwd().openFile(path, .{});
-                defer file.close();
-                return try file.readToEndAlloc(allocator, 1024 * 1024);
+                    try std.Io.Dir.cwd().openFile(lp.io, path, .{});
+                defer file.close(lp.io);
+                var read_buffer: [4096]u8 = undefined;
+                var reader = file.reader(lp.io, &read_buffer);
+                return try reader.interface.allocRemaining(allocator, .limited(1024 * 1024));
             },
             .mock => {
                 const index = self.indexOf(path) orelse return error.FileNotFound;
@@ -202,9 +150,9 @@ pub const Storage = struct {
         switch (self.mode) {
             .hosted => {
                 if (std.fs.path.isAbsolute(path)) {
-                    try std.fs.deleteFileAbsolute(path);
+                    try std.Io.Dir.deleteFileAbsolute(lp.io, path);
                 } else {
-                    try std.fs.cwd().deleteFile(path);
+                    try std.Io.Dir.cwd().deleteFile(lp.io, path);
                 }
             },
             .mock => {

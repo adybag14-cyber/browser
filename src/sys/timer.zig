@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 const std = @import("std");
+const lp = @import("lightpanda");
 
 pub const Timer = struct {
     kind: Kind = .mock,
@@ -37,7 +38,7 @@ pub const Timer = struct {
 
     pub fn now(self: *const Timer) u64 {
         return switch (self.kind) {
-            .hosted => @as(u64, @intCast(std.time.nanoTimestamp())),
+            .hosted => std.math.lossyCast(u64, std.Io.Clock.awake.now(lp.io).nanoseconds),
             .mock => self.mock_now_ns,
         };
     }
@@ -50,7 +51,7 @@ pub const Timer = struct {
 
     pub fn sleep(self: *Timer, delta_ns: u64) void {
         switch (self.kind) {
-            .hosted => std.Thread.sleep(delta_ns),
+            .hosted => lp.io.sleep(.fromNanoseconds(@intCast(delta_ns)), .awake) catch {},
             .mock => self.mock_now_ns += delta_ns,
         }
     }

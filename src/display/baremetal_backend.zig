@@ -1624,11 +1624,9 @@ fn presentationFontWeight(css_weight: i32) i32 {
     return @as(i32, @intCast(std.math.clamp(css_weight, 100, 900)));
 }
 
-fn openOutputFile(path: []const u8) !std.fs.File {
-    if (std.fs.path.isAbsolute(path)) {
-        return std.fs.createFileAbsolute(path, .{});
-    }
-    return std.fs.cwd().createFile(path, .{});
+fn openOutputFile(path: []const u8) !std.Io.File {
+    if (std.fs.path.isAbsolute(path)) return std.Io.Dir.createFileAbsolute(lp.io, path, .{});
+    return std.Io.Dir.cwd().createFile(lp.io, path, .{});
 }
 
 fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
@@ -1641,7 +1639,7 @@ fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
         log.warn(.app, "bare metal bmp create failed", .{ .err = err });
         return false;
     };
-    defer file.close();
+    defer file.close(lp.io);
 
     const pixel_bytes = std.mem.sliceAsBytes(fb.pixels);
     const headers_bytes = @sizeOf(BitmapFileHeader) + @sizeOf(c.BITMAPINFOHEADER);
@@ -1661,15 +1659,15 @@ fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
     bmi_header.biBitCount = 32;
     bmi_header.biCompression = c.BI_RGB;
 
-    file.writeAll(std.mem.asBytes(&file_header)) catch |err| {
+    outputWriteAll(file, std.mem.asBytes(&file_header)) catch |err| {
         log.warn(.app, "bare metal bmp write failed", .{ .err = err });
         return false;
     };
-    file.writeAll(std.mem.asBytes(&bmi_header)) catch |err| {
+    outputWriteAll(file, std.mem.asBytes(&bmi_header)) catch |err| {
         log.warn(.app, "bare metal bmp write failed", .{ .err = err });
         return false;
     };
-    file.writeAll(pixel_bytes) catch |err| {
+    outputWriteAll(file, pixel_bytes) catch |err| {
         log.warn(.app, "bare metal bmp write failed", .{ .err = err });
         return false;
     };
@@ -1688,10 +1686,10 @@ fn saveFramebufferPng(backend: *BareMetalBackend, path: []const u8) bool {
         log.warn(.app, "bare metal png create failed", .{ .err = err });
         return false;
     };
-    defer file.close();
+    defer file.close(lp.io);
 
     writePngFromBgra(
-        &file,
+        file,
         fb.width,
         fb.height,
         std.mem.sliceAsBytes(fb.pixels),
@@ -1705,14 +1703,19 @@ fn saveFramebufferPng(backend: *BareMetalBackend, path: []const u8) bool {
     return true;
 }
 
+fn outputWriteAll(file: std.Io.File, data: []const u8) !void {
+    var writer = file.writerStreaming(lp.io, &.{});
+    try writer.interface.writeAll(data);
+}
+
 fn writePngFromBgra(
-    file: *std.fs.File,
+    file: std.Io.File,
     width: u32,
     height: u32,
     bgra_pixels: []const u8,
     allocator: std.mem.Allocator,
 ) !void {
-    try file.writeAll("\x89PNG\r\n\x1a\n");
+    try outputWriteAll(file, "\x89PNG\r\n\x1a\n");
 
     var ihdr: [13]u8 = undefined;
     storeBigEndianU32(ihdr[0..4], width);
@@ -1749,37 +1752,37 @@ fn writePngFromBgra(
     try writePngChunk(file, "IEND".*, &.{});
 }
 
-fn writePngChunk(file: *std.fs.File, chunk_type: [4]u8, data: []const u8) !void {
+fn writePngChunk(file: std.Io.File, chunk_type: [4]u8, data: []const u8) !void {
     var len_buf: [4]u8 = undefined;
     storeBigEndianU32(&len_buf, @intCast(data.len));
-    try file.writeAll(&len_buf);
-    try file.writeAll(&chunk_type);
-    try file.writeAll(data);
+    try outputWriteAll(file, &len_buf);
+    try outputWriteAll(file, &chunk_type);
+    try outputWriteAll(file, data);
 
     var crc = crc32Init();
     crc = crc32Update(crc, &chunk_type);
     crc = crc32Update(crc, data);
     var crc_buf: [4]u8 = undefined;
     storeBigEndianU32(&crc_buf, crc32Final(crc));
-    try file.writeAll(&crc_buf);
+    try outputWriteAll(file, &crc_buf);
 }
 
-fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
+fn writePngIdatStored(file: std.Io.File, data: []const u8) !void {
     const block_count = if (data.len == 0) 1 else (data.len + 65534) / 65535;
     const compressed_len = 2 + data.len + block_count * 5 + 4;
 
     var len_buf: [4]u8 = undefined;
     storeBigEndianU32(&len_buf, @intCast(compressed_len));
-    try file.writeAll(&len_buf);
+    try outputWriteAll(file, &len_buf);
 
     const chunk_type = "IDAT".*;
-    try file.writeAll(&chunk_type);
+    try outputWriteAll(file, &chunk_type);
 
     var crc = crc32Init();
     crc = crc32Update(crc, &chunk_type);
 
     const zlib_header = [_]u8{ 0x78, 0x01 };
-    try file.writeAll(&zlib_header);
+    try outputWriteAll(file, &zlib_header);
     crc = crc32Update(crc, &zlib_header);
 
     var offset: usize = 0;
@@ -1788,7 +1791,7 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
         const block_len: u16 = @intCast(@min(remaining, 65535));
         const final_block = remaining <= 65535;
         const block_header = [_]u8{if (final_block) 0x01 else 0x00};
-        try file.writeAll(&block_header);
+        try outputWriteAll(file, &block_header);
         crc = crc32Update(crc, &block_header);
 
         const len_bytes = [_]u8{
@@ -1797,12 +1800,12 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
             @truncate(~block_len),
             @truncate((~block_len) >> 8),
         };
-        try file.writeAll(&len_bytes);
+        try outputWriteAll(file, &len_bytes);
         crc = crc32Update(crc, &len_bytes);
 
         if (block_len > 0) {
             const block = data[offset .. offset + block_len];
-            try file.writeAll(block);
+            try outputWriteAll(file, block);
             crc = crc32Update(crc, block);
             offset += block_len;
         }
@@ -1812,12 +1815,12 @@ fn writePngIdatStored(file: *std.fs.File, data: []const u8) !void {
 
     var adler_buf: [4]u8 = undefined;
     storeBigEndianU32(&adler_buf, adler32(data));
-    try file.writeAll(&adler_buf);
+    try outputWriteAll(file, &adler_buf);
     crc = crc32Update(crc, &adler_buf);
 
     var crc_buf: [4]u8 = undefined;
     storeBigEndianU32(&crc_buf, crc32Final(crc));
-    try file.writeAll(&crc_buf);
+    try outputWriteAll(file, &crc_buf);
 }
 
 fn storeBigEndianU32(buf: []u8, value: u32) void {
