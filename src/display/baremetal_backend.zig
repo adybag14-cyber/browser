@@ -310,7 +310,7 @@ pub const BareMetalBackend = struct {
                         continue;
                     }
                     if (key.pressed) {
-                        _ = try page.triggerKeyboardKeyDownWithRepeat(key_name, modifiers, false);
+                        _ = try page.triggerKeyboardKeyDownNoTextWithRepeat(key_name, modifiers, false);
                     } else {
                         _ = try page.triggerKeyboardKeyUp(key_name, modifiers);
                     }
@@ -1912,7 +1912,7 @@ test "bare metal backend drains queued input" {
         last_x: f64 = 0,
         last_y: f64 = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
             self.keys_down += 1;
             std.mem.copyForwards(u8, self.last_key_buf[0..key.len], key);
             self.last_key_len = key.len;
@@ -2014,7 +2014,7 @@ test "bare metal backend drains mailbox input" {
         last_x: f64 = 0,
         last_y: f64 = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
             self.keys_down += 1;
             std.mem.copyForwards(u8, self.last_key_buf[0..key.len], key);
             self.last_key_len = key.len;
@@ -2176,7 +2176,7 @@ test "bare metal backend prefers presentation link regions for clicks" {
         last_y: f64 = 0,
         last_dom_path_len: usize = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), key: []const u8, _: anytype, _: bool) !bool {
             self.keys_down += 1;
             std.mem.copyForwards(u8, self.last_key_buf[0..key.len], key);
             self.last_key_len = key.len;
@@ -2290,7 +2290,7 @@ test "bare metal backend falls back to coordinate clicks when node path click mi
         last_x: f64 = 0,
         last_y: f64 = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
             return self.generic_clicks >= 0;
         }
 
@@ -2361,7 +2361,7 @@ test "bare metal backend queues downloads shortcut and removal command" {
         key_down: usize = 0,
         key_up: usize = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
             self.key_down += 1;
             return true;
         }
@@ -2461,7 +2461,7 @@ test "bare metal shortcut keys enqueue browser commands" {
         key_down: usize = 0,
         key_up: usize = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
             self.key_down += 1;
             return true;
         }
@@ -2552,7 +2552,7 @@ test "bare metal address edit ctrl+l commits typed navigation" {
         key_down: usize = 0,
         key_up: usize = 0,
 
-        pub fn triggerKeyboardKeyDownWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
+        pub fn triggerKeyboardKeyDownNoTextWithRepeat(self: *@This(), _: []const u8, _: anytype, _: bool) !bool {
             self.key_down += 1;
             return true;
         }
