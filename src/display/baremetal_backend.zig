@@ -48,6 +48,26 @@ const BitmapFileHeader = extern struct {
     bfOffBits: u32,
 };
 
+// BITMAPINFOHEADER is a file-format structure, not a Win32-only API type.
+// Keep a local definition so bare-metal BMP export also compiles on Linux/macOS.
+const BitmapInfoHeader = extern struct {
+    biSize: u32,
+    biWidth: i32,
+    biHeight: i32,
+    biPlanes: u16,
+    biBitCount: u16,
+    biCompression: u32,
+    biSizeImage: u32,
+    biXPelsPerMeter: i32,
+    biYPelsPerMeter: i32,
+    biClrUsed: u32,
+    biClrImportant: u32,
+};
+
+comptime {
+    std.debug.assert(@sizeOf(BitmapInfoHeader) == 40);
+}
+
 const modifier_shift = 1 << 0;
 const modifier_ctrl = 1 << 1;
 const modifier_alt = 1 << 2;
@@ -1642,7 +1662,7 @@ fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
     defer file.close(lp.io);
 
     const pixel_bytes = std.mem.sliceAsBytes(fb.pixels);
-    const headers_bytes = @sizeOf(BitmapFileHeader) + @sizeOf(c.BITMAPINFOHEADER);
+    const headers_bytes = @sizeOf(BitmapFileHeader) + @sizeOf(BitmapInfoHeader);
     const file_header = BitmapFileHeader{
         .bfType = 0x4D42,
         .bfSize = @intCast(headers_bytes + pixel_bytes.len),
@@ -1651,13 +1671,13 @@ fn saveFramebufferBitmap(backend: *BareMetalBackend, path: []const u8) bool {
         .bfOffBits = @intCast(headers_bytes),
     };
 
-    var bmi_header: c.BITMAPINFOHEADER = std.mem.zeroes(c.BITMAPINFOHEADER);
-    bmi_header.biSize = @sizeOf(c.BITMAPINFOHEADER);
+    var bmi_header: BitmapInfoHeader = std.mem.zeroes(BitmapInfoHeader);
+    bmi_header.biSize = @sizeOf(BitmapInfoHeader);
     bmi_header.biWidth = @as(i32, @intCast(fb.width));
     bmi_header.biHeight = -@as(i32, @intCast(fb.height));
     bmi_header.biPlanes = 1;
     bmi_header.biBitCount = 32;
-    bmi_header.biCompression = c.BI_RGB;
+    bmi_header.biCompression = 0; // BI_RGB
 
     outputWriteAll(file, std.mem.asBytes(&file_header)) catch |err| {
         log.warn(.app, "bare metal bmp write failed", .{ .err = err });
