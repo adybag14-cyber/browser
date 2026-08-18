@@ -124,6 +124,15 @@ fn getAndMakeAppDir(allocator: Allocator) ?[]const u8 {
 
 pub fn getAppDataDir(allocator: Allocator, appname: []const u8) ![]const u8 {
     switch (@import("builtin").os.tag) {
+        .windows => {
+            const root = if (std.c.getenv("LOCALAPPDATA")) |path|
+                std.mem.span(path)
+            else if (std.c.getenv("APPDATA")) |path|
+                std.mem.span(path)
+            else
+                return error.AppDataDirUnavailable;
+            return std.fs.path.join(allocator, &.{ root, appname });
+        },
         .macos, .ios => {
             const home = std.c.getenv("HOME") orelse return error.AppDataDirUnavailable;
             return std.fs.path.join(allocator, &.{ std.mem.span(home), "Library", "Application Support", appname });
@@ -139,4 +148,17 @@ pub fn getAppDataDir(allocator: Allocator, appname: []const u8) ![]const u8 {
             return std.fs.path.join(allocator, &.{ std.mem.span(home), ".local", "share", appname });
         },
     }
+}
+
+test "getAppDataDir uses Windows application data root" {
+    if (@import("builtin").os.tag != .windows) return error.SkipZigTest;
+
+    const root_ptr = std.c.getenv("LOCALAPPDATA") orelse std.c.getenv("APPDATA") orelse return error.SkipZigTest;
+    const root = std.mem.span(root_ptr);
+    const actual = try getAppDataDir(std.testing.allocator, "lightpanda-test");
+    defer std.testing.allocator.free(actual);
+    const expected = try std.fs.path.join(std.testing.allocator, &.{ root, "lightpanda-test" });
+    defer std.testing.allocator.free(expected);
+
+    try std.testing.expectEqualStrings(expected, actual);
 }
