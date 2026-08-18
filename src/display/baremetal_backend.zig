@@ -151,7 +151,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry);
         }
         self.history_entries.deinit(self.host.allocator);
-        self.history_entries = .{};
+        self.history_entries = .empty;
         self.history_current_index = current_index;
 
         self.history_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal history entries allocation failed");
@@ -168,7 +168,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry.status);
         }
         self.download_entries.deinit(self.host.allocator);
-        self.download_entries = .{};
+        self.download_entries = .empty;
 
         self.download_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal download entries allocation failed");
         for (entries) |entry| {
@@ -188,7 +188,7 @@ pub const BareMetalBackend = struct {
             self.host.allocator.free(entry.target_name);
         }
         self.tab_entries.deinit(self.host.allocator);
-        self.tab_entries = .{};
+        self.tab_entries = .empty;
         self.active_tab_index = active_index;
 
         self.tab_entries.ensureTotalCapacity(self.host.allocator, entries.len) catch @panic("bare metal tab entries allocation failed");
@@ -593,9 +593,9 @@ pub const BareMetalBackend = struct {
             return false;
         }
         return switch (key) {
-            c.VK_ESCAPE => self.cancelAddressEdit(),
-            c.VK_RETURN => try self.commitAddressEdit(),
-            c.VK_BACK => self.deleteLastAddressCodepoint(),
+            27 => self.cancelAddressEdit(), // Escape
+            13 => try self.commitAddressEdit(), // Enter
+            8 => self.deleteLastAddressCodepoint(), // Backspace
             else => try self.appendAddressCodePoint(key),
         };
     }
@@ -1369,8 +1369,8 @@ fn paintTextCommand(allocator: std.mem.Allocator, fb: *Framebuffer, rect: DrawRe
         return;
     }
 
-    const fill_color = if (text_cmd.color.a == 0)
-        @as(DisplayList.Color, .{ .r = 224, .g = 224, .b = 224, .a = 255 })
+    const fill_color: DisplayList.Color = if (text_cmd.color.a == 0)
+        .{ .r = 224, .g = 224, .b = 224, .a = 255 }
     else
         .{ .r = text_cmd.color.r, .g = text_cmd.color.g, .b = text_cmd.color.b, .a = 255 };
     paintRect(fb, rect, fill_color, text_cmd.opacity);

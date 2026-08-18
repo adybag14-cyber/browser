@@ -88,7 +88,7 @@ fn supportsProfileDirFilesystem() bool {
 
 pub const Storage = struct {
     mode: Mode = .hosted,
-    files: std.ArrayListUnmanaged(FileEntry) = .{},
+    files: std.ArrayListUnmanaged(FileEntry) = .empty,
 
     pub const Mode = enum {
         hosted,
