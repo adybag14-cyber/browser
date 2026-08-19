@@ -7,7 +7,7 @@ param(
     [int]$MemoryWarmupMs = 2000,
     [int]$InputX = 294,
     [int]$InputY = 449,
-    [int]$ButtonX = 421,
+    [int]$ButtonX = 174,
     [int]$ButtonY = 507,
     [int]$MemorySampleCount = 20,
     [int]$MemorySampleIntervalMs = 500,
@@ -26,7 +26,8 @@ $styled = Join-Path $state 'styled.txt'
 $bootstrapOk = Join-Path $state 'bootstrap-ok.txt'
 $bootstrapFallback = Join-Path $state 'bootstrap-fallback-visible.txt'
 $bootstrapCookieMissing = Join-Path $state 'bootstrap-cookie-missing.txt'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing -Force -ErrorAction SilentlyContinue
+$keyboardValue = Join-Path $state 'keyboard-value.txt'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -39,6 +40,8 @@ public static class LPWin32 {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
+  [DllImport("user32.dll")] public static extern uint GetGuiResources(IntPtr process, uint flags);
 }
 '@
 
@@ -78,6 +81,15 @@ function Send-Text([IntPtr]$Hwnd, [string]$Text) {
         [void][LPWin32]::PostMessage($Hwnd, 0x0102, [IntPtr][int][char]$ch, [IntPtr]0) # WM_CHAR
         Start-Sleep -Milliseconds 35
     }
+}
+
+function Send-PhysicalKey([IntPtr]$Hwnd, [uint32]$Vk) {
+    $scan = [LPWin32]::MapVirtualKeyW($Vk, 0)
+    $down = [IntPtr]([int64](1 -bor ([int64]$scan -shl 16)))
+    $up = [IntPtr]([int64](1 -bor ([int64]$scan -shl 16) -bor 0xC0000000L))
+    [void][LPWin32]::PostMessage($Hwnd, 0x0100, [IntPtr][int64]$Vk, $down) # WM_KEYDOWN; TranslateMessage creates WM_CHAR
+    Start-Sleep -Milliseconds 80
+    [void][LPWin32]::PostMessage($Hwnd, 0x0101, [IntPtr][int64]$Vk, $up) # WM_KEYUP
 }
 
 function Request-PngEvidence([IntPtr]$Hwnd, [string]$Directory, [string]$TargetName) {
@@ -139,7 +151,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--styled-file', $styled,
     '--bootstrap-ok-file', $bootstrapOk,
     '--bootstrap-fallback-file', $bootstrapFallback,
-    '--bootstrap-cookie-missing-file', $bootstrapCookieMissing
+    '--bootstrap-cookie-missing-file', $bootstrapCookieMissing,
+    '--keyboard-value-file', $keyboardValue
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -151,7 +164,7 @@ try {
         Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
         $stdout = Join-Path $Artifacts 'frame.stdout.log'
         $stderr = Join-Path $Artifacts 'frame.stderr.log'
-        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile,'--enable-external-stylesheets')
+        $args = @('browse','http://127.0.0.1:18773/parent.html','--width','1000','--height','760','--profile-dir',$profile)
         $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         $hwnd = [IntPtr]::Zero
         try {
@@ -176,6 +189,36 @@ try {
             Start-Sleep -Milliseconds 800
             [void](Request-PngEvidence $hwnd $Artifacts 'frame-after.png')
             'FRAME_INTERACTION_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'frame-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Exercise the real Win32 key path: WM_KEYDOWN is translated by the
+        # window message pump into WM_CHAR. A printable key must therefore be
+        # inserted exactly once, not once by keydown and again by WM_CHAR.
+        Remove-Item $keyboardValue -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'keyboard-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'keyboard.stdout.log'
+        $stderr = Join-Path $Artifacts 'keyboard.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/native-keyboard.html','--width','1000','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            Start-Sleep -Milliseconds 700
+            Send-PhysicalKey $hwnd 0x31 # 1 => a1bc
+            [void](Wait-File $keyboardValue 10 1)
+            Send-PhysicalKey $hwnd 0x08 # Backspace => abc
+            Send-PhysicalKey $hwnd 0x2E # Delete => ac
+            Send-PhysicalKey $hwnd 0x32 # 2 => a2c
+            Start-Sleep -Milliseconds 250
+            Send-PhysicalKey $hwnd 0x09 # Tab must move focus, never insert a control character
+            Start-Sleep -Milliseconds 250
+            $value = Get-Content $keyboardValue -Raw
+            if ($value -ne 'a2c') { throw "Native physical-key editing produced '$value'; expected a2c" }
+            'NATIVE_KEYBOARD_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'keyboard-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd
@@ -237,6 +280,8 @@ try {
                     virtual_mb = [math]::Round($p.VirtualMemorySize64 / 1MB, 2)
                     handles = $p.HandleCount
                     threads = $p.Threads.Count
+                    gdi_objects = [LPWin32]::GetGuiResources($p.Handle, 0)
+                    user_objects = [LPWin32]::GetGuiResources($p.Handle, 1)
                 })
             }
         }
@@ -247,36 +292,45 @@ try {
         $samples | Export-Csv -NoTypeInformation -Encoding utf8 $csv
         $peakWs = ($samples | Measure-Object working_set_mb -Maximum).Maximum
         $peakPrivate = ($samples | Measure-Object private_mb -Maximum).Maximum
+        $peakGdi = ($samples | Measure-Object gdi_objects -Maximum).Maximum
         $window = [Math]::Min(10, $samples.Count)
         if ($window -gt 0) {
             $firstWs = (($samples | Select-Object -First $window) | Measure-Object working_set_mb -Average).Average
             $lastWs = (($samples | Select-Object -Last $window) | Measure-Object working_set_mb -Average).Average
             $firstPrivate = (($samples | Select-Object -First $window) | Measure-Object private_mb -Average).Average
             $lastPrivate = (($samples | Select-Object -Last $window) | Measure-Object private_mb -Average).Average
+            $firstGdi = (($samples | Select-Object -First $window) | Measure-Object gdi_objects -Average).Average
+            $lastGdi = (($samples | Select-Object -Last $window) | Measure-Object gdi_objects -Average).Average
         } else {
-            $firstWs = 0; $lastWs = 0; $firstPrivate = 0; $lastPrivate = 0
+            $firstWs = 0; $lastWs = 0; $firstPrivate = 0; $lastPrivate = 0; $firstGdi = 0; $lastGdi = 0
         }
         $growthWs = [math]::Round($lastWs - $firstWs, 2)
         $growthPrivate = [math]::Round($lastPrivate - $firstPrivate, 2)
+        $growthGdi = [math]::Round($lastGdi - $firstGdi, 2)
         $sampledSeconds = [math]::Round(($MemorySampleCount * $MemorySampleIntervalMs) / 1000.0, 2)
         $summary = [pscustomobject]@{
             memory_url = $MemoryUrl
             peak_working_set_mb = $peakWs
             peak_private_mb = $peakPrivate
+            peak_gdi_objects = $peakGdi
             working_set_growth_mb = $growthWs
             private_growth_mb = $growthPrivate
+            gdi_object_growth = $growthGdi
             sampled_seconds = $sampledSeconds
             warmup_ms = $MemoryWarmupMs
             memory_budget_mb = $MemoryBudgetMb
             memory_growth_budget_mb = $MemoryGrowthBudgetMb
         }
         $summary | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $Artifacts 'memory-summary.json')
-        Write-Host "Peak working set: $peakWs MiB; peak private: $peakPrivate MiB; RSS growth: $growthWs MiB; private growth: $growthPrivate MiB"
+        Write-Host "Peak working set: $peakWs MiB; peak private: $peakPrivate MiB; RSS growth: $growthWs MiB; private growth: $growthPrivate MiB; peak GDI: $peakGdi; GDI growth: $growthGdi"
         if ($MemoryBudgetMb -gt 0 -and $peakWs -gt $MemoryBudgetMb) {
             throw "Headed RSS budget exceeded: $peakWs MiB > $MemoryBudgetMb MiB"
         }
         if ($MemoryGrowthBudgetMb -gt 0 -and $growthWs -gt $MemoryGrowthBudgetMb) {
             throw "Headed RSS growth budget exceeded: $growthWs MiB > $MemoryGrowthBudgetMb MiB over $sampledSeconds seconds"
+        }
+        if ($growthGdi -gt 2) {
+            throw "Headed GDI object growth detected: $growthGdi objects over $sampledSeconds seconds"
         }
     }
 }

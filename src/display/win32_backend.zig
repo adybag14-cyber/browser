@@ -190,6 +190,53 @@ const CachedImage = struct {
     }
 };
 
+const WindowPaintBuffer = struct {
+    mem_dc: c.HDC = null,
+    bitmap: c.HBITMAP = null,
+    previous_bitmap: ?c.HGDIOBJ = null,
+    width: c.INT = 0,
+    height: c.INT = 0,
+
+    fn deinit(self: *WindowPaintBuffer) void {
+        if (self.mem_dc != null) {
+            if (self.previous_bitmap) |previous| {
+                _ = c.SelectObject(self.mem_dc, previous);
+            }
+            if (self.bitmap != null) _ = c.DeleteObject(self.bitmap);
+            _ = c.DeleteDC(self.mem_dc);
+        }
+        self.* = .{};
+    }
+
+    fn ensure(self: *WindowPaintBuffer, hdc: c.HDC, width: c.INT, height: c.INT) bool {
+        if (width <= 0 or height <= 0) return false;
+        if (self.mem_dc != null and self.bitmap != null and self.width == width and self.height == height) return true;
+
+        self.deinit();
+        const mem_dc = c.CreateCompatibleDC(hdc);
+        if (mem_dc == null) return false;
+        const bitmap = c.CreateCompatibleBitmap(hdc, width, height);
+        if (bitmap == null) {
+            _ = c.DeleteDC(mem_dc);
+            return false;
+        }
+        const previous = c.SelectObject(mem_dc, bitmap);
+        if (previous == null) {
+            _ = c.DeleteObject(bitmap);
+            _ = c.DeleteDC(mem_dc);
+            return false;
+        }
+        self.* = .{
+            .mem_dc = mem_dc,
+            .bitmap = bitmap,
+            .previous_bitmap = previous,
+            .width = width,
+            .height = height,
+        };
+        return true;
+    }
+};
+
 const RegisteredPrivateFont = struct {
     family: []u8,
     bytes: []u8,
@@ -287,6 +334,8 @@ pub const Win32Backend = struct {
     thread_start_cond: CompatCondition = .{},
     thread_started: bool = false,
     window_hwnd: std.atomic.Value(usize) = .init(0),
+    // Owned and accessed exclusively by the Win32 window thread.
+    paint_buffer: WindowPaintBuffer = .{},
 
     const OpenFileDialogRequest = struct {
         allocator: std.mem.Allocator,
@@ -1069,6 +1118,7 @@ pub const Win32Backend = struct {
         if (hwnd) |window| {
             destroyWindow(window);
         }
+        self.paint_buffer.deinit();
         self.window_hwnd.store(0, .release);
     }
 };
@@ -5846,7 +5896,20 @@ fn renderWindowPresentation(hwnd: c.HWND, backend: *Win32Backend) void {
     else
         snapshot.scroll_px;
 
-    renderPresentationScene(backend, hdc, client, &snapshot, scroll_px, backend.allocator);
+    // Render the complete browser surface offscreen, then publish it with one
+    // blit. Painting chrome/page commands directly into the window HDC exposes
+    // the initial white clear while a frame is being drawn, which presents as
+    // severe flashing on script-heavy pages that repaint frequently.
+    const width = client.right - client.left;
+    const height = client.bottom - client.top;
+    if (width <= 0 or height <= 0) return;
+    if (!backend.paint_buffer.ensure(hdc, width, height)) {
+        renderPresentationScene(backend, hdc, client, &snapshot, scroll_px, backend.allocator);
+        return;
+    }
+
+    renderPresentationScene(backend, backend.paint_buffer.mem_dc, client, &snapshot, scroll_px, backend.allocator);
+    _ = c.BitBlt(hdc, client.left, client.top, width, height, backend.paint_buffer.mem_dc, client.left, client.top, c.SRCCOPY);
 }
 
 const BitmapFileHeader = extern struct {
@@ -7849,6 +7912,12 @@ fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM) callco
                 }
                 queueTextCodePoint(backend, @intCast(wparam));
             }
+            return 1;
+        },
+        c.WM_ERASEBKGND => {
+            // WM_PAINT is fully double-buffered and covers the complete client
+            // area. Suppress the separate background erase to avoid a white
+            // flash between invalidation and the buffered frame blit.
             return 1;
         },
         c.WM_PAINT => {

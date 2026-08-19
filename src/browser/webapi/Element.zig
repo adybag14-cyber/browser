@@ -1341,13 +1341,17 @@ pub const Dimensions = struct {
 pub fn getElementDimensions(self: *Element, frame: *Frame) Dimensions {
     var dims: Dimensions = .{ .width = 5.0, .height = 5.0 };
 
-    if (self.getStyle(frame)) |style| {
-        const decl = style.asCSSStyleDeclaration();
-        if (CSS.parseDimensionViewport(decl.getPropertyValue("width", frame), frame)) |w| {
+    // Geometry APIs must observe the same author cascade as getComputedStyle
+    // and the headed painter. Looking only at element.style made stylesheet-
+    // sized controls report the synthetic 5x5 fallback to site JavaScript.
+    if (frame._style_manager.computedStyleValue(self, comptime .wrap("width"))) |value| {
+        if (CSS.parseDimensionViewport(value, frame)) |w| {
             dims.width = w;
             dims.explicit_width = true;
         }
-        if (CSS.parseDimensionViewport(decl.getPropertyValue("height", frame), frame)) |h| {
+    }
+    if (frame._style_manager.computedStyleValue(self, comptime .wrap("height"))) |value| {
+        if (CSS.parseDimensionViewport(value, frame)) |h| {
             dims.height = h;
             dims.explicit_height = true;
         }

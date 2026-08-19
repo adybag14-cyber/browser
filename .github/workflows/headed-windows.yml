@@ -243,6 +243,12 @@ jobs:
             throw "Unexpected frame interaction marker: $frameResult"
           }
 
+          $keyboardResultPath = Get-EvidenceFile 'keyboard-result.txt'
+          $keyboardResult = (Get-Content $keyboardResultPath -Raw).Trim()
+          if ($keyboardResult -ne 'NATIVE_KEYBOARD_OK') {
+            throw "Unexpected native keyboard marker: $keyboardResult"
+          }
+
           $bootstrapResultPath = Get-EvidenceFile 'bootstrap-result.txt'
           $bootstrapResult = (Get-Content $bootstrapResultPath -Raw).Trim()
           if ($bootstrapResult -ne 'GOOGLE_BOOTSTRAP_OK') {
@@ -279,6 +285,8 @@ jobs:
             'peak_private_mb',
             'working_set_growth_mb',
             'private_growth_mb',
+            'peak_gdi_objects',
+            'gdi_object_growth',
             'sampled_seconds',
             'memory_budget_mb',
             'memory_growth_budget_mb'
@@ -300,6 +308,7 @@ jobs:
             viewport_height = $height
             typing_changed_png = $true
             verification_changed_png = $true
+            native_keyboard_result = $keyboardResult
             screenshots = $frames
             google_bootstrap_result = $bootstrapResult
             google_bootstrap_screenshot = $bootstrapShot
@@ -347,6 +356,7 @@ jobs:
             $lines.Add('## Nested-frame interaction')
             $lines.Add('')
             $lines.Add("Result: **$($frame.result)**")
+            if ($frame.native_keyboard_result) { $lines.Add("Native keyboard: **$($frame.native_keyboard_result)**") }
             $lines.Add('')
             $lines.Add('| Screenshot | Dimensions | Bytes | SHA-256 |')
             $lines.Add('| --- | ---: | ---: | --- |')
@@ -385,6 +395,8 @@ jobs:
             $lines.Add("| Working-set growth | $($memory.working_set_growth_mb) MiB | $($memory.memory_growth_budget_mb) MiB |")
             $lines.Add("| Peak private bytes | $($memory.peak_private_mb) MiB | — |")
             $lines.Add("| Private-byte growth | $($memory.private_growth_mb) MiB | — |")
+            $lines.Add("| Peak GDI objects | $($memory.peak_gdi_objects) | — |")
+            $lines.Add("| GDI-object growth | $($memory.gdi_object_growth) | 2 |")
             $lines.Add("| Sample window | $($memory.sampled_seconds) s | — |")
             $lines.Add('')
           } else {

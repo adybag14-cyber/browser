@@ -173,10 +173,17 @@ pub fn innerInsert(self: *TextArea, str: []const u8, frame: *Frame) !void {
             try self.dispatchSelectionChangeEvent(frame);
         },
         .none => {
-            // if the text area is not selected, just insert at cursor.
+            // A collapsed selection is the caret. Insert there rather than
+            // silently appending to the end of the control value.
             const current_value = self.getValue();
-            const new_value = try std.mem.concat(arena, u8, &.{ current_value, str });
+            const cursor = @min(@as(usize, self._selection_start), current_value.len);
+            const new_value = try std.mem.concat(arena, u8, &.{ current_value[0..cursor], str, current_value[cursor..] });
             try self.setValue(new_value, frame);
+            const new_pos: u32 = @intCast(cursor + str.len);
+            self._selection_start = new_pos;
+            self._selection_end = new_pos;
+            self._selection_direction = .none;
+            try self.dispatchSelectionChangeEvent(frame);
         },
     }
     try self.dispatchInputEvent(str, "insertText", frame);

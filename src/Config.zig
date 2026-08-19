@@ -328,6 +328,9 @@ const Commands = cli.Builder(.{
             .{ .name = "profile_dir", .type = ?[]const u8 },
             .{ .name = "screenshot_bmp", .type = ?[]const u8 },
             .{ .name = "screenshot_png", .type = ?[]const u8 },
+            // Headed browse is a visual browser, so author stylesheets are on by
+            // default. Keep an explicit opt-out for renderer diagnostics.
+            .{ .name = "disable_external_stylesheets", .type = bool },
         },
         .shared_options = CommonOptions,
     },
@@ -493,7 +496,8 @@ pub fn watchdogMs(self: *const Config) ?u32 {
 
 pub fn enableExternalStylesheets(self: *const Config) bool {
     return switch (self.mode) {
-        inline .serve, .fetch, .browse, .mcp, .agent => |opts| opts.enable_external_stylesheets,
+        .browse => |opts| !opts.disable_external_stylesheets,
+        inline .serve, .fetch, .mcp, .agent => |opts| opts.enable_external_stylesheets,
         else => unreachable,
     };
 }
@@ -1008,6 +1012,20 @@ pub fn parseArgs(allocator: Allocator, proc_args: std.process.Args) !Config {
     var config = try Config.init(allocator, exec_name, command);
     config.command = invoked;
     return config;
+}
+
+test "Config: browse loads external stylesheets by default" {
+    var headed = try Config.init(std.testing.allocator, "test", .{ .browse = .{} });
+    defer headed.deinit(std.testing.allocator);
+    try std.testing.expect(headed.enableExternalStylesheets());
+
+    var diagnostic = try Config.init(std.testing.allocator, "test", .{ .browse = .{ .disable_external_stylesheets = true } });
+    defer diagnostic.deinit(std.testing.allocator);
+    try std.testing.expect(!diagnostic.enableExternalStylesheets());
+
+    var fetch = try Config.init(std.testing.allocator, "test", .{ .fetch = .{ .url = &.{"https://example.com"} } });
+    defer fetch.deinit(std.testing.allocator);
+    try std.testing.expect(!fetch.enableExternalStylesheets());
 }
 
 test "Config: blockedUrlPatterns splits comma-separated patterns" {

@@ -841,21 +841,37 @@ fn getDefaultPropertyValue(self: *const CSSStyleDeclaration, name: String) []con
 }
 
 fn getDefaultDisplay(element: *const Element) []const u8 {
-    switch (element._type) {
-        .html => {
-            return switch (element.subtype(Element.Html)._type) {
-                .anchor, .br, .span, .label, .time, .font, .mod, .quote => "inline",
-                .iframe => "inline",
-                .body, .div, .dl, .p, .heading, .form, .button, .canvas, .details, .dialog, .embed, .head, .html, .hr, .img, .input, .li, .link, .meta, .ol, .option, .script, .select, .slot, .style, .template, .textarea, .title, .ul, .media, .area, .base, .datalist, .directory, .fieldset, .frameset, .legend, .map, .marquee, .meter, .object, .optgroup, .output, .param, .picture, .pre, .progress, .source, .table, .table_caption, .table_cell, .table_col, .table_row, .table_section, .track => "block",
-                .generic, .custom, .unknown, .data => blk: {
-                    const tag = element.getTagNameLower();
-                    if (isInlineTag(tag)) break :blk "inline";
-                    break :blk "block";
-                },
-            };
-        },
-        .svg => return "inline",
+    if (element._type == .svg) return "inline";
+    if (element.getTag() == .input) {
+        if (element.getAttributeSafe(comptime .wrap("type"))) |input_type| {
+            if (std.ascii.eqlIgnoreCase(input_type, "hidden")) return "none";
+        }
     }
+
+    // Keep computed display aligned with the renderer's UA defaults. Returning
+    // "block" for replaced controls/table internals prevented the painter's
+    // correct fallback from ever running and made site JS observe a different
+    // layout model from the one a browser exposes.
+    return switch (element.getTag()) {
+        .span, .anchor, .strong, .em, .code, .label, .iframe, .img, .canvas => "inline",
+        .input, .button, .select, .textarea, .meter, .progress => "inline-block",
+        .li => "list-item",
+        .table => "table",
+        .caption => "table-caption",
+        .col => "table-column",
+        .colgroup => "table-column-group",
+        .tr => "table-row",
+        .td, .th => "table-cell",
+        .tbody => "table-row-group",
+        .thead => "table-header-group",
+        .tfoot => "table-footer-group",
+        .script, .style, .template, .head, .meta, .link, .title => "none",
+        else => blk: {
+            const tag = element.getTagNameLower();
+            if (isInlineTag(tag)) break :blk "inline";
+            break :blk "block";
+        },
+    };
 }
 
 fn isInlineTag(tag_name: []const u8) bool {

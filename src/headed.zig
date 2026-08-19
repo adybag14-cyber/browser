@@ -192,6 +192,8 @@ const Tab = struct {
     }
 };
 
+const PRESENTATION_INTERVAL_MS: u64 = 16;
+
 const Shell = struct {
     app: *App,
     /// Reusable backing storage for per-loop chrome/render temporaries. This is
@@ -215,6 +217,7 @@ const Shell = struct {
     homepage_url: ?[]u8 = null,
     restore_previous_session: bool = true,
     allow_script_popups: bool = true,
+    last_presentation_attempt: ?std.Io.Timestamp = null,
     width: u32,
     height: u32,
 
@@ -494,6 +497,16 @@ const Shell = struct {
 
     fn present(self: *Shell) !void {
         const tab = self.activeTab() orelse return;
+        // Browser/network/input work keeps its fast 4 ms tick, but rebuilding the
+        // entire display list faster than the native window can present wastes CPU
+        // and creates uneven visual pacing. Limit presentation construction to
+        // roughly 60 Hz; forced hash invalidation is still visible on the next frame.
+        if (self.last_presentation_attempt) |last| {
+            const elapsed_ms: u64 = @intCast(last.untilNow(lp.io, .boot).toMilliseconds());
+            if (elapsed_ms < PRESENTATION_INTERVAL_MS) return;
+        }
+        self.last_presentation_attempt = .now(lp.io, .boot);
+
         var isolate_scope = TabIsolateScope.init(tab);
         defer isolate_scope.deinit();
         const frame = tab.frame() orelse return;

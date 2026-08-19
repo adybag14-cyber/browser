@@ -258,6 +258,20 @@
 }
 </script>
 
+<script id="computedStyleUaDisplayDefaults">
+{
+  const cases = [['input','inline-block'],['button','inline-block'],['select','inline-block'],['textarea','inline-block'],['meter','inline-block'],['progress','inline-block'],['img','inline'],['table','table'],['col','table-column'],['colgroup','table-column-group'],['tr','table-row'],['td','table-cell'],['li','list-item'],['script','none']];
+  for (const [tag, expected] of cases) {
+    const el = document.createElement(tag);
+    if (tag === 'tr') { const table=document.createElement('table'); table.appendChild(el); document.body.appendChild(table); }
+    else if (tag === 'td') { const table=document.createElement('table'); const row=document.createElement('tr'); row.appendChild(el); table.appendChild(row); document.body.appendChild(table); }
+    else document.body.appendChild(el);
+    testing.expectEqual(expected, getComputedStyle(el).getPropertyValue('display'));
+  }
+  const hidden = document.createElement('input'); hidden.type = 'hidden'; document.body.appendChild(hidden); testing.expectEqual('none', getComputedStyle(hidden).getPropertyValue('display'));
+}
+</script>
+
 <script id="computedStyleStylesheetCascade">
 {
   const target = document.createElement('div');
@@ -274,6 +288,16 @@
   testing.expectEqual('flex', cs.getPropertyValue('display'));
   testing.expectEqual('rgb(12, 34, 56)', cs.getPropertyValue('color'));
   testing.expectEqual('rgb(240, 241, 242)', cs.getPropertyValue('background-color'));
+
+  // Layout-facing DOM metrics must not fall back to the old synthetic 5x5
+  // dimensions when size came from a stylesheet rather than element.style.
+  const rect = target.getBoundingClientRect();
+  testing.expectEqual(320, rect.width);
+  testing.expectEqual(78, rect.height);
+  testing.expectEqual(320, target.offsetWidth);
+  testing.expectEqual(78, target.offsetHeight);
+  testing.expectEqual(320, target.clientWidth);
+  testing.expectEqual(78, target.clientHeight);
 
   const important = document.createElement('div');
   important.setAttribute('class', 'computed-sheet-important');

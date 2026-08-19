@@ -4343,15 +4343,19 @@ fn resolvedDisplayValue(
 
 fn defaultDisplayForTag(tag: Element.Tag) []const u8 {
     return switch (tag) {
-        .span, .anchor, .strong, .em, .code, .label, .iframe => "inline",
-        .img, .input, .button, .select, .textarea, .canvas => "inline-block",
+        .span, .anchor, .strong, .em, .code, .label, .iframe, .img, .canvas => "inline",
+        .input, .button, .select, .textarea, .meter, .progress => "inline-block",
+        .li => "list-item",
         .table => "table",
         .caption => "table-caption",
+        .col => "table-column",
+        .colgroup => "table-column-group",
         .tr => "table-row",
         .td, .th => "table-cell",
         .tbody => "table-row-group",
         .thead => "table-header-group",
         .tfoot => "table-footer-group",
+        .script, .style, .template, .head, .meta, .link, .title => "none",
         else => "block",
     };
 }

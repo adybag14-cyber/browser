@@ -5,6 +5,7 @@ import base64
 import pathlib
 import signal
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PARENT = b"""<!doctype html><html><head><meta charset='utf-8'><title>Headed Frame CI</title>
@@ -20,8 +21,12 @@ NESTED_CSS = b"""body{font-family:Arial,sans-serif;background:#e8fff0;color:#123
 NESTED = b"""<!doctype html><html><head><meta charset='utf-8'><title>Nested Challenge</title>
 <link rel='stylesheet' href='/nested.css'></head>
 <body><p>NESTED CROSS-ORIGIN FRAME VISIBLE</p><label for='answer'>Type the human phrase</label><input id='answer' value='' placeholder='type the phrase here'><button id='verify' onclick=\"var a=document.getElementById('answer');var s=document.getElementById('status');if(a.value==='brown fox'){this.textContent='VERIFIED';s.textContent='HUMAN VERIFICATION PASSED';document.title='Nested Verified';fetch('/verified',{method:'POST'}).catch(function(){})}else{s.textContent='TRY AGAIN: '+a.value}\">I AM HUMAN</button><div id='status'>WAITING FOR HUMAN INPUT</div>
-<script>addEventListener('load',function(){var a=document.getElementById('answer');var b=document.getElementById('verify');var ac=getComputedStyle(a);var bc=getComputedStyle(b);var sc=getComputedStyle(document.getElementById('status'));if(ac.getPropertyValue('width')==='360px'&&ac.getPropertyValue('height')==='38px'&&bc.getPropertyValue('background-color')==='#dcfce7'&&bc.getPropertyValue('border-width')==='2px'&&bc.getPropertyValue('border-style')==='solid'&&bc.getPropertyValue('border-color')==='#14532d'&&sc.getPropertyValue('background-image').indexOf('nested-dot.png')!==-1){fetch('/styled',{method:'POST'}).catch(function(){})}});</script></body></html>"""
+<script>addEventListener('load',function(){var a=document.getElementById('answer');var b=document.getElementById('verify');var ac=getComputedStyle(a);var bc=getComputedStyle(b);var sc=getComputedStyle(document.getElementById('status'));var ar=a.getBoundingClientRect();if(ac.getPropertyValue('width')==='360px'&&ac.getPropertyValue('height')==='38px'&&ar.width===360&&ar.height===38&&a.offsetWidth===360&&a.offsetHeight===38&&bc.getPropertyValue('background-color')==='#dcfce7'&&bc.getPropertyValue('border-width')==='2px'&&bc.getPropertyValue('border-style')==='solid'&&bc.getPropertyValue('border-color')==='#14532d'&&sc.getPropertyValue('background-image').indexOf('nested-dot.png')!==-1){fetch('/styled',{method:'POST'}).catch(function(){})}});</script></body></html>"""
 
+NATIVE_KEYBOARD = b"""<!doctype html><html><head><meta charset='utf-8'><title>Native keyboard input</title></head><body>
+<label for='native-key'>Native key</label><input id='native-key' style='display:block;width:360px;height:38px;margin:20px' value='abc'>
+<script>var k=document.getElementById('native-key');addEventListener('load',function(){k.focus();k.setSelectionRange(1,1)});k.addEventListener('input',function(){fetch('/keyboard-value?value='+encodeURIComponent(k.value),{method:'POST'}).catch(function(){})});</script>
+</body></html>"""
 TRIVIAL = b"""<!doctype html><html><head><meta charset='utf-8'><title>RSS Baseline</title></head><body><h1>RSS baseline</h1><p>The quick brown fox jumps over the lazy dog.</p></body></html>"""
 
 GOOGLE_BOOTSTRAP = b"""<!doctype html><html><head><meta charset='utf-8'><title>Google-style JS bootstrap</title></head><body>
@@ -89,6 +94,7 @@ class Handler(BaseHTTPRequestHandler):
     bootstrap_ok_file: str | None = None
     bootstrap_fallback_file: str | None = None
     bootstrap_cookie_missing_file: str | None = None
+    keyboard_value_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -107,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, PARENT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/trivial.html":
             return self._body(200, TRIVIAL, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/native-keyboard.html":
+            return self._body(200, NATIVE_KEYBOARD, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap.html":
             return self._body(200, GOOGLE_BOOTSTRAP, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap-result.html":
@@ -128,6 +136,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
+        parsed = urllib.parse.urlsplit(self.path)
+        if self.server.server_port == 18773 and parsed.path == "/keyboard-value":
+            if self.keyboard_value_file:
+                value = urllib.parse.parse_qs(parsed.query, keep_blank_values=True).get("value", [""])[0]
+                path = pathlib.Path(self.keyboard_value_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(value, encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and self.path == "/bootstrap-ok":
             if self.bootstrap_ok_file:
                 path = pathlib.Path(self.bootstrap_ok_file)
@@ -172,12 +188,14 @@ def main() -> int:
     parser.add_argument("--bootstrap-ok-file")
     parser.add_argument("--bootstrap-fallback-file")
     parser.add_argument("--bootstrap-cookie-missing-file")
+    parser.add_argument("--keyboard-value-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
     Handler.bootstrap_ok_file = args.bootstrap_ok_file
     Handler.bootstrap_fallback_file = args.bootstrap_fallback_file
     Handler.bootstrap_cookie_missing_file = args.bootstrap_cookie_missing_file
+    Handler.keyboard_value_file = args.keyboard_value_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

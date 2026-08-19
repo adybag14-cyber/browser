@@ -474,9 +474,50 @@ pub fn triggerKeyboard(frame: *Frame, keyboard_event: *KeyboardEvent) !void {
     try frame._event_manager.dispatch(element.asEventTarget(), event);
 }
 
+fn previousUtf8Boundary(value: []const u8, position: u32) u32 {
+    var cursor: usize = @min(@as(usize, position), value.len);
+    if (cursor == 0) return 0;
+    cursor -= 1;
+    while (cursor > 0 and (value[cursor] & 0xC0) == 0x80) cursor -= 1;
+    return @intCast(cursor);
+}
+
+fn nextUtf8Boundary(value: []const u8, position: u32) u32 {
+    var cursor: usize = @min(@as(usize, position), value.len);
+    if (cursor >= value.len) return @intCast(value.len);
+    cursor += 1;
+    while (cursor < value.len and (value[cursor] & 0xC0) == 0x80) cursor += 1;
+    return @intCast(cursor);
+}
+
+fn deleteInputAtCaret(input: *Element.Html.Input, backwards: bool, frame: *Frame) !void {
+    var start = (try input.getSelectionStart()) orelse return;
+    var end = (try input.getSelectionEnd()) orelse return;
+    if (start == end) {
+        const value = input.getValue();
+        if (backwards) start = previousUtf8Boundary(value, start) else end = nextUtf8Boundary(value, end);
+    }
+    if (start == end) return;
+    try input.setSelectionRange(start, end, null, frame);
+    try input.innerInsert("", frame);
+}
+
+fn deleteTextAreaAtCaret(textarea: *Element.Html.TextArea, backwards: bool, frame: *Frame) !void {
+    var start = textarea.getSelectionStart();
+    var end = textarea.getSelectionEnd();
+    if (start == end) {
+        const value = textarea.getValue();
+        if (backwards) start = previousUtf8Boundary(value, start) else end = nextUtf8Boundary(value, end);
+    }
+    if (start == end) return;
+    try textarea.setSelectionRange(start, end, null, frame);
+    try textarea.innerInsert("", frame);
+}
+
 pub fn handleKeydown(frame: *Frame, target: *Node, event: *Event) !void {
     const keyboard_event = event.is(KeyboardEvent) orelse return;
     const key = keyboard_event.getKey();
+    const headed_text_suppressed = frame.headed_keyboard_text_suppression_depth != 0;
 
     if (key == .Dead) {
         return;
@@ -498,14 +539,26 @@ pub fn handleKeydown(frame: *Frame, target: *Node, event: *Event) !void {
             return;
         }
 
+        if (key == .Backspace or key == .Delete) {
+            return deleteInputAtCaret(input, key == .Backspace, frame);
+        }
+
         // Handle printable characters
-        if (key.isPrintable()) {
+        if (!headed_text_suppressed and key.isPrintable()) {
             try input.innerInsert(key.asString(), frame);
         }
         return;
     }
 
     if (target.is(Element.Html.TextArea)) |textarea| {
+        if (key == .Backspace or key == .Delete) {
+            return deleteTextAreaAtCaret(textarea, key == .Backspace, frame);
+        }
+        // Native headed input receives committed text through WM_CHAR/IME after
+        // keydown. Do not also apply keydown's synthetic text default here or a
+        // physical keystroke is inserted twice. Enter is committed as WM_CHAR
+        // and normalized to LF by insertText below.
+        if (headed_text_suppressed) return;
         // zig fmt: off
         const append =
             if (key == .Enter) "\n"
@@ -629,7 +682,13 @@ fn focusOrderBefore(a: *Element, a_tab_index: i32, b: *Element, b_tab_index: i32
 pub fn insertText(frame: *Frame, v: []const u8) !void {
     const html_element = frame.document._active_element orelse return;
 
+    // TranslateMessage emits WM_CHAR for control keys as well as printable
+    // characters. Their default actions belong to keydown, not text insertion.
+    // A carriage return is the one exception: textarea commits it as LF.
+    const is_single_control = v.len == 1 and (v[0] < 0x20 or v[0] == 0x7F);
+
     if (html_element.is(Element.Html.Input)) |input| {
+        if (is_single_control) return;
         const input_type = input._input_type;
         if (input_type == .radio or input_type == .checkbox) {
             return;
@@ -639,6 +698,10 @@ pub fn insertText(frame: *Frame, v: []const u8) !void {
     }
 
     if (html_element.is(Element.Html.TextArea)) |textarea| {
+        if (is_single_control) {
+            if (v[0] == '\r') return textarea.innerInsert("\n", frame);
+            return;
+        }
         return textarea.innerInsert(v, frame);
     }
 }

@@ -104,11 +104,12 @@ jobs:
           This prerelease contains the exact Windows x86_64 headed executable that
           passed the repository's **Headed Windows** validation workflow in this run.
 
-          Validation includes nested cross-origin iframe rendering, external CSS,
-          human keyboard/click routing, Google-style JavaScript bootstrap/cookie/
-          Location.replace lifecycle, visibly distinct PNG states, clean DebugAllocator
-          shutdown, and the 60-second RSS memory gate. The evidence bundle from the
-          same build is attached.
+          Validation includes nested cross-origin iframe rendering, external CSS enabled
+          by default, real Win32 keydown/WM_CHAR editing without duplicate text,
+          stylesheet-backed DOM geometry, Google-style JavaScript bootstrap/cookie/
+          Location.replace lifecycle, double-buffered native painting, visibly distinct
+          PNG states, clean DebugAllocator shutdown, and 60-second RSS/GDI growth gates.
+          The evidence bundle from the same build is attached.
 
           ### Run it
 
