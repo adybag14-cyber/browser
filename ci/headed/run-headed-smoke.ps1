@@ -240,13 +240,21 @@ try {
         try {
             $hwnd = Get-LightpandaWindow $browser.Id 30
             Start-Sleep -Milliseconds 800
-            # The fixture's purple input box is x=64..424, y=187..225. Click
+            [void](Request-PngEvidence $hwnd $Artifacts 'caret-focused.png')
+            # Move focus away without changing page content. The focused and
+            # blurred PNGs must differ solely because the native input caret is
+            # visible while this field owns the collapsed selection.
+            Send-PhysicalKey $hwnd 0x09 # Tab => focus sink button
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'caret-blurred.png')
+            # The fixture's purple input box is x=70..430, y=187..225. Click
             # inside the left text padding; its load handler deliberately put
             # the caret at the end first, so this proves pointer relocation.
-            Send-Click $hwnd 68 206
+            Send-Click $hwnd 74 206
             Send-PhysicalKey $hwnd 0x31
             [void](Wait-File $caretValue 10 1)
             Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'caret-edited.png')
             $caretLines = @(Get-Content $caretValue)
             if ($caretLines.Count -lt 2 -or $caretLines[0] -ne '1abcdef' -or $caretLines[1] -ne '1') {
                 throw "Native pointer caret produced '$($caretLines -join '|')'; expected 1abcdef|1"

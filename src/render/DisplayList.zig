@@ -42,6 +42,9 @@ pub const TextCommand = struct {
     letter_spacing: i32 = 0,
     word_spacing: i32 = 0,
     underline: bool = false,
+    /// Collapsed caret position in Unicode code points for the focused
+    /// single-line input represented by this text command.
+    caret_character_index: ?u32 = null,
     text: []u8,
 };
 
@@ -220,6 +223,7 @@ pub const Command = union(enum) {
                 .letter_spacing = text.letter_spacing,
                 .word_spacing = text.word_spacing,
                 .underline = text.underline,
+                .caret_character_index = text.caret_character_index,
                 .text = try allocator.dupe(u8, text.text),
             } },
             .image => |image| .{ .image = .{
@@ -412,6 +416,7 @@ pub fn addText(self: *DisplayList, allocator: std.mem.Allocator, text: TextComma
         .letter_spacing = text.letter_spacing,
         .word_spacing = text.word_spacing,
         .underline = text.underline,
+        .caret_character_index = text.caret_character_index,
         .text = try allocator.dupe(u8, text.text),
     } });
     self.content_height = @max(self.content_height, text.y + @max(text.height, text.font_size + 8));
@@ -566,6 +571,7 @@ pub fn hashInto(self: *const DisplayList, hasher: anytype) void {
                 hasher.update(std.mem.asBytes(&text.letter_spacing));
                 hasher.update(std.mem.asBytes(&text.word_spacing));
                 hasher.update(std.mem.asBytes(&text.underline));
+                hasher.update(std.mem.asBytes(&text.caret_character_index));
                 hasher.update(text.text);
             },
             .image => |image| {

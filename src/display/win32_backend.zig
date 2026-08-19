@@ -4187,6 +4187,48 @@ fn drawSettingsOverlay(
     );
 }
 
+fn caretUtf16UnitCount(text: []const u16, character_index: u32) usize {
+    var unit_index: usize = 0;
+    var character_count: u32 = 0;
+    while (unit_index < text.len and character_count < character_index) : (character_count += 1) {
+        if (text[unit_index] >= 0xD800 and text[unit_index] <= 0xDBFF and
+            unit_index + 1 < text.len and text[unit_index + 1] >= 0xDC00 and text[unit_index + 1] <= 0xDFFF)
+        {
+            unit_index += 2;
+        } else {
+            unit_index += 1;
+        }
+    }
+    return unit_index;
+}
+
+fn drawPresentationTextCaret(hdc: c.HDC, rect: c.RECT, text_cmd: TextCommand, scaled_font_size: i32) void {
+    const caret_index = text_cmd.caret_character_index orelse return;
+    var offset: i32 = 0;
+    if (caret_index > 0 and text_cmd.text.len > 0) {
+        const utf16 = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, text_cmd.text) catch return;
+        defer std.heap.c_allocator.free(utf16);
+        const units = caretUtf16UnitCount(utf16, caret_index);
+        if (units > 0) {
+            var size: c.SIZE = undefined;
+            if (c.GetTextExtentPoint32W(hdc, utf16.ptr, @intCast(units), &size) == 0) return;
+            offset = size.cx + utf16PrefixSpaceCount(utf16[0..units]) * text_cmd.word_spacing;
+        }
+    }
+
+    const x = std.math.clamp(rect.left + offset, rect.left, @max(rect.left, rect.right - 1));
+    const top = rect.top + 2;
+    const bottom = @max(top + 1, @min(rect.bottom - 2, rect.top + @max(4, scaled_font_size + 4)));
+    const pen = c.CreatePen(c.PS_SOLID, 1, colorRef(text_cmd.color));
+    if (pen == null) return;
+    defer _ = c.DeleteObject(pen);
+    const previous_pen = c.SelectObject(hdc, pen);
+    if (previous_pen == null) return;
+    defer _ = c.SelectObject(hdc, previous_pen);
+    _ = c.MoveToEx(hdc, x, top, null);
+    _ = c.LineTo(hdc, x, bottom);
+}
+
 fn drawPresentationText(hdc: c.HDC, rect: *c.RECT, text: []const u8, flags: c.UINT) void {
     const utf16 = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, text) catch return;
     defer std.heap.c_allocator.free(utf16);
@@ -5697,6 +5739,7 @@ fn renderPresentationDisplayList(
                             text_cmd.text,
                             c.DT_LEFT | c.DT_TOP | c.DT_WORDBREAK | c.DT_NOPREFIX,
                         );
+                        drawPresentationTextCaret(hdc, rect, text_cmd, font_size);
                         _ = c.SetTextColor(hdc, previous);
                     } else {
                         var surface = beginAlphaBlendSurface(hdc, rect.right - rect.left, rect.bottom - rect.top) orelse continue;
@@ -5746,6 +5789,7 @@ fn renderPresentationDisplayList(
                             text_cmd.text,
                             c.DT_LEFT | c.DT_TOP | c.DT_WORDBREAK | c.DT_NOPREFIX,
                         );
+                        drawPresentationTextCaret(surface.mem_dc, local_rect, text_cmd, font_size);
                         _ = c.SetTextColor(surface.mem_dc, previous);
                         alphaBlendSurfaceToTarget(hdc, rect, &surface, text_alpha, true);
                     }

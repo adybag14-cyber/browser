@@ -29,7 +29,7 @@ NATIVE_KEYBOARD = b"""<!doctype html><html><head><meta charset='utf-8'><title>Na
 </body></html>"""
 NATIVE_CARET = b"""<!doctype html><html><head><meta charset='utf-8'><title>Native click caret</title>
 <style>body{font-family:Arial,sans-serif;margin:18px}input{display:block;width:360px;height:38px;margin:20px;border:3px solid #7a1f9a;background:#f8e9ff;font-size:18px}</style></head><body>
-<label for='caret-key'>Click caret target</label><input id='caret-key' value='abcdef'>
+<label for='caret-key'>Click caret target</label><input id='caret-key' value='abcdef'><button id='caret-sink'>FOCUS SINK</button>
 <script>var k=document.getElementById('caret-key');addEventListener('load',function(){k.focus();k.setSelectionRange(k.value.length,k.value.length)});k.addEventListener('input',function(){fetch('/caret-value?value='+encodeURIComponent(k.value)+'&start='+k.selectionStart,{method:'POST'}).catch(function(){})});</script>
 </body></html>"""
 

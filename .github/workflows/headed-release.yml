@@ -106,7 +106,8 @@ jobs:
 
           Validation includes nested cross-origin iframe rendering, external CSS enabled
           by default, real Win32 keydown/WM_CHAR editing without duplicate text, pointer-
-          positioned single-line input carets, stylesheet-backed DOM geometry, Google-style
+          positioned single-line input carets with a steady visible native caret,
+          stylesheet-backed DOM geometry, Google-style
           JavaScript bootstrap/cookie/Location.replace lifecycle, double-buffered native
           painting, visibly distinct PNG states, clean DebugAllocator shutdown, and
           60-second RSS/GDI growth gates.

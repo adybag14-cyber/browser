@@ -754,6 +754,7 @@ const Painter = struct {
                     .letter_spacing = text.letter_spacing,
                     .word_spacing = text.word_spacing,
                     .underline = text.underline,
+                    .caret_character_index = text.caret_character_index,
                     .text = text.text,
                 }),
                 .image => |image| try self.list.addImage(self.allocator, .{
@@ -1707,7 +1708,8 @@ const Painter = struct {
             }
         }
 
-        if (label.len > 0 and shouldPaintText(tag) and image_command == null and canvas_command == null) {
+        const focused_caret_index = try focusedInputCaretCharacterIndex(element, self.page);
+        if ((label.len > 0 or focused_caret_index != null) and shouldPaintText(tag) and image_command == null and canvas_command == null) {
             const text_area_width = @max(@as(i32, 40), rect.width - padding.horizontal() - 12);
             const painted_label = if (text_style.text_transform == .none) label else blk: {
                 const transformed = try transformTextForPaint(self.allocator, label, text_style.text_transform);
@@ -1765,6 +1767,7 @@ const Painter = struct {
                 .letter_spacing = text_style.letter_spacing,
                 .word_spacing = text_style.word_spacing,
                 .underline = shouldUnderlineText(element, decl, self.page, tag),
+                .caret_character_index = focused_caret_index,
                 .text = @constCast(painted_label),
             });
         }
@@ -3249,6 +3252,17 @@ fn resolvedLinkRegion(
         .open_in_new_tab = linkOpensFreshTab(element),
         .target_name = @constCast(linkTargetName(element)),
     };
+}
+
+fn focusedInputCaretCharacterIndex(element: *Element, page: *Page) !?u32 {
+    if (page.window._document._active_element != element) return null;
+    const input = element.is(Element.Html.Input) orelse return null;
+    const start = (try input.getSelectionStart()) orelse return null;
+    const end = (try input.getSelectionEnd()) orelse return null;
+    if (start != end) return null;
+    const value = input.getValue();
+    const byte_index: usize = @min(@as(usize, start), value.len);
+    return @intCast(std.unicode.utf8CountCodepoints(value[0..byte_index]) catch byte_index);
 }
 
 fn resolvedControlRegion(

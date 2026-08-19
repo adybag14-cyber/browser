@@ -254,6 +254,15 @@ jobs:
           if ($caretResult -ne 'NATIVE_CARET_OK') {
             throw "Unexpected native pointer-caret marker: $caretResult"
           }
+          $caretFocused = Get-PngInfo 'caret-focused.png'
+          $caretBlurred = Get-PngInfo 'caret-blurred.png'
+          $caretEdited = Get-PngInfo 'caret-edited.png'
+          if ($caretFocused.sha256 -eq $caretBlurred.sha256) {
+            throw 'Focused input did not visibly expose a native caret'
+          }
+          if ($caretEdited.sha256 -eq $caretBlurred.sha256) {
+            throw 'Edited focused input did not visibly expose a native caret'
+          }
 
           $bootstrapResultPath = Get-EvidenceFile 'bootstrap-result.txt'
           $bootstrapResult = (Get-Content $bootstrapResultPath -Raw).Trim()
@@ -316,6 +325,8 @@ jobs:
             verification_changed_png = $true
             native_keyboard_result = $keyboardResult
             native_caret_result = $caretResult
+            visible_caret_changed_png = $true
+            caret_screenshots = @($caretFocused, $caretBlurred, $caretEdited)
             screenshots = $frames
             google_bootstrap_result = $bootstrapResult
             google_bootstrap_screenshot = $bootstrapShot
@@ -365,6 +376,16 @@ jobs:
             $lines.Add("Result: **$($frame.result)**")
             if ($frame.native_keyboard_result) { $lines.Add("Native keyboard: **$($frame.native_keyboard_result)**") }
             if ($frame.native_caret_result) { $lines.Add("Native pointer caret: **$($frame.native_caret_result)**") }
+            if ($frame.visible_caret_changed_png) { $lines.Add('Visible input caret: **focused/blurred PNGs differ**') }
+            if ($frame.caret_screenshots) {
+              $lines.Add('')
+              $lines.Add('| Caret screenshot | Dimensions | Bytes | SHA-256 |')
+              $lines.Add('| --- | ---: | ---: | --- |')
+              foreach ($shot in $frame.caret_screenshots) {
+                $shortHash = ([string]$shot.sha256).Substring(0, 16)
+                $lines.Add("| $($shot.name) | $($shot.width)x$($shot.height) | $($shot.bytes) | ``$shortHash.`` |")
+              }
+            }
             $lines.Add('')
             $lines.Add('| Screenshot | Dimensions | Bytes | SHA-256 |')
             $lines.Add('| --- | ---: | ---: | --- |')
