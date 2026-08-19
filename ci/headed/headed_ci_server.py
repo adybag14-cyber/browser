@@ -24,6 +24,35 @@ NESTED = b"""<!doctype html><html><head><meta charset='utf-8'><title>Nested Chal
 
 TRIVIAL = b"""<!doctype html><html><head><meta charset='utf-8'><title>RSS Baseline</title></head><body><h1>RSS baseline</h1><p>The quick brown fox jumps over the lazy dog.</p></body></html>"""
 
+GOOGLE_BOOTSTRAP = b"""<!doctype html><html><head><meta charset='utf-8'><title>Google-style JS bootstrap</title></head><body>
+<div id='fallback' style='display:none'>JAVASCRIPT TROUBLESHOOTING FALLBACK</div>
+<script>
+window.knitsail={a:function(payload,callback){setTimeout(function(){callback(function(done,bindings){Promise.resolve().then(function(){done('synthetic-ok')})})},25)}};
+Promise.resolve(false).then(function(done){
+  if(done)return;
+  window.knitsail.a('payload',function(run){
+    run(function(token){
+      document.cookie='SG_SS='+token+'; Path=/; SameSite=Lax';
+      location.replace('/google-bootstrap-result.html');
+    },[{}]);
+  },false,undefined,undefined,undefined,undefined,true);
+});
+setTimeout(function(){
+  var fallback=document.getElementById('fallback');
+  fallback.setAttribute('style','');
+  fetch('/bootstrap-fallback-visible',{method:'POST'}).catch(function(){});
+},2000);
+</script></body></html>"""
+
+GOOGLE_BOOTSTRAP_RESULT = b"""<!doctype html><html><head><meta charset='utf-8'><title>Google-style JS bootstrap complete</title></head><body>
+<h1 id='bootstrap-result'>JAVASCRIPT BOOTSTRAP COMPLETE</h1>
+<script>
+addEventListener('load',function(){
+  var ok=document.cookie.indexOf('SG_SS=synthetic-ok')!==-1;
+  fetch(ok?'/bootstrap-ok':'/bootstrap-cookie-missing',{method:'POST'}).catch(function(){});
+});
+</script></body></html>"""
+
 # A deterministic page deliberately shaped more like a search/results site:
 # many href resolutions plus foreground/background image request contexts. It
 # catches native-paint scratch accidentally escaping into Frame.call/local arenas.
@@ -57,6 +86,9 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     verified_file: str | None = None
     styled_file: str | None = None
+    bootstrap_ok_file: str | None = None
+    bootstrap_fallback_file: str | None = None
+    bootstrap_cookie_missing_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -75,6 +107,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, PARENT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/trivial.html":
             return self._body(200, TRIVIAL, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/google-bootstrap.html":
+            return self._body(200, GOOGLE_BOOTSTRAP, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/google-bootstrap-result.html":
+            return self._body(200, GOOGLE_BOOTSTRAP_RESULT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/rich.html":
             return self._body(200, RICH, "text/html; charset=utf-8")
         if port == 18773 and self.path.startswith("/asset.png"):
@@ -92,6 +128,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
+        if self.server.server_port == 18773 and self.path == "/bootstrap-ok":
+            if self.bootstrap_ok_file:
+                path = pathlib.Path(self.bootstrap_ok_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("bootstrap-ok\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and self.path == "/bootstrap-fallback-visible":
+            if self.bootstrap_fallback_file:
+                path = pathlib.Path(self.bootstrap_fallback_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fallback-visible\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and self.path == "/bootstrap-cookie-missing":
+            if self.bootstrap_cookie_missing_file:
+                path = pathlib.Path(self.bootstrap_cookie_missing_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("cookie-missing\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18775 and self.path == "/styled":
             if self.styled_file:
                 path = pathlib.Path(self.styled_file)
@@ -115,9 +169,15 @@ def main() -> int:
     parser.add_argument("--ready-file")
     parser.add_argument("--verified-file")
     parser.add_argument("--styled-file")
+    parser.add_argument("--bootstrap-ok-file")
+    parser.add_argument("--bootstrap-fallback-file")
+    parser.add_argument("--bootstrap-cookie-missing-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
+    Handler.bootstrap_ok_file = args.bootstrap_ok_file
+    Handler.bootstrap_fallback_file = args.bootstrap_fallback_file
+    Handler.bootstrap_cookie_missing_file = args.bootstrap_cookie_missing_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

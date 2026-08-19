@@ -210,6 +210,13 @@ fn _tick(self: *Runner, comptime is_cdp: bool, timeout_ms: u32, conditions: []Wa
     // ages this stamp until the watchdog fires.
     http_client.heartbeat.touch();
 
+    // A previous tick may have committed a root navigation and retired the old
+    // Page. `waitResult` drains this queue in its outer loop, but direct users
+    // of tick/tickForFrame (notably the headed shell) have no such loop. Tear
+    // retired pages down at the same safe tick boundary so their JS contexts,
+    // timers, workers, and transfers cannot outlive navigation.
+    session.processDestroyQueues();
+
     // Drain queued navigations across every live page (one page per call)
     // A navigation can swap a frame pointer or the page set,
     // so restart the tick to re-resolve cleanly.

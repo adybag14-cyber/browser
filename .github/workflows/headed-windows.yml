@@ -243,6 +243,13 @@ jobs:
             throw "Unexpected frame interaction marker: $frameResult"
           }
 
+          $bootstrapResultPath = Get-EvidenceFile 'bootstrap-result.txt'
+          $bootstrapResult = (Get-Content $bootstrapResultPath -Raw).Trim()
+          if ($bootstrapResult -ne 'GOOGLE_BOOTSTRAP_OK') {
+            throw "Unexpected Google-style bootstrap marker: $bootstrapResult"
+          }
+          $bootstrapShot = Get-PngInfo 'bootstrap-after.png'
+
           $frames = @(
             Get-PngInfo 'frame-before.png'
             Get-PngInfo 'frame-typed.png'
@@ -294,6 +301,8 @@ jobs:
             typing_changed_png = $true
             verification_changed_png = $true
             screenshots = $frames
+            google_bootstrap_result = $bootstrapResult
+            google_bootstrap_screenshot = $bootstrapShot
           }
           $frameSummary | ConvertTo-Json -Depth 4 |
             Set-Content -Encoding utf8 (Join-Path $artifacts 'frame-summary.json')
@@ -346,6 +355,18 @@ jobs:
               $lines.Add("| $($shot.name) | $($shot.width)x$($shot.height) | $($shot.bytes) | ``$shortHash…`` |")
             }
             $lines.Add('')
+            if ($frame.google_bootstrap_result) {
+              $lines.Add('## Google-style JavaScript bootstrap')
+              $lines.Add('')
+              $lines.Add("Result: **$($frame.google_bootstrap_result)**")
+              $shot = $frame.google_bootstrap_screenshot
+              if ($shot) {
+                $shortHash = ([string]$shot.sha256).Substring(0, 16)
+                $lines.Add('')
+                $lines.Add("Post-redirect screenshot: $($shot.width)x$($shot.height), $($shot.bytes) bytes, ``$shortHash…``")
+              }
+              $lines.Add('')
+            }
           } else {
             $lines.Add('## Nested-frame interaction')
             $lines.Add('')

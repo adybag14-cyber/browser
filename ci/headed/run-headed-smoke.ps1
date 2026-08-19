@@ -23,7 +23,10 @@ New-Item -ItemType Directory -Force -Path $state | Out-Null
 $ready = Join-Path $state 'server-ready.txt'
 $verified = Join-Path $state 'verified.txt'
 $styled = Join-Path $state 'styled.txt'
-Remove-Item $ready,$verified,$styled -Force -ErrorAction SilentlyContinue
+$bootstrapOk = Join-Path $state 'bootstrap-ok.txt'
+$bootstrapFallback = Join-Path $state 'bootstrap-fallback-visible.txt'
+$bootstrapCookieMissing = Join-Path $state 'bootstrap-cookie-missing.txt'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -98,13 +101,19 @@ function Request-PngEvidence([IntPtr]$Hwnd, [string]$Directory, [string]$TargetN
 }
 
 function Stop-Browser($Process, [IntPtr]$Hwnd) {
-    if ($Process -and -not $Process.HasExited) {
+    if (-not $Process) { return }
+    if (-not $Process.HasExited) {
         if ($Hwnd -ne [IntPtr]::Zero -and [LPWin32]::IsWindow($Hwnd)) {
             [void][LPWin32]::PostMessage($Hwnd, 0x0010, [IntPtr]0, [IntPtr]0) # WM_CLOSE
-            if ($Process.WaitForExit(5000)) { return }
+            [void]$Process.WaitForExit(5000)
         }
-        Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-        [void]$Process.WaitForExit(5000)
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+            [void]$Process.WaitForExit(5000)
+        }
+    }
+    if ($Process.ExitCode -ne 0) {
+        throw "Headed browser exited with code $($Process.ExitCode); DebugAllocator leaks and crashes are fatal"
     }
 }
 
@@ -127,7 +136,10 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     (Join-Path $PSScriptRoot 'headed_ci_server.py'),
     '--ready-file', $ready,
     '--verified-file', $verified,
-    '--styled-file', $styled
+    '--styled-file', $styled,
+    '--bootstrap-ok-file', $bootstrapOk,
+    '--bootstrap-fallback-file', $bootstrapFallback,
+    '--bootstrap-cookie-missing-file', $bootstrapCookieMissing
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -164,6 +176,39 @@ try {
             Start-Sleep -Milliseconds 800
             [void](Request-PngEvidence $hwnd $Artifacts 'frame-after.png')
             'FRAME_INTERACTION_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'frame-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Google Search can serve a JavaScript capability bootstrap before
+        # results. Guard the browser primitives that page relies on without
+        # hitting Google's volatile anti-abuse service: Promise/callback work,
+        # cookie persistence, and script-driven Location.replace navigation
+        # must all complete before the troubleshooting fallback's 2s timer.
+        Remove-Item $bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'bootstrap-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'bootstrap.stdout.log'
+        $stderr = Join-Path $Artifacts 'bootstrap.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/google-bootstrap.html','--width','1000','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $bootstrapOk 15 1)
+            if (Test-Path $bootstrapFallback) {
+                throw 'Google-style JavaScript bootstrap exposed its troubleshooting fallback before redirecting'
+            }
+            if (Test-Path $bootstrapCookieMissing) {
+                throw 'Google-style JavaScript bootstrap lost the SG_SS-style cookie across Location.replace'
+            }
+            Start-Sleep -Milliseconds 2300
+            if (Test-Path $bootstrapFallback) {
+                throw 'Google-style JavaScript bootstrap fallback timer survived navigation'
+            }
+            [void](Request-PngEvidence $hwnd $Artifacts 'bootstrap-after.png')
+            'GOOGLE_BOOTSTRAP_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'bootstrap-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd
