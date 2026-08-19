@@ -14,7 +14,9 @@ jobs:
     name: zig build release
 
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Cold dependency/V8 setup can occasionally consume most of the old
+    # 15-minute job budget before the source build even starts.
+    timeout-minutes: 30
 
     # Don't run the CI with draft PR.
     if: github.event.pull_request.draft == false
