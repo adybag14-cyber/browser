@@ -27,7 +27,8 @@ $bootstrapOk = Join-Path $state 'bootstrap-ok.txt'
 $bootstrapFallback = Join-Path $state 'bootstrap-fallback-visible.txt'
 $bootstrapCookieMissing = Join-Path $state 'bootstrap-cookie-missing.txt'
 $keyboardValue = Join-Path $state 'keyboard-value.txt'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue -Force -ErrorAction SilentlyContinue
+$caretValue = Join-Path $state 'caret-value.txt'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -152,7 +153,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--bootstrap-ok-file', $bootstrapOk,
     '--bootstrap-fallback-file', $bootstrapFallback,
     '--bootstrap-cookie-missing-file', $bootstrapCookieMissing,
-    '--keyboard-value-file', $keyboardValue
+    '--keyboard-value-file', $keyboardValue,
+    '--caret-value-file', $caretValue
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -219,6 +221,37 @@ try {
             $value = Get-Content $keyboardValue -Raw
             if ($value -ne 'a2c') { throw "Native physical-key editing produced '$value'; expected a2c" }
             'NATIVE_KEYBOARD_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'keyboard-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # A real headed pointer click must move the insertion caret inside a
+        # single-line input according to the text the native backend actually
+        # paints, not leave the pre-existing selection at the end.
+        Remove-Item $caretValue -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'caret-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'caret.stdout.log'
+        $stderr = Join-Path $Artifacts 'caret.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/native-caret.html','--width','1000','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            Start-Sleep -Milliseconds 800
+            # The fixture's purple input box is x=64..424, y=187..225. Click
+            # inside the left text padding; its load handler deliberately put
+            # the caret at the end first, so this proves pointer relocation.
+            Send-Click $hwnd 68 206
+            Send-PhysicalKey $hwnd 0x31
+            [void](Wait-File $caretValue 10 1)
+            Start-Sleep -Milliseconds 250
+            $caretLines = @(Get-Content $caretValue)
+            if ($caretLines.Count -lt 2 -or $caretLines[0] -ne '1abcdef' -or $caretLines[1] -ne '1') {
+                throw "Native pointer caret produced '$($caretLines -join '|')'; expected 1abcdef|1"
+            }
+            'NATIVE_CARET_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'caret-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

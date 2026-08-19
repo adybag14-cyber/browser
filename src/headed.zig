@@ -596,6 +596,9 @@ const Shell = struct {
                 defer isolate_scope.deinit();
                 const target_frame = if (activation.frame_id == 0) frame else frame.findFrameById(activation.frame_id) orelse frame;
                 try target_frame.triggerMouseDown(activation.x, activation.y, .main, .{ .buttons = 1 });
+                if (activation.caret_character_index) |character_index| {
+                    try target_frame.setInputCaretOnNodePath(activation.dom_path, character_index);
+                }
                 try target_frame.triggerMouseUp(activation.x, activation.y, .main, .{});
                 var click = try target_frame.triggerMouseClickOnNodePathWithResult(activation.dom_path, activation.x, activation.y, .main, .{});
                 if (!click.dispatched) {

@@ -663,6 +663,10 @@ pub fn triggerMouseClickOnNodePathWithResult(self: *Frame, path: []const u16, x:
     return user_input.triggerMouseClickOnNodePathHeaded(self, path, x, y, button, modifiers);
 }
 
+pub fn setInputCaretOnNodePath(self: *Frame, path: []const u16, character_index: u32) !void {
+    return user_input.setInputCaretOnNodePathHeaded(self, path, character_index);
+}
+
 pub fn triggerMouseMove(self: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {
     return user_input.triggerMouseMoveHeaded(self, x, y, modifiers);
 }

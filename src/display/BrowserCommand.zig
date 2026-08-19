@@ -37,6 +37,9 @@ pub const BrowserCommand = union(enum) {
         x: f64,
         y: f64,
         dom_path: []u16,
+        /// Character insertion point measured from the exact native rendered
+        /// text metrics at mouse-down. Null for non-text controls/no label.
+        caret_character_index: ?u32 = null,
     };
 
     pub const NavigateTarget = struct {

@@ -780,6 +780,29 @@ fn resolveNodePath(frame: *Frame, path: []const u16) ?*Node {
     return current;
 }
 
+fn utf8ByteOffsetForCharacterIndex(value: []const u8, character_index: u32) usize {
+    if (character_index == 0 or value.len == 0) return 0;
+    var view = std.unicode.Utf8View.init(value) catch return @min(@as(usize, character_index), value.len);
+    var iterator = view.iterator();
+    var byte_offset: usize = 0;
+    var index: u32 = 0;
+    while (index < character_index) : (index += 1) {
+        const slice = iterator.nextCodepointSlice() orelse return value.len;
+        byte_offset += slice.len;
+    }
+    return byte_offset;
+}
+
+pub fn setInputCaretOnNodePathHeaded(frame: *Frame, path: []const u16, character_index: u32) !void {
+    const node = resolveNodePath(frame, path) orelse return;
+    const element = node.is(Element) orelse return;
+    const input = element.is(Element.Html.Input) orelse return;
+    // Selection APIs intentionally do not apply to checkbox/radio/date/etc.
+    if ((try input.getSelectionStart()) == null) return;
+    const byte_offset: u32 = @intCast(utf8ByteOffsetForCharacterIndex(input.getValue(), character_index));
+    try input.setSelectionRange(byte_offset, byte_offset, null, frame);
+}
+
 pub fn triggerMouseClickOnNodePathHeaded(frame: *Frame, path: []const u16, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !MouseClickDispatchResult {
     const node = resolveNodePath(frame, path) orelse return .{};
     const target = node.is(Element) orelse return .{};

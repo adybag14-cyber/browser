@@ -29,6 +29,7 @@ const DisplayCommand = @import("../render/DisplayList.zig").Command;
 const DisplayList = @import("../render/DisplayList.zig").DisplayList;
 const DisplayColor = @import("../render/DisplayList.zig").Color;
 const ImageCommand = @import("../render/DisplayList.zig").ImageCommand;
+const TextCommand = @import("../render/DisplayList.zig").TextCommand;
 const PopupSource = Display.PopupSource;
 
 const c = @import("win32");
@@ -1665,6 +1666,102 @@ fn presentationNavigateCommandAtClientPoint(backend: *Win32Backend, x: f64, y: f
     } };
 }
 
+fn controlTextCommandForRegion(display_list: *const DisplayList, region: DisplayList.ControlRegion) ?TextCommand {
+    var best: ?TextCommand = null;
+    var best_index: usize = 0;
+    for (display_list.commands.items, 0..) |command, index| {
+        const text = switch (command) {
+            .text => |value| value,
+            else => continue,
+        };
+        if (text.text.len == 0 or text.z_index != region.z_index) continue;
+        const text_height = @max(text.height, text.font_size + 8);
+        if (text.x >= region.x + region.width or text.x + text.width <= region.x) continue;
+        if (text.y >= region.y + region.height or text.y + text_height <= region.y) continue;
+        if (best == null or index > best_index) {
+            best = text;
+            best_index = index;
+        }
+    }
+    return best;
+}
+
+fn utf16PrefixSpaceCount(text: []const u16) i32 {
+    var count: i32 = 0;
+    for (text) |unit| if (unit == ' ') {
+        count += 1;
+    };
+    return count;
+}
+
+fn renderedCaretCharacterIndex(text_cmd: TextCommand, click_x: f64) ?u32 {
+    if (text_cmd.text.len == 0) return 0;
+    const relative_x: i32 = @intFromFloat(@round(click_x - @as(f64, @floatFromInt(text_cmd.x))));
+    if (relative_x <= 0) return 0;
+
+    const hdc = c.CreateCompatibleDC(null);
+    if (hdc == null) return null;
+    defer _ = c.DeleteDC(hdc);
+
+    const font_spec = resolvePresentationFontSpec(text_cmd.font_family);
+    const wide_face = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, font_spec.face_name) catch return null;
+    defer std.heap.c_allocator.free(wide_face);
+    const font = c.CreateFontW(
+        -@as(c_int, @intCast(@max(text_cmd.font_size, 1))),
+        0,
+        0,
+        0,
+        presentationFontWeight(text_cmd.font_weight),
+        @intFromBool(text_cmd.italic),
+        0,
+        0,
+        c.DEFAULT_CHARSET,
+        c.OUT_DEFAULT_PRECIS,
+        c.CLIP_DEFAULT_PRECIS,
+        c.CLEARTYPE_QUALITY,
+        font_spec.pitch_family,
+        wide_face.ptr,
+    );
+    if (font == null) return null;
+    defer _ = c.DeleteObject(font);
+    const previous_font = c.SelectObject(hdc, font);
+    if (previous_font == null) return null;
+    defer _ = c.SelectObject(hdc, previous_font);
+
+    const previous_extra = c.SetTextCharacterExtra(hdc, @intCast(text_cmd.letter_spacing));
+    defer _ = c.SetTextCharacterExtra(hdc, previous_extra);
+
+    const utf16 = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, text_cmd.text) catch return null;
+    defer std.heap.c_allocator.free(utf16);
+
+    var unit_index: usize = 0;
+    var character_index: u32 = 0;
+    var previous_width: i32 = 0;
+    while (unit_index < utf16.len) {
+        var next_unit = unit_index + 1;
+        if (utf16[unit_index] >= 0xD800 and utf16[unit_index] <= 0xDBFF and
+            next_unit < utf16.len and utf16[next_unit] >= 0xDC00 and utf16[next_unit] <= 0xDFFF)
+        {
+            next_unit += 1;
+        }
+        var size: c.SIZE = undefined;
+        if (c.GetTextExtentPoint32W(hdc, utf16.ptr, @intCast(next_unit), &size) == 0) return null;
+        const word_extra = utf16PrefixSpaceCount(utf16[0..next_unit]) * text_cmd.word_spacing;
+        const next_width = size.cx + word_extra;
+        const midpoint = previous_width + @divTrunc(next_width - previous_width, 2);
+        if (relative_x < midpoint) return character_index;
+        previous_width = next_width;
+        unit_index = next_unit;
+        character_index += 1;
+    }
+    return character_index;
+}
+
+fn controlCaretCharacterIndex(display_list: *const DisplayList, region: DisplayList.ControlRegion, click_x: f64) ?u32 {
+    const text_cmd = controlTextCommandForRegion(display_list, region) orelse return null;
+    return renderedCaretCharacterIndex(text_cmd, click_x);
+}
+
 fn presentationControlCommandAtClientPoint(backend: *Win32Backend, x: f64, y: f64) ?BrowserCommand {
     backend.presentation_lock.lock();
     defer backend.presentation_lock.unlock();
@@ -1678,12 +1775,14 @@ fn presentationControlCommandAtClientPoint(backend: *Win32Backend, x: f64, y: f6
     };
 
     const input = frameInputPointForOwnedFrame(&display_list, point, region.frame_id);
+    const caret_character_index = controlCaretCharacterIndex(&display_list, region, point.x);
     backend.input_frame_id.store(input.frame_id, .release);
     return .{ .activate_control_region = .{
         .frame_id = input.frame_id,
         .x = input.x,
         .y = input.y,
         .dom_path = owned_dom_path,
+        .caret_character_index = caret_character_index,
     } };
 }
 

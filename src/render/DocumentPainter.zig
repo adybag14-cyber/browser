@@ -2862,6 +2862,9 @@ const Painter = struct {
                 }
                 const current_value = input.getValue();
                 if (current_value.len > 0) {
+                    if (input._input_type == .password) {
+                        return maskPasswordForPaint(self.allocator, current_value);
+                    }
                     return self.allocator.dupe(u8, current_value);
                 }
                 if (element.getAttributeSafe(comptime .wrap("placeholder"))) |placeholder| {
@@ -2885,17 +2888,15 @@ const Painter = struct {
                 };
             },
             .textarea => {
-                var text_buf = std.Io.Writer.Allocating.init(self.allocator);
-                defer text_buf.deinit();
-                try element.asNode().getTextContent(&text_buf.writer);
-                const text = text_buf.written();
+                const textarea = element.as(Element.Html.TextArea);
+                const current_value = textarea.getValue();
+                if (current_value.len > 0) {
+                    return self.allocator.dupe(u8, current_value);
+                }
                 if (element.getAttributeSafe(comptime .wrap("placeholder"))) |placeholder| {
                     return self.allocator.dupe(u8, placeholder);
                 }
-                if (std.mem.trim(u8, text, &std.ascii.whitespace).len > 0) {
-                    return collapseWhitespace(self.allocator, text);
-                }
-                return self.allocator.dupe(u8, "[textarea]");
+                return self.allocator.dupe(u8, "");
             },
             .button, .option, .select => {
                 var text_buf = std.Io.Writer.Allocating.init(self.allocator);
@@ -2911,6 +2912,16 @@ const Painter = struct {
             },
             else => return collectDirectText(self.allocator, element, self.page),
         }
+    }
+
+    fn maskPasswordForPaint(allocator: std.mem.Allocator, value: []const u8) ![]u8 {
+        const count = std.unicode.utf8CountCodepoints(value) catch value.len;
+        const bullet = "\xe2\x80\xa2";
+        const masked = try allocator.alloc(u8, count * bullet.len);
+        for (0..count) |i| {
+            @memcpy(masked[i * bullet.len ..][0..bullet.len], bullet);
+        }
+        return masked;
     }
 
     fn shouldPassThroughInlineContainer(
@@ -4493,6 +4504,34 @@ fn isFlowBlockLike(tag: Element.Tag, display: []const u8, has_child_elements: bo
         .span, .anchor, .strong, .em, .code, .label, .option => false,
         else => true,
     };
+}
+
+test "paintDocument masks passwords and paints live textarea value" {
+    var page = try testing.pageTest("page/headed_form_runtime_values.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 800,
+        .viewport_height = 400,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    var saw_masked_password = false;
+    var saw_live_textarea = false;
+    for (display_list.commands.items) |command| {
+        switch (command) {
+            .text => |text| {
+                try std.testing.expect(std.mem.indexOf(u8, text.text, "secret") == null);
+                try std.testing.expect(std.mem.indexOf(u8, text.text, "STALE PLACEHOLDER") == null);
+                try std.testing.expect(std.mem.indexOf(u8, text.text, "initial markup") == null);
+                if (std.mem.eql(u8, text.text, "••••••")) saw_masked_password = true;
+                if (std.mem.eql(u8, text.text, "live textarea value")) saw_live_textarea = true;
+            },
+            else => {},
+        }
+    }
+    try std.testing.expect(saw_masked_password);
+    try std.testing.expect(saw_live_textarea);
 }
 
 test "paintDocument keeps inline-block tabs on one row when they contain block children" {
