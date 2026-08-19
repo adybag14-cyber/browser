@@ -1,0 +1,169 @@
+name: Publish Headed Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Optional release tag. Leave blank for headed-preview-<short SHA>.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Build and validate headed Windows
+    uses: ./.github/workflows/headed-windows.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish GitHub prerelease
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download validated headed executable
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: lightpanda-headed-windows-${{ github.sha }}
+          path: dist/bin
+
+      - name: Download headed evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: headed-windows-evidence-${{ github.run_id }}
+          path: dist/evidence
+
+      - name: Package preview assets
+        id: package
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:9}"
+          if [[ -n "$REQUESTED_TAG" ]]; then
+            tag="$REQUESTED_TAG"
+          else
+            tag="headed-preview-$short_sha"
+          fi
+
+          exe_source="dist/bin/lightpanda-headed.exe"
+          exe_name="lightpanda-headed-windows-x86_64.exe"
+          zip_name="lightpanda-headed-windows-x86_64.zip"
+          evidence_name="lightpanda-headed-windows-evidence.zip"
+
+          test -f "$exe_source"
+          mv "$exe_source" "dist/$exe_name"
+
+          cat > dist/README-HEADED.txt <<EOF
+          Lightpanda headed Windows preview
+          Commit: $GITHUB_SHA
+
+          Requirements:
+          - Windows x86_64
+
+          Quick start from PowerShell:
+            .\lightpanda-headed-windows-x86_64.exe browse https://example.com
+
+          Google test example:
+            .\lightpanda-headed-windows-x86_64.exe browse "https://www.google.com/search?q=brown+fox&hl=en"
+
+          This preview is the exact headed executable produced by the validated
+          Headed Windows workflow. The same run verifies nested cross-origin
+          rendering/input, screenshot state changes, and the RSS memory budget.
+
+          CAPTCHA support here means rendering and routing normal human input.
+          This build does not solve or bypass CAPTCHA challenges automatically.
+          EOF
+
+          (cd dist && zip -9 "$zip_name" "$exe_name" README-HEADED.txt)
+          (cd dist/evidence && zip -9 -r "../$evidence_name" .)
+          (cd dist && sha256sum "$exe_name" "$zip_name" "$evidence_name" > SHA256SUMS.txt)
+
+          {
+            echo "tag=$tag"
+            echo "short_sha=$short_sha"
+            echo "exe_name=$exe_name"
+            echo "zip_name=$zip_name"
+            echo "evidence_name=$evidence_name"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes
+        shell: bash
+        run: |
+          cat > dist/RELEASE-NOTES.md <<EOF
+          ## Lightpanda headed Windows preview
+
+          Commit: $GITHUB_SHA
+
+          This prerelease contains the exact Windows x86_64 headed executable that
+          passed the repository's **Headed Windows** validation workflow in this run.
+
+          Validation includes nested cross-origin iframe rendering, external CSS,
+          human keyboard/click routing, visibly distinct PNG states, and the 60-second
+          RSS memory gate. The evidence bundle from the same build is attached.
+
+          ### Run it
+
+          1. Download **${{ steps.package.outputs.zip_name }}** and extract it.
+          2. In PowerShell run:
+
+              .\lightpanda-headed-windows-x86_64.exe browse https://example.com
+
+          To reproduce the Google flow used during development:
+
+              .\lightpanda-headed-windows-x86_64.exe browse "https://www.google.com/search?q=brown+fox&hl=en"
+
+          CAPTCHA support means the browser renders the challenge and routes normal
+          human input. It does not automatically solve or bypass CAPTCHA challenges.
+          EOF
+
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.package.outputs.tag }}
+          SHORT_SHA: ${{ steps.package.outputs.short_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            expected="headed-preview-$SHORT_SHA"
+            if [[ "$RELEASE_TAG" != "$expected" ]]; then
+              echo "Release tag '$RELEASE_TAG' already exists. Choose another custom tag." >&2
+              exit 1
+            fi
+            gh release upload "$RELEASE_TAG" \
+              "dist/${{ steps.package.outputs.exe_name }}#Standalone Windows x86_64 executable" \
+              "dist/${{ steps.package.outputs.zip_name }}#Windows x86_64 headed preview ZIP" \
+              "dist/${{ steps.package.outputs.evidence_name }}#Validation screenshots and memory evidence" \
+              "dist/SHA256SUMS.txt#SHA-256 checksums" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" \
+              --title "Lightpanda Headed Preview $SHORT_SHA" \
+              --notes-file dist/RELEASE-NOTES.md \
+              --prerelease \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "Lightpanda Headed Preview $SHORT_SHA" \
+              --notes-file dist/RELEASE-NOTES.md \
+              --prerelease \
+              --latest=false \
+              --repo "$GITHUB_REPOSITORY" \
+              "dist/${{ steps.package.outputs.exe_name }}#Standalone Windows x86_64 executable" \
+              "dist/${{ steps.package.outputs.zip_name }}#Windows x86_64 headed preview ZIP" \
+              "dist/${{ steps.package.outputs.evidence_name }}#Validation screenshots and memory evidence" \
+              "dist/SHA256SUMS.txt#SHA-256 checksums"
+          fi
+
+          gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json url,tagName,name,isPrerelease,targetCommitish
