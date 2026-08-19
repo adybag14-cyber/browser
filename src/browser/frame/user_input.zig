@@ -514,6 +514,85 @@ fn deleteTextAreaAtCaret(textarea: *Element.Html.TextArea, backwards: bool, fram
     try textarea.innerInsert("", frame);
 }
 
+fn moveTextSelection(
+    value: []const u8,
+    start: u32,
+    end: u32,
+    direction: []const u8,
+    key: KeyboardEvent.Key,
+    extend: bool,
+) struct { start: u32, end: u32, direction: []const u8 } {
+    const backward = std.mem.eql(u8, direction, "backward");
+    const forward = std.mem.eql(u8, direction, "forward");
+    const anchor = if (backward) end else start;
+    const focus = if (backward) start else if (forward) end else end;
+
+    const next_focus = switch (key) {
+        .ArrowLeft => previousUtf8Boundary(value, focus),
+        .ArrowRight => nextUtf8Boundary(value, focus),
+        .Home => 0,
+        .End => @as(u32, @intCast(value.len)),
+        else => focus,
+    };
+
+    if (!extend) {
+        const collapsed = if (start != end) switch (key) {
+            .ArrowLeft => start,
+            .ArrowRight => end,
+            .Home => @as(u32, 0),
+            .End => @as(u32, @intCast(value.len)),
+            else => next_focus,
+        } else next_focus;
+        return .{ .start = collapsed, .end = collapsed, .direction = "none" };
+    }
+
+    if (next_focus < anchor) return .{ .start = next_focus, .end = anchor, .direction = "backward" };
+    if (next_focus > anchor) return .{ .start = anchor, .end = next_focus, .direction = "forward" };
+    return .{ .start = anchor, .end = anchor, .direction = "none" };
+}
+
+fn moveInputCaret(input: *Element.Html.Input, key: KeyboardEvent.Key, extend: bool, frame: *Frame) !void {
+    const start = (try input.getSelectionStart()) orelse return;
+    const end = (try input.getSelectionEnd()) orelse return;
+    const moved = moveTextSelection(input.getValue(), start, end, input.getSelectionDirection(), key, extend);
+    try input.setSelectionRange(moved.start, moved.end, moved.direction, frame);
+}
+
+fn moveTextAreaCaret(textarea: *Element.Html.TextArea, key: KeyboardEvent.Key, extend: bool, frame: *Frame) !void {
+    const moved = moveTextSelection(
+        textarea.getValue(),
+        textarea.getSelectionStart(),
+        textarea.getSelectionEnd(),
+        textarea.getSelectionDirection(),
+        key,
+        extend,
+    );
+    try textarea.setSelectionRange(moved.start, moved.end, moved.direction, frame);
+}
+
+test "text selection navigation respects UTF-8 boundaries and shift direction" {
+    const value = "a\xc3\xa9\xf0\x9f\x99\x82b";
+    // byte boundaries: 0 | a=1 | two-byte code point=3 | four-byte code point=7 | b=8
+    const left = moveTextSelection(value, 7, 7, "none", .ArrowLeft, false);
+    try std.testing.expectEqual(@as(u32, 3), left.start);
+    try std.testing.expectEqual(@as(u32, 3), left.end);
+
+    const backward = moveTextSelection(value, 7, 7, "none", .ArrowLeft, true);
+    try std.testing.expectEqual(@as(u32, 3), backward.start);
+    try std.testing.expectEqual(@as(u32, 7), backward.end);
+    try std.testing.expectEqualStrings("backward", backward.direction);
+
+    const reversed = moveTextSelection(value, backward.start, backward.end, backward.direction, .ArrowRight, true);
+    try std.testing.expectEqual(@as(u32, 7), reversed.start);
+    try std.testing.expectEqual(@as(u32, 7), reversed.end);
+    try std.testing.expectEqualStrings("none", reversed.direction);
+
+    const forward = moveTextSelection(value, reversed.start, reversed.end, reversed.direction, .ArrowRight, true);
+    try std.testing.expectEqual(@as(u32, 7), forward.start);
+    try std.testing.expectEqual(@as(u32, 8), forward.end);
+    try std.testing.expectEqualStrings("forward", forward.direction);
+}
+
 pub fn handleKeydown(frame: *Frame, target: *Node, event: *Event) !void {
     const keyboard_event = event.is(KeyboardEvent) orelse return;
     const key = keyboard_event.getKey();
@@ -539,6 +618,10 @@ pub fn handleKeydown(frame: *Frame, target: *Node, event: *Event) !void {
             return;
         }
 
+        if (key == .ArrowLeft or key == .ArrowRight or key == .Home or key == .End) {
+            return moveInputCaret(input, key, keyboard_event.getShiftKey(), frame);
+        }
+
         if (key == .Backspace or key == .Delete) {
             return deleteInputAtCaret(input, key == .Backspace, frame);
         }
@@ -551,6 +634,9 @@ pub fn handleKeydown(frame: *Frame, target: *Node, event: *Event) !void {
     }
 
     if (target.is(Element.Html.TextArea)) |textarea| {
+        if (key == .ArrowLeft or key == .ArrowRight or key == .Home or key == .End) {
+            return moveTextAreaCaret(textarea, key, keyboard_event.getShiftKey(), frame);
+        }
         if (key == .Backspace or key == .Delete) {
             return deleteTextAreaAtCaret(textarea, key == .Backspace, frame);
         }

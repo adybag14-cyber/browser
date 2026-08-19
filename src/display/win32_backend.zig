@@ -20,6 +20,7 @@ const std = @import("std");
 const lp = @import("lightpanda");
 const log = @import("../log.zig");
 const Page = @import("../browser/Frame.zig");
+const Element = @import("../browser/webapi/Element.zig");
 const URL = @import("../browser/URL.zig");
 const CookieJar = @import("../browser/webapi/storage/Cookie.zig").Jar;
 const Notification = @import("../Notification.zig");
@@ -267,6 +268,10 @@ pub const Win32Backend = struct {
     pending_high_surrogate: ?u16 = null,
     ime_composing: bool = false,
     suppress_wm_char_units: u32 = 0,
+    /// Tracks modifier WM_KEYDOWN/WM_KEYUP state on the window thread. Real
+    /// hardware also appears in GetKeyState(); this makes targeted native
+    /// messages and service/CI input preserve modifier semantics too.
+    native_key_modifiers: Page.KeyboardModifiers = .{},
 
     input_lock: CompatMutex = .{},
     input_events: std.ArrayListUnmanaged(InputEvent) = .empty,
@@ -388,6 +393,14 @@ pub const Win32Backend = struct {
         bytes: [4]u8,
         len: u8,
     };
+
+    fn activeTextControlOwnsNavigation(page: *Page) bool {
+        const active = page.document._active_element orelse return false;
+        if (active.is(Element.Html.Input)) |input| {
+            return (input.getSelectionStart() catch null) != null;
+        }
+        return active.is(Element.Html.TextArea) != null;
+    }
 
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32) Win32Backend {
         return .{
@@ -893,7 +906,7 @@ pub const Win32Backend = struct {
                     );
                     if (!result.default_prevented and !result.scrolled_element and wheel.delta_y != 0) {
                         if (scrollPresentationBy(self, wheelDeltaToPresentationScrollPx(wheel.delta_y))) {
-                            invalidateBackendWindow(self);
+                            _ = self.presentation_seq.fetchAdd(1, .acq_rel);
                         }
                     }
                 },
@@ -908,6 +921,17 @@ pub const Win32Backend = struct {
                     if (default_allowed) {
                         if (clipboardShortcutAction(key_down.vk, key_down.modifiers)) |action| {
                             try handleClipboardShortcut(self.allocator, target, action);
+                        }
+                        // Home/End belong to a focused editable control first.
+                        // Only use them as page-scroll shortcuts when the DOM has
+                        // no input/textarea selection to move.
+                        if (!activeTextControlOwnsNavigation(target)) {
+                            const scrolled = switch (key_down.vk) {
+                                c.VK_HOME => scrollPresentationTo(self, 0),
+                                c.VK_END => scrollPresentationTo(self, std.math.maxInt(i32)),
+                                else => false,
+                            };
+                            if (scrolled) _ = self.presentation_seq.fetchAdd(1, .acq_rel);
                         }
                     }
                 },
@@ -3421,15 +3445,6 @@ fn scrollPresentationTo(backend: *Win32Backend, value: i32) bool {
 
 fn wheelDeltaToPresentationScrollPx(delta_y: f64) i32 {
     return @as(i32, @intFromFloat(@round(delta_y / @as(f64, @floatFromInt(c.WHEEL_DELTA))))) * PRESENTATION_SCROLL_STEP;
-}
-
-fn invalidateBackendWindow(backend: *Win32Backend) void {
-    const hwnd_value = backend.window_hwnd.load(.acquire);
-    if (hwnd_value == 0) {
-        return;
-    }
-    const hwnd: c.HWND = @ptrFromInt(hwnd_value);
-    _ = c.InvalidateRect(hwnd, null, c.TRUE);
 }
 
 fn syncWindowPresentation(hwnd: c.HWND, backend: *Win32Backend) void {
@@ -6674,8 +6689,6 @@ fn handlePresentationScrollKey(hwnd: c.HWND, backend: *Win32Backend, vk: u32) bo
         c.VK_DOWN => scrollPresentationBy(backend, PRESENTATION_SCROLL_STEP),
         c.VK_PRIOR => scrollPresentationBy(backend, -PRESENTATION_PAGE_STEP),
         c.VK_NEXT => scrollPresentationBy(backend, PRESENTATION_PAGE_STEP),
-        c.VK_HOME => scrollPresentationTo(backend, 0),
-        c.VK_END => scrollPresentationTo(backend, std.math.maxInt(i32)),
         else => false,
     };
     if (changed) {
@@ -7289,6 +7302,37 @@ fn keyboardModifiersFromKeyState() Page.KeyboardModifiers {
     };
 }
 
+fn setTrackedModifier(modifiers: *Page.KeyboardModifiers, vk: u32, down: bool) void {
+    switch (vk) {
+        c.VK_SHIFT, c.VK_LSHIFT, c.VK_RSHIFT => modifiers.shift = down,
+        c.VK_CONTROL, c.VK_LCONTROL, c.VK_RCONTROL => modifiers.ctrl = down,
+        c.VK_MENU, c.VK_LMENU, c.VK_RMENU => modifiers.alt = down,
+        c.VK_LWIN, c.VK_RWIN => modifiers.meta = down,
+        else => {},
+    }
+}
+
+fn keyboardModifiersForWindowKey(backend: *Win32Backend, vk: u32, down: bool) Page.KeyboardModifiers {
+    setTrackedModifier(&backend.native_key_modifiers, vk, down);
+    const os = keyboardModifiersFromKeyState();
+    var result: Page.KeyboardModifiers = .{
+        .ctrl = os.ctrl or backend.native_key_modifiers.ctrl,
+        .shift = os.shift or backend.native_key_modifiers.shift,
+        .alt = os.alt or backend.native_key_modifiers.alt,
+        .meta = os.meta or backend.native_key_modifiers.meta,
+    };
+    // The modifier's own message defines its state more reliably than a
+    // potentially stale GetKeyState snapshot, especially for posted messages.
+    switch (vk) {
+        c.VK_SHIFT, c.VK_LSHIFT, c.VK_RSHIFT => result.shift = down,
+        c.VK_CONTROL, c.VK_LCONTROL, c.VK_RCONTROL => result.ctrl = down,
+        c.VK_MENU, c.VK_LMENU, c.VK_RMENU => result.alt = down,
+        c.VK_LWIN, c.VK_RWIN => result.meta = down,
+        else => {},
+    }
+    return result;
+}
+
 fn mouseButtonsFromWParam(wparam: c.WPARAM) u16 {
     var buttons: u16 = 0;
     if ((wparam & c.MK_LBUTTON) != 0) buttons |= 1;
@@ -7627,6 +7671,7 @@ fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM) callco
                 backend.pending_high_surrogate = null;
                 backend.ime_composing = false;
                 backend.suppress_wm_char_units = 0;
+                backend.native_key_modifiers = .{};
                 queueInputEvent(backend, .window_blur);
             }
             return 0;
@@ -7933,7 +7978,7 @@ fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM) callco
         c.WM_KEYDOWN, c.WM_SYSKEYDOWN => {
             if (getBackendPtr(hwnd)) |backend| {
                 const vk: u32 = @intCast(wparam & 0xFFFF);
-                const modifiers = keyboardModifiersFromKeyState();
+                const modifiers = keyboardModifiersForWindowKey(backend, vk, true);
                 if (handlePresentationShortcutKey(hwnd, backend, vk, modifiers)) {
                     return 0;
                 }
@@ -7960,7 +8005,7 @@ fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM) callco
                 const vk: u32 = @intCast(wparam & 0xFFFF);
                 const key_up: Win32Backend.InputEvent = .{ .key_up = .{
                     .vk = vk,
-                    .modifiers = keyboardModifiersFromKeyState(),
+                    .modifiers = keyboardModifiersForWindowKey(backend, vk, false),
                 } };
                 queueInputEvent(backend, key_up);
             }

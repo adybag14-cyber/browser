@@ -33,6 +33,16 @@ NATIVE_CARET = b"""<!doctype html><html><head><meta charset='utf-8'><title>Nativ
 <script>var k=document.getElementById('caret-key');addEventListener('load',function(){k.focus();k.setSelectionRange(k.value.length,k.value.length)});k.addEventListener('input',function(){fetch('/caret-value?value='+encodeURIComponent(k.value)+'&start='+k.selectionStart,{method:'POST'}).catch(function(){})});</script>
 </body></html>"""
 
+NATIVE_NAVIGATION = b"""<!doctype html><html><head><meta charset='utf-8'><title>Native text navigation</title>
+<style>body{font-family:Arial,sans-serif;margin:18px}input,textarea{display:block;width:360px;margin:18px;border:2px solid #1d4ed8;font-size:18px}input{height:38px}textarea{height:80px}</style></head><body>
+<input id='nav-input' value='abcde'><textarea id='nav-area'>abcde</textarea>
+<script>
+var target=(location.hash==='#textarea')?document.getElementById('nav-area'):document.getElementById('nav-input');
+function report(){fetch('/navigation-state?target='+target.id+'&value='+encodeURIComponent(target.value)+'&start='+target.selectionStart+'&end='+target.selectionEnd+'&direction='+encodeURIComponent(target.selectionDirection),{method:'POST'}).catch(function(){})}
+addEventListener('load',function(){target.value=target.value;target.focus();target.setSelectionRange(target.value.length,target.value.length);report()});
+target.addEventListener('keyup',report);target.addEventListener('input',report);
+</script></body></html>"""
+
 TRIVIAL = b"""<!doctype html><html><head><meta charset='utf-8'><title>RSS Baseline</title></head><body><h1>RSS baseline</h1><p>The quick brown fox jumps over the lazy dog.</p></body></html>"""
 
 GOOGLE_BOOTSTRAP = b"""<!doctype html><html><head><meta charset='utf-8'><title>Google-style JS bootstrap</title></head><body>
@@ -102,6 +112,7 @@ class Handler(BaseHTTPRequestHandler):
     bootstrap_cookie_missing_file: str | None = None
     keyboard_value_file: str | None = None
     caret_value_file: str | None = None
+    navigation_state_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -124,6 +135,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, NATIVE_KEYBOARD, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/native-caret.html":
             return self._body(200, NATIVE_CARET, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/native-navigation.html":
+            return self._body(200, NATIVE_NAVIGATION, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap.html":
             return self._body(200, GOOGLE_BOOTSTRAP, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap-result.html":
@@ -161,6 +174,14 @@ class Handler(BaseHTTPRequestHandler):
                 path = pathlib.Path(self.caret_value_file)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(value + "\n" + start + "\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/navigation-state":
+            if self.navigation_state_file:
+                params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+                fields = [params.get(name, [""])[0] for name in ("target", "value", "start", "end", "direction")]
+                path = pathlib.Path(self.navigation_state_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("\n".join(fields) + "\n", encoding="utf-8")
             return self._body(204, b"")
         if self.server.server_port == 18773 and self.path == "/bootstrap-ok":
             if self.bootstrap_ok_file:
@@ -208,6 +229,7 @@ def main() -> int:
     parser.add_argument("--bootstrap-cookie-missing-file")
     parser.add_argument("--keyboard-value-file")
     parser.add_argument("--caret-value-file")
+    parser.add_argument("--navigation-state-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
@@ -216,6 +238,7 @@ def main() -> int:
     Handler.bootstrap_cookie_missing_file = args.bootstrap_cookie_missing_file
     Handler.keyboard_value_file = args.keyboard_value_file
     Handler.caret_value_file = args.caret_value_file
+    Handler.navigation_state_file = args.navigation_state_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

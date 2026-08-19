@@ -28,7 +28,8 @@ $bootstrapFallback = Join-Path $state 'bootstrap-fallback-visible.txt'
 $bootstrapCookieMissing = Join-Path $state 'bootstrap-cookie-missing.txt'
 $keyboardValue = Join-Path $state 'keyboard-value.txt'
 $caretValue = Join-Path $state 'caret-value.txt'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue -Force -ErrorAction SilentlyContinue
+$navigationState = Join-Path $state 'navigation-state.txt'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -84,13 +85,29 @@ function Send-Text([IntPtr]$Hwnd, [string]$Text) {
     }
 }
 
-function Send-PhysicalKey([IntPtr]$Hwnd, [uint32]$Vk) {
+function Send-PhysicalKeyDown([IntPtr]$Hwnd, [uint32]$Vk) {
     $scan = [LPWin32]::MapVirtualKeyW($Vk, 0)
     $down = [IntPtr]([int64](1 -bor ([int64]$scan -shl 16)))
-    $up = [IntPtr]([int64](1 -bor ([int64]$scan -shl 16) -bor 0xC0000000L))
     [void][LPWin32]::PostMessage($Hwnd, 0x0100, [IntPtr][int64]$Vk, $down) # WM_KEYDOWN; TranslateMessage creates WM_CHAR
     Start-Sleep -Milliseconds 80
+}
+
+function Send-PhysicalKeyUp([IntPtr]$Hwnd, [uint32]$Vk) {
+    $scan = [LPWin32]::MapVirtualKeyW($Vk, 0)
+    $up = [IntPtr]([int64](1 -bor ([int64]$scan -shl 16) -bor 0xC0000000L))
     [void][LPWin32]::PostMessage($Hwnd, 0x0101, [IntPtr][int64]$Vk, $up) # WM_KEYUP
+    Start-Sleep -Milliseconds 80
+}
+
+function Send-PhysicalKey([IntPtr]$Hwnd, [uint32]$Vk) {
+    Send-PhysicalKeyDown $Hwnd $Vk
+    Send-PhysicalKeyUp $Hwnd $Vk
+}
+
+function Send-PhysicalShiftKey([IntPtr]$Hwnd, [uint32]$Vk) {
+    Send-PhysicalKeyDown $Hwnd 0x10 # VK_SHIFT
+    Send-PhysicalKey $Hwnd $Vk
+    Send-PhysicalKeyUp $Hwnd 0x10
 }
 
 function Request-PngEvidence([IntPtr]$Hwnd, [string]$Directory, [string]$TargetName) {
@@ -142,6 +159,34 @@ function Wait-File([string]$Path, [int]$TimeoutSeconds = 20, [int64]$MinimumByte
     throw "Timed out waiting for $Path"
 }
 
+function Wait-NavigationState(
+    [string]$Path,
+    [string]$Target,
+    [string]$Value,
+    [string]$Start,
+    [string]$End,
+    [string]$Direction,
+    [int]$TimeoutSeconds = 10
+) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        if (Test-Path $Path) {
+            $lines = @(Get-Content $Path)
+            if ($lines.Count -ge 5 -and
+                $lines[0] -eq $Target -and
+                $lines[1] -eq $Value -and
+                $lines[2] -eq $Start -and
+                $lines[3] -eq $End -and
+                $lines[4] -eq $Direction) {
+                return
+            }
+        }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    $actual = if (Test-Path $Path) { (@(Get-Content $Path) -join '|') } else { '<missing>' }
+    throw "Navigation state '$actual'; expected $Target|$Value|$Start|$End|$Direction"
+}
+
 $python = (Get-Command python).Source
 $serverOut = Join-Path $Artifacts 'server.stdout.log'
 $serverErr = Join-Path $Artifacts 'server.stderr.log'
@@ -154,7 +199,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--bootstrap-fallback-file', $bootstrapFallback,
     '--bootstrap-cookie-missing-file', $bootstrapCookieMissing,
     '--keyboard-value-file', $keyboardValue,
-    '--caret-value-file', $caretValue
+    '--caret-value-file', $caretValue,
+    '--navigation-state-file', $navigationState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -225,6 +271,57 @@ try {
         finally {
             Stop-Browser $browser $hwnd
         }
+
+        # Native Home/End/Arrow keys must move the text caret rather than
+        # being stolen by page scrolling. Shift+Arrow must extend/reverse a
+        # selection through the real Win32 modifier/key message path.
+        foreach ($navCase in @(
+            @{ Target='nav-input'; Hash=''; ExpectedAfter='a2c3e'; ExpectedStart='4' },
+            @{ Target='nav-area'; Hash='#textarea'; ExpectedAfter='a2c3e'; ExpectedStart='4' }
+        )) {
+            Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+            $safeTarget = $navCase.Target.Replace('nav-','')
+            $profile = Join-Path $state "navigation-$safeTarget-profile"
+            Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+            $stdout = Join-Path $Artifacts "navigation-$safeTarget.stdout.log"
+            $stderr = Join-Path $Artifacts "navigation-$safeTarget.stderr.log"
+            $url = "http://127.0.0.1:18773/native-navigation.html$($navCase.Hash)"
+            $args = @('browse',$url,'--width','1000','--height','760','--profile-dir',$profile)
+            $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            $hwnd = [IntPtr]::Zero
+            try {
+                $hwnd = Get-LightpandaWindow $browser.Id 30
+                Wait-NavigationState $navigationState $navCase.Target 'abcde' '5' '5' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x24 # Home => 0
+                Wait-NavigationState $navigationState $navCase.Target 'abcde' '0' '0' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x27 # Right => 1
+                Wait-NavigationState $navigationState $navCase.Target 'abcde' '1' '1' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalShiftKey $hwnd 0x27 # Shift+Right => select b forward
+                Wait-NavigationState $navigationState $navCase.Target 'abcde' '1' '2' 'forward'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x32 # 2 replaces b => a2cde, caret 2
+                Wait-NavigationState $navigationState $navCase.Target 'a2cde' '2' '2' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x23 # End => 5
+                Wait-NavigationState $navigationState $navCase.Target 'a2cde' '5' '5' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x25 # Left => 4
+                Wait-NavigationState $navigationState $navCase.Target 'a2cde' '4' '4' 'none'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalShiftKey $hwnd 0x25 # Shift+Left => select d backward
+                Wait-NavigationState $navigationState $navCase.Target 'a2cde' '3' '4' 'backward'
+                Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
+                Send-PhysicalKey $hwnd 0x33 # 3 replaces d => a2c3e
+                Wait-NavigationState $navigationState $navCase.Target $navCase.ExpectedAfter $navCase.ExpectedStart $navCase.ExpectedStart 'none'
+            }
+            finally {
+                Stop-Browser $browser $hwnd
+            }
+        }
+        'NATIVE_NAVIGATION_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'navigation-result.txt')
 
         # A real headed pointer click must move the insertion caret inside a
         # single-line input according to the text the native backend actually

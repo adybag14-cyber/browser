@@ -254,6 +254,11 @@ jobs:
           if ($caretResult -ne 'NATIVE_CARET_OK') {
             throw "Unexpected native pointer-caret marker: $caretResult"
           }
+          $navigationResultPath = Get-EvidenceFile 'navigation-result.txt'
+          $navigationResult = (Get-Content $navigationResultPath -Raw).Trim()
+          if ($navigationResult -ne 'NATIVE_NAVIGATION_OK') {
+            throw "Unexpected native text-navigation marker: $navigationResult"
+          }
           $caretFocused = Get-PngInfo 'caret-focused.png'
           $caretBlurred = Get-PngInfo 'caret-blurred.png'
           $caretEdited = Get-PngInfo 'caret-edited.png'
@@ -325,6 +330,7 @@ jobs:
             verification_changed_png = $true
             native_keyboard_result = $keyboardResult
             native_caret_result = $caretResult
+            native_navigation_result = $navigationResult
             visible_caret_changed_png = $true
             caret_screenshots = @($caretFocused, $caretBlurred, $caretEdited)
             screenshots = $frames
@@ -376,6 +382,7 @@ jobs:
             $lines.Add("Result: **$($frame.result)**")
             if ($frame.native_keyboard_result) { $lines.Add("Native keyboard: **$($frame.native_keyboard_result)**") }
             if ($frame.native_caret_result) { $lines.Add("Native pointer caret: **$($frame.native_caret_result)**") }
+            if ($frame.native_navigation_result) { $lines.Add("Native text navigation: **$($frame.native_navigation_result)**") }
             if ($frame.visible_caret_changed_png) { $lines.Add('Visible input caret: **focused/blurred PNGs differ**') }
             if ($frame.caret_screenshots) {
               $lines.Add('')
