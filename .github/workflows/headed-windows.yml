@@ -197,6 +197,13 @@ jobs:
           }
 
           function Get-EvidenceFile([string]$Name) {
+            # The smoke runner may retain an internal state copy of a geometry
+            # marker and also copy the canonical evidence file to artifact root.
+            # Prefer that canonical root file; recurse only for older layouts.
+            $rootPath = Join-Path $artifacts $Name
+            if (Test-Path -LiteralPath $rootPath -PathType Leaf) {
+              return (Resolve-Path -LiteralPath $rootPath).Path
+            }
             $matches = @(Get-ChildItem -Path $artifacts -Recurse -File -Filter $Name)
             if ($matches.Count -ne 1) {
               throw "Expected exactly one $Name, found $($matches.Count)"
