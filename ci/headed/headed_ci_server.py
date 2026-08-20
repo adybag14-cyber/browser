@@ -32,6 +32,12 @@ NATIVE_CARET = b"""<!doctype html><html><head><meta charset='utf-8'><title>Nativ
 <label for='caret-key'>Click caret target</label><input id='caret-key' value='abcdef'><button id='caret-sink'>FOCUS SINK</button>
 <script>var k=document.getElementById('caret-key');addEventListener('load',function(){k.focus();k.setSelectionRange(k.value.length,k.value.length)});k.addEventListener('input',function(){fetch('/caret-value?value='+encodeURIComponent(k.value)+'&start='+k.selectionStart,{method:'POST'}).catch(function(){})});</script>
 </body></html>"""
+LONG_INPUT = b"""<!doctype html><html><head><meta charset='utf-8'><title>Native long input</title>
+<style>body{font-family:Arial,sans-serif;margin:40px;background:white}label{display:block;margin-bottom:8px}input{display:block;width:160px;height:38px;font-size:18px;border:3px solid rgb(122,31,154);background:rgb(248,233,255);padding:0 6px}</style></head><body>
+<label for='long-query'>Long search query</label><input id='long-query' value='alpha beta gamma delta epsilon zeta eta theta'>
+<script>addEventListener('load',function(){var q=document.getElementById('long-query');q.focus();q.setSelectionRange(q.value.length,q.value.length)});</script>
+</body></html>"""
+
 
 NATIVE_NAVIGATION = b"""<!doctype html><html><head><meta charset='utf-8'><title>Native text navigation</title>
 <style>body{font-family:Arial,sans-serif;margin:18px}input,textarea{display:block;width:360px;margin:18px;border:2px solid #1d4ed8;font-size:18px}input{height:38px}textarea{height:80px}</style></head><body>
@@ -135,6 +141,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, NATIVE_KEYBOARD, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/native-caret.html":
             return self._body(200, NATIVE_CARET, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/native-long-input.html":
+            return self._body(200, LONG_INPUT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/native-navigation.html":
             return self._body(200, NATIVE_NAVIGATION, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap.html":

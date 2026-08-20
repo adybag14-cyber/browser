@@ -755,6 +755,7 @@ const Painter = struct {
                     .word_spacing = text.word_spacing,
                     .underline = text.underline,
                     .caret_character_index = text.caret_character_index,
+                    .single_line = text.single_line,
                     .text = text.text,
                 }),
                 .image => |image| try self.list.addImage(self.allocator, .{
@@ -1716,26 +1717,33 @@ const Painter = struct {
                 break :blk transformed;
             };
             defer if (text_style.text_transform != .none) self.allocator.free(painted_label);
-            const base_text_height = @max(
-                font_size + 8,
-                estimateTextHeight(
+            const single_line_text = tag == .input;
+            const base_text_height = if (single_line_text)
+                font_size + 8
+            else
+                @max(
+                    font_size + 8,
+                    estimateTextHeight(
+                        painted_label,
+                        text_area_width,
+                        font_size,
+                        font_family,
+                        font_weight,
+                        italic,
+                    ) + 8,
+                );
+            const text_height = if (single_line_text)
+                @max(base_text_height, resolveTextLineHeightPx(text_style.line_height, font_size) orelse 0)
+            else
+                estimateStyledTextHeight(
                     painted_label,
                     text_area_width,
                     font_size,
                     font_family,
                     font_weight,
                     italic,
-                ) + 8,
-            );
-            const text_height = estimateStyledTextHeight(
-                painted_label,
-                text_area_width,
-                font_size,
-                font_family,
-                font_weight,
-                italic,
-                text_style.line_height,
-            );
+                    text_style.line_height,
+                );
             var text_x = rect.x + padding.left + 6;
             const text_align = resolveCssPropertyValue(decl, self.page, element, "text-align");
             if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, text_align, &std.ascii.whitespace), "center")) {
@@ -1761,13 +1769,19 @@ const Painter = struct {
                 .font_family = @constCast(font_family),
                 .font_weight = font_weight,
                 .italic = italic,
-                .clip_rect = null,
+                .clip_rect = if (single_line_text) .{
+                    .x = text_x,
+                    .y = text_y,
+                    .width = text_area_width,
+                    .height = text_height,
+                } else null,
                 .opacity = combined_opacity,
                 .color = fg,
                 .letter_spacing = text_style.letter_spacing,
                 .word_spacing = text_style.word_spacing,
                 .underline = shouldUnderlineText(element, decl, self.page, tag),
                 .caret_character_index = focused_caret_index,
+                .single_line = single_line_text,
                 .text = @constCast(painted_label),
             });
         }
@@ -4518,6 +4532,38 @@ fn isFlowBlockLike(tag: Element.Tag, display: []const u8, has_child_elements: bo
         .span, .anchor, .strong, .em, .code, .label, .option => false,
         else => true,
     };
+}
+
+test "paintDocument keeps inputs single-line while textareas wrap" {
+    var page = try testing.pageTest("page/headed_single_line_input_render.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 800,
+        .viewport_height = 400,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    var input_text: ?TextCommand = null;
+    var textarea_text: ?TextCommand = null;
+    for (display_list.commands.items) |command| {
+        const text = switch (command) {
+            .text => |value| value,
+            else => continue,
+        };
+        if (!std.mem.eql(u8, text.text, "alpha beta gamma delta epsilon zeta eta theta")) continue;
+        if (text.single_line) {
+            input_text = text;
+        } else {
+            textarea_text = text;
+        }
+    }
+
+    const input = input_text orelse return error.TestExpectedSingleLineInputText;
+    const area = textarea_text orelse return error.TestExpectedWrappedTextareaText;
+    try std.testing.expect(input.clip_rect != null);
+    try std.testing.expect(input.height <= 32);
+    try std.testing.expect(area.height > input.height);
 }
 
 test "paintDocument masks passwords and paints live textarea value" {

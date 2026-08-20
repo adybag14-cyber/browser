@@ -362,6 +362,27 @@ try {
             Stop-Browser $browser $hwnd
         }
 
+        # A single-line input must never be painted through the generic wrapped
+        # text path. Keep the field focused at the end of a long query so this
+        # also exercises native horizontal scroll-to-caret. Pixel validation in
+        # the workflow rejects any second vertical text band inside the control.
+        $profile = Join-Path $state 'long-input-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'long-input.stdout.log'
+        $stderr = Join-Path $Artifacts 'long-input.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/native-long-input.html','--width','1000','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            Start-Sleep -Milliseconds 800
+            [void](Request-PngEvidence $hwnd $Artifacts 'long-input.png')
+            'SINGLE_LINE_INPUT_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'long-input-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
         # Google Search can serve a JavaScript capability bootstrap before
         # results. Guard the browser primitives that page relies on without
         # hitting Google's volatile anti-abuse service: Promise/callback work,

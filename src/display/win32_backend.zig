@@ -4217,19 +4217,41 @@ fn caretUtf16UnitCount(text: []const u16, character_index: u32) usize {
     return unit_index;
 }
 
+fn presentationTextFlags(text_cmd: TextCommand) c.UINT {
+    const base = @as(c.UINT, @intCast(c.DT_LEFT)) |
+        @as(c.UINT, @intCast(c.DT_TOP)) |
+        @as(c.UINT, @intCast(c.DT_NOPREFIX));
+    return base | if (text_cmd.single_line)
+        @as(c.UINT, @intCast(c.DT_SINGLELINE))
+    else
+        @as(c.UINT, @intCast(c.DT_WORDBREAK));
+}
+
+fn presentationTextPrefixWidth(hdc: c.HDC, text_cmd: TextCommand, character_index: u32) ?i32 {
+    if (character_index == 0 or text_cmd.text.len == 0) return 0;
+    const utf16 = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, text_cmd.text) catch return null;
+    defer std.heap.c_allocator.free(utf16);
+    const units = caretUtf16UnitCount(utf16, character_index);
+    if (units == 0) return 0;
+    var size: c.SIZE = undefined;
+    if (c.GetTextExtentPoint32W(hdc, utf16.ptr, @intCast(units), &size) == 0) return null;
+    return size.cx + utf16PrefixSpaceCount(utf16[0..units]) * text_cmd.word_spacing;
+}
+
+fn horizontallyScrolledTextRect(hdc: c.HDC, rect: c.RECT, text_cmd: TextCommand) c.RECT {
+    if (!text_cmd.single_line) return rect;
+    const caret_index = text_cmd.caret_character_index orelse return rect;
+    const prefix_width = presentationTextPrefixWidth(hdc, text_cmd, caret_index) orelse return rect;
+    const visible_width = @max(@as(i32, 1), rect.right - rect.left - 3);
+    if (prefix_width <= visible_width) return rect;
+    var shifted = rect;
+    shifted.left -= prefix_width - visible_width;
+    return shifted;
+}
+
 fn drawPresentationTextCaret(hdc: c.HDC, rect: c.RECT, text_cmd: TextCommand, scaled_font_size: i32) void {
     const caret_index = text_cmd.caret_character_index orelse return;
-    var offset: i32 = 0;
-    if (caret_index > 0 and text_cmd.text.len > 0) {
-        const utf16 = std.unicode.utf8ToUtf16LeAllocZ(std.heap.c_allocator, text_cmd.text) catch return;
-        defer std.heap.c_allocator.free(utf16);
-        const units = caretUtf16UnitCount(utf16, caret_index);
-        if (units > 0) {
-            var size: c.SIZE = undefined;
-            if (c.GetTextExtentPoint32W(hdc, utf16.ptr, @intCast(units), &size) == 0) return;
-            offset = size.cx + utf16PrefixSpaceCount(utf16[0..units]) * text_cmd.word_spacing;
-        }
-    }
+    const offset = presentationTextPrefixWidth(hdc, text_cmd, caret_index) orelse return;
 
     const x = std.math.clamp(rect.left + offset, rect.left, @max(rect.left, rect.right - 1));
     const top = rect.top + 2;
@@ -5681,7 +5703,7 @@ fn renderPresentationDisplayList(
                 const width = @max(1, scalePresentationValue(text_cmd.width, display_list.layout_scale));
                 const height = @max(1, scalePresentationValue(@max(text_cmd.height, text_cmd.font_size + 8), display_list.layout_scale));
                 const font_size = @max(1, scalePresentationValue(text_cmd.font_size, display_list.layout_scale));
-                var rect = c.RECT{
+                const rect = c.RECT{
                     .left = client.left + PRESENTATION_MARGIN + left,
                     .top = PRESENTATION_HEADER_HEIGHT + 8 + top - scroll_px,
                     .right = client.left + PRESENTATION_MARGIN + left + width,
@@ -5748,18 +5770,19 @@ fn renderPresentationDisplayList(
                             _ = c.SetTextJustification(hdc, @as(c_int, @intCast(text_cmd.word_spacing * @as(i32, @intCast(space_count)))), @as(c_int, @intCast(space_count)));
                             defer _ = c.SetTextJustification(hdc, 0, 0);
                         }
+                        var draw_rect = horizontallyScrolledTextRect(hdc, rect, text_cmd);
                         drawPresentationText(
                             hdc,
-                            &rect,
+                            &draw_rect,
                             text_cmd.text,
-                            c.DT_LEFT | c.DT_TOP | c.DT_WORDBREAK | c.DT_NOPREFIX,
+                            presentationTextFlags(text_cmd),
                         );
-                        drawPresentationTextCaret(hdc, rect, text_cmd, font_size);
+                        drawPresentationTextCaret(hdc, draw_rect, text_cmd, font_size);
                         _ = c.SetTextColor(hdc, previous);
                     } else {
                         var surface = beginAlphaBlendSurface(hdc, rect.right - rect.left, rect.bottom - rect.top) orelse continue;
                         defer surface.deinit();
-                        var local_rect = c.RECT{
+                        const local_rect = c.RECT{
                             .left = 0,
                             .top = 0,
                             .right = rect.right - rect.left,
@@ -5798,13 +5821,14 @@ fn renderPresentationDisplayList(
                             _ = c.SetTextJustification(surface.mem_dc, @as(c_int, @intCast(text_cmd.word_spacing * @as(i32, @intCast(space_count)))), @as(c_int, @intCast(space_count)));
                             defer _ = c.SetTextJustification(surface.mem_dc, 0, 0);
                         }
+                        var draw_rect = horizontallyScrolledTextRect(surface.mem_dc, local_rect, text_cmd);
                         drawPresentationText(
                             surface.mem_dc,
-                            &local_rect,
+                            &draw_rect,
                             text_cmd.text,
-                            c.DT_LEFT | c.DT_TOP | c.DT_WORDBREAK | c.DT_NOPREFIX,
+                            presentationTextFlags(text_cmd),
                         );
-                        drawPresentationTextCaret(surface.mem_dc, local_rect, text_cmd, font_size);
+                        drawPresentationTextCaret(surface.mem_dc, draw_rect, text_cmd, font_size);
                         _ = c.SetTextColor(surface.mem_dc, previous);
                         alphaBlendSurfaceToTarget(hdc, rect, &surface, text_alpha, true);
                     }

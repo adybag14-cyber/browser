@@ -262,6 +262,54 @@ jobs:
           $caretFocused = Get-PngInfo 'caret-focused.png'
           $caretBlurred = Get-PngInfo 'caret-blurred.png'
           $caretEdited = Get-PngInfo 'caret-edited.png'
+
+          $longInputResultPath = Get-EvidenceFile 'long-input-result.txt'
+          $longInputResult = (Get-Content $longInputResultPath -Raw).Trim()
+          if ($longInputResult -ne 'SINGLE_LINE_INPUT_OK') {
+            throw "Unexpected single-line input marker: $longInputResult"
+          }
+          $longInputShot = Get-PngInfo 'long-input.png'
+          Add-Type -AssemblyName System.Drawing
+          $longInputPath = Get-EvidenceFile 'long-input.png'
+          $bitmap = [System.Drawing.Bitmap]::new($longInputPath)
+          try {
+            $purple = [System.Collections.Generic.List[object]]::new()
+            $scanRight = [Math]::Min($bitmap.Width - 1, 300)
+            $scanBottom = [Math]::Min($bitmap.Height - 1, 300)
+            for ($y = 140; $y -le $scanBottom; $y++) {
+              for ($x = 40; $x -le $scanRight; $x++) {
+                $pixel = $bitmap.GetPixel($x, $y)
+                if ($pixel.R -eq 122 -and $pixel.G -eq 31 -and $pixel.B -eq 154) {
+                  $purple.Add([pscustomobject]@{ x = $x; y = $y })
+                }
+              }
+            }
+            if ($purple.Count -lt 100) { throw 'Could not locate the long-input purple border in PNG evidence' }
+            $x0 = ($purple.x | Measure-Object -Minimum).Minimum
+            $x1 = ($purple.x | Measure-Object -Maximum).Maximum
+            $y0 = ($purple.y | Measure-Object -Minimum).Minimum
+            $y1 = ($purple.y | Measure-Object -Maximum).Maximum
+            $darkRows = [System.Collections.Generic.List[int]]::new()
+            for ($y = $y0 + 3; $y -le $y1 - 3; $y++) {
+              $dark = 0
+              for ($x = $x0 + 3; $x -le $x1 - 3; $x++) {
+                $pixel = $bitmap.GetPixel($x, $y)
+                if ($pixel.R -lt 100 -and $pixel.G -lt 100 -and $pixel.B -lt 100) { $dark++ }
+              }
+              if ($dark -gt 0) { $darkRows.Add($y) }
+            }
+            $longInputBands = 0
+            $previous = -2
+            foreach ($row in $darkRows) {
+              if ($row -gt $previous + 1) { $longInputBands++ }
+              $previous = $row
+            }
+            if ($longInputBands -ne 1) {
+              throw "Long single-line input painted $longInputBands dark text bands; expected exactly one"
+            }
+          } finally {
+            $bitmap.Dispose()
+          }
           if ($caretFocused.sha256 -eq $caretBlurred.sha256) {
             throw 'Focused input did not visibly expose a native caret'
           }
@@ -331,6 +379,9 @@ jobs:
             native_keyboard_result = $keyboardResult
             native_caret_result = $caretResult
             native_navigation_result = $navigationResult
+            single_line_input_result = $longInputResult
+            single_line_input_text_bands = $longInputBands
+            single_line_input_screenshot = $longInputShot
             visible_caret_changed_png = $true
             caret_screenshots = @($caretFocused, $caretBlurred, $caretEdited)
             screenshots = $frames
@@ -383,6 +434,7 @@ jobs:
             if ($frame.native_keyboard_result) { $lines.Add("Native keyboard: **$($frame.native_keyboard_result)**") }
             if ($frame.native_caret_result) { $lines.Add("Native pointer caret: **$($frame.native_caret_result)**") }
             if ($frame.native_navigation_result) { $lines.Add("Native text navigation: **$($frame.native_navigation_result)**") }
+            if ($frame.single_line_input_result) { $lines.Add("Single-line input paint: **$($frame.single_line_input_result)** ($($frame.single_line_input_text_bands) text band)") }
             if ($frame.visible_caret_changed_png) { $lines.Add('Visible input caret: **focused/blurred PNGs differ**') }
             if ($frame.caret_screenshots) {
               $lines.Add('')
