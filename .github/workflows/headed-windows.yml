@@ -324,6 +324,48 @@ jobs:
           }
           $bootstrapShot = Get-PngInfo 'bootstrap-after.png'
 
+          $googleLayoutResultPath = Get-EvidenceFile 'google-layout-result.txt'
+          $googleLayoutResult = (Get-Content $googleLayoutResultPath -Raw).Trim()
+          if ($googleLayoutResult -ne 'GOOGLE_LAYOUT_OK') {
+            throw "Unexpected Google-layout marker: $googleLayoutResult"
+          }
+          $googleLayoutShot = Get-PngInfo 'google-layout.png'
+          $googleGeometryPath = Get-EvidenceFile 'google-layout-geometry.json'
+          $googleGeometry = Get-Content $googleGeometryPath -Raw | ConvertFrom-Json
+          foreach ($property in @('header_width','header_height','search_x','search_y','search_width','search_height','actions_x','actions_width','tabs_y','tabs_height','results_x','results_y','results_width')) {
+            if ($null -eq $googleGeometry.PSObject.Properties[$property]) { throw "google-layout-geometry.json is missing $property" }
+          }
+          if ([double]$googleGeometry.header_width -lt 1180) { throw "Google-like header collapsed to $($googleGeometry.header_width)px" }
+          if ([double]$googleGeometry.search_width -lt 670 -or [double]$googleGeometry.search_width -gt 710) { throw "Google-like search box width is $($googleGeometry.search_width)px" }
+          if ([double]$googleGeometry.actions_x -lt 1080) { throw "Google-like right actions did not stay right-aligned: x=$($googleGeometry.actions_x)" }
+          if ([double]$googleGeometry.results_x -lt 130 -or [double]$googleGeometry.results_x -gt 180) { throw "Google-like results column drifted: x=$($googleGeometry.results_x)" }
+
+          # Pixel oracle: locate the exact Google-blue search-shell border and
+          # reject a wrapped/collapsed/vertically exploded search control.
+          Add-Type -AssemblyName System.Drawing
+          $googleLayoutPath = Get-EvidenceFile 'google-layout.png'
+          $googleBitmap = [System.Drawing.Bitmap]::new($googleLayoutPath)
+          try {
+            $blue = [System.Collections.Generic.List[object]]::new()
+            for ($y = 90; $y -le [Math]::Min($googleBitmap.Height - 1, 260); $y++) {
+              for ($x = 80; $x -le [Math]::Min($googleBitmap.Width - 1, 980); $x++) {
+                $pixel = $googleBitmap.GetPixel($x, $y)
+                if ($pixel.R -eq 66 -and $pixel.G -eq 133 -and $pixel.B -eq 244) { $blue.Add([pscustomobject]@{ x = $x; y = $y }) }
+              }
+            }
+            if ($blue.Count -lt 400) { throw 'Could not locate enough Google-blue search-border pixels in google-layout.png' }
+            $googleBlueX0 = ($blue.x | Measure-Object -Minimum).Minimum
+            $googleBlueX1 = ($blue.x | Measure-Object -Maximum).Maximum
+            $googleBlueY0 = ($blue.y | Measure-Object -Minimum).Minimum
+            $googleBlueY1 = ($blue.y | Measure-Object -Maximum).Maximum
+            $googleBlueWidth = $googleBlueX1 - $googleBlueX0 + 1
+            $googleBlueHeight = $googleBlueY1 - $googleBlueY0 + 1
+            if ($googleBlueWidth -lt 650 -or $googleBlueWidth -gt 740) { throw "Google search border pixel width is $googleBlueWidth" }
+            if ($googleBlueHeight -lt 40 -or $googleBlueHeight -gt 60) { throw "Google search border pixel height is $googleBlueHeight" }
+          } finally {
+            $googleBitmap.Dispose()
+          }
+
           $frames = @(
             Get-PngInfo 'frame-before.png'
             Get-PngInfo 'frame-typed.png'
@@ -387,6 +429,11 @@ jobs:
             screenshots = $frames
             google_bootstrap_result = $bootstrapResult
             google_bootstrap_screenshot = $bootstrapShot
+            google_layout_result = $googleLayoutResult
+            google_layout_geometry = $googleGeometry
+            google_layout_screenshot = $googleLayoutShot
+            google_layout_blue_border_width = $googleBlueWidth
+            google_layout_blue_border_height = $googleBlueHeight
           }
           $frameSummary | ConvertTo-Json -Depth 4 |
             Set-Content -Encoding utf8 (Join-Path $artifacts 'frame-summary.json')

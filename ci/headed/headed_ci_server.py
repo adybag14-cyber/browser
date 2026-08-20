@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import pathlib
 import signal
 import threading
@@ -80,6 +81,63 @@ addEventListener('load',function(){
 });
 </script></body></html>"""
 
+
+GOOGLE_LAYOUT = b"""<!doctype html><html><head><meta charset='utf-8'><title>Google results layout regression</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:#202124;font-family:Arial,sans-serif}
+.search-header{display:flex;align-items:center;gap:24px;width:100%;height:88px;padding:18px 28px;border-bottom:1px solid #dadce0;background:#fff}
+.logo{width:92px;font-size:28px;font-weight:700;white-space:nowrap}
+.search-shell{display:flex;align-items:center;width:690px;height:48px;padding:0 14px;border:2px solid rgb(66,133,244);border-radius:24px;background:#fff}
+#google-query{display:block;width:590px;height:40px;border:0;background:#fff;font-size:16px;padding:0 8px;color:#202124}
+.search-tools{display:flex;align-items:center;gap:8px;width:56px;height:32px}
+.tool{display:block;width:24px;height:24px;border-radius:12px;background:#f1f3f4}
+.actions{display:flex;align-items:center;gap:12px;width:104px;height:40px;margin-left:auto}
+.action{display:block;width:40px;height:40px;border-radius:20px;background:#f1f3f4}
+.tabs{display:flex;align-items:center;gap:28px;width:100%;height:50px;padding-left:144px;border-bottom:1px solid #dadce0;background:#fff}
+.tab{height:50px;padding:15px 4px 10px 4px;font-size:14px;color:#5f6368}
+.tab.active{color:#1a73e8;border-bottom:3px solid #1a73e8}
+.results{display:block;width:660px;margin-left:144px;padding:22px 0 40px 16px;border-left:4px solid rgb(52,168,83)}
+.meta{font-size:13px;color:#4d5156;margin-bottom:4px}
+.result{display:block;width:620px;margin-bottom:26px}
+.result h2{font-size:20px;font-weight:400;color:#1a0dab;margin:4px 0 5px 0}
+.result p{font-size:14px;line-height:21px;margin:0;color:#4d5156}
+#layout-state{display:block;width:620px;height:28px;padding:5px 8px;margin-bottom:14px;background:#f8f9fa;border:1px solid #dadce0;font-size:12px}
+</style></head><body>
+<header class='search-header' id='search-header'>
+  <div class='logo'>Google</div>
+  <div class='search-shell' id='search-shell'><input id='google-query' value='brown fox'><div class='search-tools'><span class='tool'></span><span class='tool'></span></div></div>
+  <div class='actions' id='header-actions'><span class='action'></span><span class='action'></span></div>
+</header>
+<nav class='tabs' id='search-tabs'><span class='tab active'>All</span><span class='tab'>Images</span><span class='tab'>News</span><span class='tab'>Videos</span><span class='tab'>More</span></nav>
+<main class='results' id='search-results'>
+  <div id='layout-state'>MEASURING SEARCH LAYOUT</div>
+  <article class='result'><div class='meta'>example.com / animals</div><h2>Brown fox - example result</h2><p>The quick brown fox jumps over the lazy dog. This deterministic result checks search-page line flow and stable column geometry.</p></article>
+  <article class='result'><div class='meta'>example.org / research</div><h2>Fox behaviour and habitat</h2><p>Second result text keeps the search column populated so a bad flex header cannot hide behind an otherwise empty page.</p></article>
+  <article class='result'><div class='meta'>example.net / reference</div><h2>Quick brown fox reference</h2><p>Search results remain aligned under the navigation tabs at a fixed readable width.</p></article>
+</main>
+<script>
+function n(v){return Math.round(v)}
+function reportLayout(){
+  var h=document.getElementById('search-header').getBoundingClientRect();
+  var s=document.getElementById('search-shell').getBoundingClientRect();
+  var a=document.getElementById('header-actions').getBoundingClientRect();
+  var t=document.getElementById('search-tabs').getBoundingClientRect();
+  var r=document.getElementById('search-results').getBoundingClientRect();
+  var q='header_x='+n(h.x)+'&header_y='+n(h.y)+'&header_width='+n(h.width)+'&header_height='+n(h.height)+
+    '&search_x='+n(s.x)+'&search_y='+n(s.y)+'&search_width='+n(s.width)+'&search_height='+n(s.height)+
+    '&actions_x='+n(a.x)+'&actions_y='+n(a.y)+'&actions_width='+n(a.width)+'&actions_height='+n(a.height)+
+    '&tabs_x='+n(t.x)+'&tabs_y='+n(t.y)+'&tabs_width='+n(t.width)+'&tabs_height='+n(t.height)+
+    '&results_x='+n(r.x)+'&results_y='+n(r.y)+'&results_width='+n(r.width)+'&results_height='+n(r.height);
+  var sane=h.width>=1180&&h.height>=80&&h.height<=96&&s.x>=120&&s.x<=220&&s.width>=670&&s.width<=710&&s.height>=44&&s.height<=52&&
+    a.x>=1080&&a.x+a.width<=h.x+h.width-10&&t.y>=h.y+h.height-4&&r.y>=t.y+t.height-4&&r.x>=130&&r.x<=180&&r.width>=640&&r.width<=680;
+  document.getElementById('layout-state').textContent=sane?'SEARCH LAYOUT GEOMETRY OK':'SEARCH LAYOUT GEOMETRY BAD';
+  if(sane||window.__layoutAttempts>=10){fetch((sane?'/google-layout-ok':'/google-layout-fail')+'?'+q,{method:'POST'}).catch(function(){})}
+  return sane;
+}
+addEventListener('load',function(){window.__layoutAttempts=0;function check(){window.__layoutAttempts++;if(!reportLayout()&&window.__layoutAttempts<10){setTimeout(check,500)}}setTimeout(check,400)});
+</script></body></html>"""
+
 # A deterministic page deliberately shaped more like a search/results site:
 # many href resolutions plus foreground/background image request contexts. It
 # catches native-paint scratch accidentally escaping into Frame.call/local arenas.
@@ -119,6 +177,8 @@ class Handler(BaseHTTPRequestHandler):
     keyboard_value_file: str | None = None
     caret_value_file: str | None = None
     navigation_state_file: str | None = None
+    google_layout_file: str | None = None
+    google_layout_fail_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -149,6 +209,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, GOOGLE_BOOTSTRAP, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-bootstrap-result.html":
             return self._body(200, GOOGLE_BOOTSTRAP_RESULT, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/google-layout.html":
+            return self._body(200, GOOGLE_LAYOUT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/rich.html":
             return self._body(200, RICH, "text/html; charset=utf-8")
         if port == 18773 and self.path.startswith("/asset.png"):
@@ -190,6 +252,16 @@ class Handler(BaseHTTPRequestHandler):
                 path = pathlib.Path(self.navigation_state_file)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n".join(fields) + "\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path in ("/google-layout-ok", "/google-layout-fail"):
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            payload = {name: values[0] if values else "" for name, values in params.items()}
+            payload["status"] = "ok" if parsed.path.endswith("-ok") else "fail"
+            target = self.google_layout_file if payload["status"] == "ok" else self.google_layout_fail_file
+            if target:
+                path = pathlib.Path(target)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
         if self.server.server_port == 18773 and self.path == "/bootstrap-ok":
             if self.bootstrap_ok_file:
@@ -238,6 +310,8 @@ def main() -> int:
     parser.add_argument("--keyboard-value-file")
     parser.add_argument("--caret-value-file")
     parser.add_argument("--navigation-state-file")
+    parser.add_argument("--google-layout-file")
+    parser.add_argument("--google-layout-fail-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
@@ -247,6 +321,8 @@ def main() -> int:
     Handler.keyboard_value_file = args.keyboard_value_file
     Handler.caret_value_file = args.caret_value_file
     Handler.navigation_state_file = args.navigation_state_file
+    Handler.google_layout_file = args.google_layout_file
+    Handler.google_layout_fail_file = args.google_layout_fail_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

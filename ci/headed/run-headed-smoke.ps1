@@ -29,7 +29,9 @@ $bootstrapCookieMissing = Join-Path $state 'bootstrap-cookie-missing.txt'
 $keyboardValue = Join-Path $state 'keyboard-value.txt'
 $caretValue = Join-Path $state 'caret-value.txt'
 $navigationState = Join-Path $state 'navigation-state.txt'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState -Force -ErrorAction SilentlyContinue
+$googleLayoutGeometry = Join-Path $state 'google-layout-geometry.json'
+$googleLayoutFail = Join-Path $state 'google-layout-fail.json'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -200,7 +202,9 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--bootstrap-cookie-missing-file', $bootstrapCookieMissing,
     '--keyboard-value-file', $keyboardValue,
     '--caret-value-file', $caretValue,
-    '--navigation-state-file', $navigationState
+    '--navigation-state-file', $navigationState,
+    '--google-layout-file', $googleLayoutGeometry,
+    '--google-layout-fail-file', $googleLayoutFail
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -415,6 +419,83 @@ try {
         finally {
             Stop-Browser $browser $hwnd
         }
+
+        # Search-page layout regression: this fixture deliberately uses the
+        # same flex-row + auto-margin structure as a desktop search header.
+        # Its script reports CSSOM geometry after native presentation has had
+        # time to cache real boxes, then CI also inspects the rendered pixels.
+        Remove-Item $googleLayoutGeometry,$googleLayoutFail -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'google-layout-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'google-layout.stdout.log'
+        $stderr = Join-Path $Artifacts 'google-layout.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/google-layout.html','--width','1280','--height','900','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            $deadline = [DateTime]::UtcNow.AddSeconds(15)
+            do {
+                if (Test-Path $googleLayoutFail) {
+                    $bad = Get-Content $googleLayoutFail -Raw
+                    throw "Google-layout CSSOM geometry failed: $bad"
+                }
+                if (Test-Path $googleLayoutGeometry) { break }
+                Start-Sleep -Milliseconds 100
+            } while ([DateTime]::UtcNow -lt $deadline)
+            [void](Wait-File $googleLayoutGeometry 2 2)
+            Copy-Item $googleLayoutGeometry (Join-Path $Artifacts 'google-layout-geometry.json') -Force
+            Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'google-layout.png')
+            'GOOGLE_LAYOUT_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'google-layout-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Best-effort live Google evidence. External anti-abuse/network state is
+        # intentionally non-gating, but we always try to capture the real native
+        # window and record CPU/RSS so a busy navigation loop remains visible.
+        $liveProfile = Join-Path $state 'google-live-profile'
+        Remove-Item $liveProfile -Recurse -Force -ErrorAction SilentlyContinue
+        $liveStdout = Join-Path $Artifacts 'google-live.stdout.log'
+        $liveStderr = Join-Path $Artifacts 'google-live.stderr.log'
+        $liveArgs = @('browse','https://www.google.com/search?q=brown+fox&hl=en','--width','1280','--height','900','--enable-external-stylesheets','--profile-dir',$liveProfile,'--http-timeout','10000','--watchdog-ms','15000')
+        $live = $null
+        $liveHwnd = [IntPtr]::Zero
+        $liveSamples = New-Object System.Collections.Generic.List[object]
+        $liveStatus = 'not-started'
+        $liveError = ''
+        try {
+            $live = Start-Process -FilePath $Executable -ArgumentList $liveArgs -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $liveStdout -RedirectStandardError $liveStderr
+            $liveHwnd = Get-LightpandaWindow $live.Id 15
+            $liveStatus = 'window-open'
+            for ($i=0; $i -lt 16; $i++) {
+                Start-Sleep -Milliseconds 500
+                if ($live.HasExited) { break }
+                $p = Get-Process -Id $live.Id -ErrorAction Stop
+                $liveSamples.Add([pscustomobject]@{ elapsed_ms = (($i + 1) * 500); rss_mb = [math]::Round($p.WorkingSet64 / 1MB, 2); private_mb = [math]::Round($p.PrivateMemorySize64 / 1MB, 2); cpu_seconds = [math]::Round($p.CPU, 3) })
+            }
+            [void](Request-PngEvidence $liveHwnd $Artifacts 'google-live.png')
+            $liveStatus = 'captured'
+        }
+        catch {
+            $liveStatus = 'capture-error'
+            $liveError = $_.Exception.Message
+        }
+        finally {
+            if ($live -and -not $live.HasExited) {
+                Stop-Process -Id $live.Id -Force -ErrorAction SilentlyContinue
+                [void]$live.WaitForExit(5000)
+            }
+        }
+        $livePeakRss = if ($liveSamples.Count -gt 0) { ($liveSamples | Measure-Object rss_mb -Maximum).Maximum } else { 0 }
+        $livePeakPrivate = if ($liveSamples.Count -gt 0) { ($liveSamples | Measure-Object private_mb -Maximum).Maximum } else { 0 }
+        $liveCpuDelta = if ($liveSamples.Count -gt 1) { [math]::Round([double]$liveSamples[$liveSamples.Count - 1].cpu_seconds - [double]$liveSamples[0].cpu_seconds, 3) } else { 0 }
+        $liveElapsed = if ($liveSamples.Count -gt 1) { ([double]$liveSamples[$liveSamples.Count - 1].elapsed_ms - [double]$liveSamples[0].elapsed_ms) / 1000.0 } else { 0 }
+        $liveCorePct = if ($liveElapsed -gt 0) { [math]::Round(($liveCpuDelta / $liveElapsed) * 100.0, 1) } else { 0 }
+        [pscustomobject]@{ status = $liveStatus; error = $liveError; samples = $liveSamples.Count; peak_rss_mb = $livePeakRss; peak_private_mb = $livePeakPrivate; cpu_delta_seconds = $liveCpuDelta; elapsed_seconds = $liveElapsed; one_core_cpu_percent = $liveCorePct; screenshot = (Test-Path (Join-Path $Artifacts 'google-live.png')) } |
+            ConvertTo-Json -Depth 3 | Set-Content -Encoding utf8 (Join-Path $Artifacts 'google-live-summary.json')
     }
 
     if ($Mode -in @('Memory','All')) {

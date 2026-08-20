@@ -107,6 +107,10 @@ pub const LayoutBox = struct {
 };
 pub const LayoutBoxLookup = std.AutoHashMapUnmanaged(*Element, LayoutBox);
 
+fn cachedLayoutBox(self: *const Element, frame: *Frame) ?LayoutBox {
+    return self.ownerFrame(frame)._element_layout_boxes.get(@constCast(self));
+}
+
 pub const Namespace = enum(u8) {
     html,
     svg,
@@ -1390,6 +1394,15 @@ pub fn getElementDimensions(self: *Element, frame: *Frame) Dimensions {
         }
     }
 
+    // Once headed painting has produced a real box, geometry APIs should use
+    // that box instead of the synthetic fallback dimensions above. Keep the
+    // explicit flags unchanged: they describe author sizing, not whether a
+    // native layout result is available.
+    if (self.cachedLayoutBox(frame)) |box| {
+        dims.width = @floatFromInt(@max(@as(i32, 0), box.width));
+        dims.height = @floatFromInt(@max(@as(i32, 0), box.height));
+    }
+
     return dims;
 }
 
@@ -1453,11 +1466,31 @@ pub fn boundingClientRectValues(self: *Element, frame: *Frame) DOMRect.Data {
 
 // Some cases need the bounding rect but have already done the visibility check.
 pub fn boundingClientRectValuesForVisible(self: *Element, frame: *Frame) DOMRect.Data {
-    const y = calculateDocumentPosition(self.asNode());
-    const dims = self.getElementDimensions(frame);
+    const owner = self.ownerFrame(frame);
+    const dims = self.getElementDimensions(owner);
+    var x = calculateSiblingPosition(self.asNode());
+    var y = calculateDocumentPosition(self.asNode());
 
-    // Use sibling position for x coordinate to ensure siblings have different x values
-    const x = calculateSiblingPosition(self.asNode());
+    // Headed rendering records the box it actually paints. Reuse that box at
+    // the CSSOM-view boundary so page JavaScript and native hit-testing agree
+    // instead of mixing real layout with the legacy synthetic 5x5 geometry.
+    if (self.cachedLayoutBox(owner)) |box| {
+        x = @floatFromInt(box.x);
+        y = @floatFromInt(box.y);
+    }
+
+    // Layout boxes are document coordinates. Convert them to client
+    // coordinates by applying element scroll offsets and the owning window's
+    // scroll position.
+    var ancestor = self.asNode().parentElement();
+    while (ancestor) |current| : (ancestor = current.parentElement()) {
+        if (owner._element_scroll_positions.get(current)) |scroll_position| {
+            x -= @floatFromInt(scroll_position.x);
+            y -= @floatFromInt(scroll_position.y);
+        }
+    }
+    x -= @floatFromInt(owner.window.getScrollX());
+    y -= @floatFromInt(owner.window.getScrollY());
 
     return .{
         .x = x,

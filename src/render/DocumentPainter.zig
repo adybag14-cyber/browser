@@ -170,11 +170,19 @@ const FlexChildMeasure = struct {
     node: *Node,
     width: i32,
     height: i32,
+    margin_left: i32 = 0,
+    margin_right: i32 = 0,
+    auto_margin_left: bool = false,
+    auto_margin_right: bool = false,
     order: i32 = 0,
     flex_grow: f32 = 0,
     flex_shrink: f32 = 1,
     align_self: FlexCrossAlignment = .auto,
     source_index: usize = 0,
+
+    fn outerWidth(self: FlexChildMeasure) i32 {
+        return self.margin_left + self.width + self.margin_right;
+    }
 };
 
 const FlexLineMeasure = struct {
@@ -1584,7 +1592,11 @@ const Painter = struct {
                 .opts = self.opts,
                 .list = &temp_list,
                 .paint_text_styles = self.paint_text_styles,
-                .cache_layout_boxes = false,
+                // This pass uses final absolute child coordinates and is the
+                // actual block-flow paint, not a measurement pass. Preserve
+                // layout-box caching so descendant CSSOM geometry matches the
+                // display list. Measurement painters inherit false here.
+                .cache_layout_boxes = self.cache_layout_boxes,
             };
             const height = try temp_painter.paintBlockChildrenWithFloats(
                 element,
@@ -2206,6 +2218,10 @@ const Painter = struct {
             var order: i32 = 0;
             var min_width: i32 = 0;
             var max_width: ?i32 = null;
+            var margin_left: i32 = 0;
+            var margin_right: i32 = 0;
+            var auto_margin_left = false;
+            var auto_margin_right = false;
             if (child.is(Element)) |child_element| {
                 const child_style = try self.page.window.getComputedStyle(child_element, null, self.page);
                 const child_decl = child_style.asCSSStyleDeclaration();
@@ -2216,6 +2232,15 @@ const Painter = struct {
                 order = resolveFlexOrder(child_decl, self.page);
                 min_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width) orelse 0;
                 max_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width);
+
+                const child_margins = resolveEdgeSizes(child_decl, self.page, "margin");
+                const margin_shorthand = child_decl.getPropertyValue("margin", self.page);
+                auto_margin_left = isCssAuto(child_decl.getPropertyValue("margin-left", self.page)) or
+                    edgeShorthandContainsAuto(margin_shorthand, .left);
+                auto_margin_right = isCssAuto(child_decl.getPropertyValue("margin-right", self.page)) or
+                    edgeShorthandContainsAuto(margin_shorthand, .right);
+                margin_left = if (auto_margin_left) 0 else child_margins.left;
+                margin_right = if (auto_margin_right) 0 else child_margins.right;
             }
 
             const measurement = try self.measureNodePaintedBox(child, flex_basis orelse content_width);
@@ -2231,6 +2256,10 @@ const Painter = struct {
                 .node = child,
                 .width = std.math.clamp(measured_width, @as(i32, 0), content_width),
                 .height = measurement.height,
+                .margin_left = margin_left,
+                .margin_right = margin_right,
+                .auto_margin_left = auto_margin_left,
+                .auto_margin_right = auto_margin_right,
                 .order = order,
                 .flex_grow = flex_grow,
                 .flex_shrink = flex_shrink,
@@ -2252,10 +2281,11 @@ const Painter = struct {
         var line_height: i32 = 0;
         var line_count: usize = 0;
         for (measured_children.items, 0..) |child_measure, index| {
+            const child_outer_width = child_measure.outerWidth();
             const next_width = if (line_count == 0)
-                child_measure.width
+                child_outer_width
             else
-                line_width + main_gap + child_measure.width;
+                line_width + main_gap + child_outer_width;
 
             if (wrap_enabled and line_count > 0 and next_width > content_width) {
                 try lines.append(self.allocator, .{
@@ -2265,7 +2295,7 @@ const Painter = struct {
                     .height = line_height,
                 });
                 line_start = index;
-                line_width = child_measure.width;
+                line_width = child_outer_width;
                 line_height = child_measure.height;
                 line_count = 1;
                 continue;
@@ -2316,6 +2346,7 @@ const Painter = struct {
                     padding.top + content_height + padding.bottom,
             ),
         };
+        try self.recordElementLayoutBox(element, rect);
         const container_content_height = @max(@as(i32, 0), rect.height - padding.vertical());
         const bg = parseCssColor(resolveCssPropertyValue(decl, self.page, element, "background-color"));
         const corner_radius = resolveBorderRadiusPx(decl, self.page, rect.width, rect.height, self.opts.viewport_width, self.opts.viewport_height);
@@ -2413,8 +2444,9 @@ const Painter = struct {
                 }
             }
 
-            for (resolved_widths.items) |child_width| {
-                line_width_used += child_width;
+            for (resolved_widths.items, 0..) |child_width, local_index| {
+                const child_measure = measured_children.items[line.start_index + local_index];
+                line_width_used += child_measure.margin_left + child_width + child_measure.margin_right;
             }
             if (item_count > 1) {
                 line_width_used += main_gap * (item_count - 1);
@@ -2424,6 +2456,23 @@ const Painter = struct {
             var child_x = rect.x + padding.left;
             var gap = main_gap;
             var total_flex_grow: f32 = 0;
+            var auto_margin_count: i32 = 0;
+            var grow_index = line.start_index;
+            while (grow_index < line.end_index) : (grow_index += 1) {
+                const child_measure = measured_children.items[grow_index];
+                total_flex_grow += child_measure.flex_grow;
+                if (child_measure.auto_margin_left) auto_margin_count += 1;
+                if (child_measure.auto_margin_right) auto_margin_count += 1;
+            }
+            // Flex main-axis auto margins absorb positive free space after
+            // flexible lengths and before justify-content. A classic search
+            // header uses margin-left:auto to pin account/actions to the far
+            // edge; ignoring this is enough to visibly garble the whole row.
+            const auto_margin_space = if (free_horizontal_space > 0 and total_flex_grow <= 0 and auto_margin_count > 0)
+                @divTrunc(free_horizontal_space, auto_margin_count)
+            else
+                0;
+            const justify_free_space = if (total_flex_grow > 0 or auto_margin_count > 0) 0 else free_horizontal_space;
 
             const justify_start = std.ascii.eqlIgnoreCase(justify_content, "flex-start") or
                 std.ascii.eqlIgnoreCase(justify_content, "start") or
@@ -2431,26 +2480,21 @@ const Painter = struct {
                 justify_content.len == 0;
             const justify_end = std.ascii.eqlIgnoreCase(justify_content, "flex-end") or std.ascii.eqlIgnoreCase(justify_content, "end");
             if (std.ascii.eqlIgnoreCase(justify_content, "center")) {
-                child_x += @divTrunc(free_horizontal_space, 2);
+                child_x += @divTrunc(justify_free_space, 2);
             } else if (justify_start) {
-                if (reverse_main_axis) child_x += free_horizontal_space;
+                if (reverse_main_axis) child_x += justify_free_space;
             } else if (justify_end) {
-                if (!reverse_main_axis) child_x += free_horizontal_space;
+                if (!reverse_main_axis) child_x += justify_free_space;
             } else if (std.ascii.eqlIgnoreCase(justify_content, "space-between") and item_count > 1) {
-                gap += @divTrunc(free_horizontal_space, item_count - 1);
+                gap += @divTrunc(justify_free_space, item_count - 1);
             } else if (std.ascii.eqlIgnoreCase(justify_content, "space-around") and item_count > 0) {
-                const extra = @divTrunc(free_horizontal_space, item_count);
+                const extra = @divTrunc(justify_free_space, item_count);
                 child_x += @divTrunc(extra, 2);
                 gap += extra;
             } else if (std.ascii.eqlIgnoreCase(justify_content, "space-evenly") and item_count > 0) {
-                const extra = @divTrunc(free_horizontal_space, item_count + 1);
+                const extra = @divTrunc(justify_free_space, item_count + 1);
                 child_x += extra;
                 gap += extra;
-            }
-
-            var grow_index = line.start_index;
-            while (grow_index < line.end_index) : (grow_index += 1) {
-                total_flex_grow += measured_children.items[grow_index].flex_grow;
             }
 
             var remaining_grow_space: i32 = free_horizontal_space;
@@ -2460,6 +2504,9 @@ const Painter = struct {
             while (line_child_index < line.end_index) : (line_child_index += 1) {
                 const child_measure = measured_children.items[line_child_index];
                 var child_width = resolved_widths.items[line_child_index - line.start_index];
+                if (child_measure.auto_margin_left and auto_margin_space > 0) {
+                    child_x += auto_margin_space;
+                }
                 if (total_flex_grow > 0 and free_horizontal_space > 0 and child_measure.flex_grow > 0) {
                     const extra_width = if (line_child_index + 1 == line.end_index or remaining_flex_grow <= child_measure.flex_grow)
                         remaining_grow_space
@@ -2497,7 +2544,10 @@ const Painter = struct {
                     self.forced_item_width = previous_forced_width;
                     self.forced_item_height = previous_forced_height;
                 }
-                child_x += child_width;
+                child_x += child_measure.margin_left + child_width + child_measure.margin_right;
+                if (child_measure.auto_margin_right and auto_margin_space > 0) {
+                    child_x += auto_margin_space;
+                }
                 if (line_child_index + 1 < line.end_index) {
                     child_x += gap;
                 }
@@ -8603,6 +8653,28 @@ test "paintDocument shrinks flex row items with flex-shrink under overflow" {
     try std.testing.expect(gray.x < blue.x);
 }
 
+test "paintDocument consumes flex row auto margins before justify-content" {
+    var page = try testing.pageTest("page/flex_auto_margin_layout.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 760,
+        .viewport_height = 320,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const shell = (try page.window._document.querySelector(.wrap(".auto-shell"), page)).?;
+    const search = (try page.window._document.querySelector(.wrap(".auto-search"), page)).?;
+    const actions = (try page.window._document.querySelector(.wrap(".auto-actions"), page)).?;
+    const shell_box = page._element_layout_boxes.get(shell) orelse return error.AutoMarginShellMissing;
+    const search_box = page._element_layout_boxes.get(search) orelse return error.AutoMarginSearchMissing;
+    const actions_box = page._element_layout_boxes.get(actions) orelse return error.AutoMarginActionsMissing;
+
+    try std.testing.expect(search_box.x < actions_box.x);
+    try std.testing.expect(actions_box.x >= shell_box.x + 500);
+    try std.testing.expect(actions_box.x + actions_box.width <= shell_box.x + shell_box.width);
+}
+
 test "paintDocument applies align-content space-between across wrapped flex rows" {
     var page = try testing.pageTest("page/flex_align_content_layout.html");
     defer page._session.removePage();
@@ -8639,6 +8711,17 @@ test "paintDocument applies align-content space-between across wrapped flex rows
     try std.testing.expect(green.y >= red.y + red.height + 80);
     try std.testing.expect(green.x >= 110);
     try std.testing.expect(green.x <= 180);
+
+    // Flex rows are common in search/navigation UIs. Their CSSOM geometry
+    // must be the exact box the headed painter cached, not synthetic tree
+    // coordinates.
+    const toolbar = (try page.window._document.querySelector(.wrap(".toolbar"), page)).?;
+    const toolbar_box = page._element_layout_boxes.get(toolbar) orelse return error.FlexRowLayoutBoxMissing;
+    const toolbar_rect = toolbar.boundingClientRectValues(page);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(toolbar_box.x)), toolbar_rect.x);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(toolbar_box.y)), toolbar_rect.y);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(toolbar_box.width)), toolbar_rect.width);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(toolbar_box.height)), toolbar_rect.height);
 }
 
 test "paintDocument honors align-self on flex row items" {
@@ -9968,6 +10051,13 @@ test "paintDocument sizes submit inputs from label instead of generic text-input
     try std.testing.expect(text_input.width >= 160);
     try std.testing.expect(submit_input.width <= 100);
     try std.testing.expect(submit_input.width < text_input.width);
+
+    const search_box = (try page.window._document.querySelector(.wrap("#search-box"), page)).?;
+    const rect = search_box.boundingClientRectValues(page);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(text_input.x)), rect.x);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(text_input.y)), rect.y);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(text_input.width)), rect.width);
+    try std.testing.expectEqual(@as(f64, @floatFromInt(text_input.height)), rect.height);
 }
 
 test "paintDocument ignores hidden and script descendants when sizing inline submit wrappers" {
