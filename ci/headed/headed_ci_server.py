@@ -160,6 +160,13 @@ body{{font-family:Arial,sans-serif;margin:16px;background:#f6f7f8;color:#172033}
 <section id='results'>{links}</section><div class='assets'>{images}</div></body></html>"""
     return html.encode("utf-8")
 
+FIXTURE_ROOT = pathlib.Path(__file__).resolve().parents[2] / "src" / "browser" / "tests" / "page"
+
+
+def _fixture(name: str) -> bytes:
+    return (FIXTURE_ROOT / name).read_bytes()
+
+
 RICH = _rich_page()
 # Opaque 8x8 PNG; query strings make request URLs distinct while bytes remain tiny.
 ASSET_PNG = base64.b64decode(
@@ -179,6 +186,8 @@ class Handler(BaseHTTPRequestHandler):
     navigation_state_file: str | None = None
     google_layout_file: str | None = None
     google_layout_fail_file: str | None = None
+    wikipedia_portal_file: str | None = None
+    wikipedia_search_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -211,6 +220,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, GOOGLE_BOOTSTRAP_RESULT, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/google-layout.html":
             return self._body(200, GOOGLE_LAYOUT, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/wikipedia-portal.html":
+            return self._body(200, _fixture("wikipedia_portal_layout.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/wikipedia-search.html":
+            return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/rich.html":
             return self._body(200, RICH, "text/html; charset=utf-8")
         if port == 18773 and self.path.startswith("/asset.png"):
@@ -252,6 +265,15 @@ class Handler(BaseHTTPRequestHandler):
                 path = pathlib.Path(self.navigation_state_file)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n".join(fields) + "\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path in ("/wikipedia-portal-geometry", "/wikipedia-search-geometry"):
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            payload = {name: values[0] if values else "" for name, values in params.items()}
+            target = self.wikipedia_portal_file if parsed.path.endswith("portal-geometry") else self.wikipedia_search_file
+            if target:
+                path = pathlib.Path(target)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path in ("/google-layout-ok", "/google-layout-fail"):
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
@@ -312,6 +334,8 @@ def main() -> int:
     parser.add_argument("--navigation-state-file")
     parser.add_argument("--google-layout-file")
     parser.add_argument("--google-layout-fail-file")
+    parser.add_argument("--wikipedia-portal-file")
+    parser.add_argument("--wikipedia-search-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
@@ -323,6 +347,8 @@ def main() -> int:
     Handler.navigation_state_file = args.navigation_state_file
     Handler.google_layout_file = args.google_layout_file
     Handler.google_layout_fail_file = args.google_layout_fail_file
+    Handler.wikipedia_portal_file = args.wikipedia_portal_file
+    Handler.wikipedia_search_file = args.wikipedia_search_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:

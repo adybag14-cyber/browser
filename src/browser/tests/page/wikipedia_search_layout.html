@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+:root {
+  --background-color-progressive:#36c;
+  --color-inverted:#fff;
+  --border-radius-base:2px;
+  --border-width-base:1px;
+  --border-style-base:solid;
+  --border-color-base:#a2a9b1;
+  --border-base:var(--border-width-base) var(--border-style-base) var(--border-color-base);
+  --ss-button-z-index:2;
+}
+html { font-size:62.5%; }
+body { margin:0; font-family:Arial,sans-serif; }
+.pure-button { display:inline-block; line-height:normal; white-space:nowrap; text-align:center; box-sizing:border-box; position:relative; min-height:1.92rem; min-width:1.6rem; margin:.16rem 0; border:var(--border-base); border-radius:var(--border-radius-base); padding:.8rem 1.6rem; font-family:inherit; font-size:inherit; font-weight:700; vertical-align:top; }
+.pure-button-primary-progressive { background-color:var(--background-color-progressive); color:var(--color-inverted); }
+.pure-form input[type=search] { display:inline-block; box-sizing:border-box; border:var(--border-base); border-radius:var(--border-radius-base); padding:.8rem; vertical-align:middle; }
+.pure-form fieldset { margin:0; padding:.56rem 0 1.2rem; border:0; }
+.search-container { float:none; max-width:95%; width:540px; margin:4rem auto 1.95rem; text-align:center; vertical-align:middle; }
+.search-container fieldset { word-spacing:-4px; }
+.search-container button { min-height:4.4rem; margin:0; border-radius:0 var(--border-radius-base) var(--border-radius-base) 0; padding:.8rem 1.6rem; font-size:1.6rem; z-index:var(--ss-button-z-index); }
+.search-container button .svg-search-icon { text-indent:-9999px; }
+#searchInput { width:100%; height:4.4rem; border-right-width:0; border-radius:var(--border-radius-base) 0 0 var(--border-radius-base); padding:.8rem 9.6rem .8rem 1.2rem; font-size:1.6rem; line-height:1.6; }
+.search-container .search-input { display:inline-block; position:relative; width:73%; vertical-align:top; }
+.sprite { display:inline-block; vertical-align:middle; }
+.svg-search-icon { width:22px; height:22px; background-color:#fff; }
+</style>
+</head>
+<body>
+<div role="search" class="search-container" id="search-container">
+  <form class="pure-form" id="search-form">
+    <fieldset id="search-fieldset">
+      <div class="search-input" id="search-input">
+        <input id="searchInput" name="search" type="search" size="20" autofocus="autofocus">
+      </div>
+      <button id="search-button" class="pure-button pure-button-primary-progressive" type="submit">
+        <i id="search-icon" class="sprite svg-search-icon">Search</i>
+      </button>
+    </fieldset>
+  </form>
+</div>
+<script>
+function report(){
+  const ids=['search-container','search-fieldset','search-input','searchInput','search-button','search-icon'];
+  const q=[];
+  for(const id of ids){const e=document.getElementById(id),r=e.getBoundingClientRect();q.push(id+'_x='+Math.round(r.x),id+'_y='+Math.round(r.y),id+'_w='+Math.round(r.width),id+'_h='+Math.round(r.height));}
+  q.push('button_bg='+encodeURIComponent(getComputedStyle(document.getElementById('search-button')).getPropertyValue('background-color')), 'root_progressive='+encodeURIComponent(getComputedStyle(document.documentElement).getPropertyValue('--background-color-progressive')), 'button_progressive='+encodeURIComponent(getComputedStyle(document.getElementById('search-button')).getPropertyValue('--background-color-progressive')));
+  fetch('/wikipedia-search-geometry?'+q.join('&'),{method:'POST'}).catch(()=>{});
+}
+addEventListener('load',()=>{setTimeout(report,300);setTimeout(report,1000)});
+</script>
+</body>
+</html>

@@ -536,3 +536,13 @@ test "RulesIterator: top-level semicolons" {
     try testing.expectEqualStrings("p", rule.style.selector);
     try testing.expectEqual(@as(?Rule, null), it.next());
 }
+
+test "DeclarationsIterator preserves custom properties" {
+    var it = parseDeclarationsList("--background-color-progressive:#36c; color: red");
+    const custom = it.next() orelse return error.ExpectedCustomProperty;
+    try std.testing.expectEqualStrings("--background-color-progressive", custom.name);
+    try std.testing.expectEqualStrings("#36c", custom.value);
+    const color = it.next() orelse return error.ExpectedColorProperty;
+    try std.testing.expectEqualStrings("color", color.name);
+    try std.testing.expectEqualStrings("red", color.value);
+}

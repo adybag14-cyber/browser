@@ -31,7 +31,9 @@ $caretValue = Join-Path $state 'caret-value.txt'
 $navigationState = Join-Path $state 'navigation-state.txt'
 $googleLayoutGeometry = Join-Path $state 'google-layout-geometry.json'
 $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail -Force -ErrorAction SilentlyContinue
+$wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
+$wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -204,7 +206,9 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--caret-value-file', $caretValue,
     '--navigation-state-file', $navigationState,
     '--google-layout-file', $googleLayoutGeometry,
-    '--google-layout-fail-file', $googleLayoutFail
+    '--google-layout-fail-file', $googleLayoutFail,
+    '--wikipedia-portal-file', $wikipediaPortalGeometry,
+    '--wikipedia-search-file', $wikipediaSearchGeometry
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -452,6 +456,93 @@ try {
         finally {
             Stop-Browser $browser $hwnd
         }
+
+        # Wikipedia portal regression: root-relative units and absolute
+        # percentage positioning must match the actual desktop portal pattern.
+        Remove-Item $wikipediaPortalGeometry -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'wikipedia-portal-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'wikipedia-portal.stdout.log'
+        $stderr = Join-Path $Artifacts 'wikipedia-portal.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/wikipedia-portal.html','--width','1000','--height','900','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $wikipediaPortalGeometry 15 2)
+            Copy-Item $wikipediaPortalGeometry (Join-Path $Artifacts 'wikipedia-portal-geometry.json') -Force
+            Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'wikipedia-portal.png')
+            'WIKIPEDIA_PORTAL_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-portal-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Wikipedia search regression: inline-flow CSSOM boxes, compact sprite
+        # sizing, rem min-height and CSS custom-property painting are all gated.
+        Remove-Item $wikipediaSearchGeometry -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'wikipedia-search-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'wikipedia-search.stdout.log'
+        $stderr = Join-Path $Artifacts 'wikipedia-search.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/wikipedia-search.html','--width','1000','--height','500','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $wikipediaSearchGeometry 15 2)
+            Copy-Item $wikipediaSearchGeometry (Join-Path $Artifacts 'wikipedia-search-geometry.json') -Force
+            Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'wikipedia-search.png')
+            'WIKIPEDIA_SEARCH_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-search-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Best-effort live Wikipedia evidence. The deterministic fixtures above
+        # are the gate; this capture makes real-site rendering regressions visible.
+        $wikiLiveProfile = Join-Path $state 'wikipedia-live-profile'
+        Remove-Item $wikiLiveProfile -Recurse -Force -ErrorAction SilentlyContinue
+        $wikiLiveStdout = Join-Path $Artifacts 'wikipedia-live.stdout.log'
+        $wikiLiveStderr = Join-Path $Artifacts 'wikipedia-live.stderr.log'
+        $wikiLiveArgs = @('browse','https://www.wikipedia.org/','--width','1280','--height','900','--enable-external-stylesheets','--profile-dir',$wikiLiveProfile,'--http-timeout','10000','--watchdog-ms','15000')
+        $wikiLive = $null
+        $wikiLiveHwnd = [IntPtr]::Zero
+        $wikiLiveSamples = New-Object System.Collections.Generic.List[object]
+        $wikiLiveStatus = 'not-started'
+        $wikiLiveError = ''
+        try {
+            $wikiLive = Start-Process -FilePath $Executable -ArgumentList $wikiLiveArgs -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $wikiLiveStdout -RedirectStandardError $wikiLiveStderr
+            $wikiLiveHwnd = Get-LightpandaWindow $wikiLive.Id 15
+            $wikiLiveStatus = 'window-open'
+            for ($i=0; $i -lt 12; $i++) {
+                Start-Sleep -Milliseconds 500
+                if ($wikiLive.HasExited) { break }
+                $p = Get-Process -Id $wikiLive.Id -ErrorAction Stop
+                $wikiLiveSamples.Add([pscustomobject]@{ elapsed_ms = (($i + 1) * 500); rss_mb = [math]::Round($p.WorkingSet64 / 1MB, 2); private_mb = [math]::Round($p.PrivateMemorySize64 / 1MB, 2); cpu_seconds = [math]::Round($p.CPU, 3) })
+            }
+            [void](Request-PngEvidence $wikiLiveHwnd $Artifacts 'wikipedia-live.png')
+            $wikiLiveStatus = 'captured'
+        }
+        catch {
+            $wikiLiveStatus = 'capture-error'
+            $wikiLiveError = $_.Exception.Message
+        }
+        finally {
+            if ($wikiLive -and -not $wikiLive.HasExited) {
+                Stop-Process -Id $wikiLive.Id -Force -ErrorAction SilentlyContinue
+                [void]$wikiLive.WaitForExit(5000)
+            }
+        }
+        $wikiLivePeakRss = if ($wikiLiveSamples.Count -gt 0) { ($wikiLiveSamples | Measure-Object rss_mb -Maximum).Maximum } else { 0 }
+        $wikiLivePeakPrivate = if ($wikiLiveSamples.Count -gt 0) { ($wikiLiveSamples | Measure-Object private_mb -Maximum).Maximum } else { 0 }
+        $wikiLiveCpuDelta = if ($wikiLiveSamples.Count -gt 1) { [math]::Round([double]$wikiLiveSamples[$wikiLiveSamples.Count - 1].cpu_seconds - [double]$wikiLiveSamples[0].cpu_seconds, 3) } else { 0 }
+        $wikiLiveElapsed = if ($wikiLiveSamples.Count -gt 1) { ([double]$wikiLiveSamples[$wikiLiveSamples.Count - 1].elapsed_ms - [double]$wikiLiveSamples[0].elapsed_ms) / 1000.0 } else { 0 }
+        $wikiLiveCorePct = if ($wikiLiveElapsed -gt 0) { [math]::Round(($wikiLiveCpuDelta / $wikiLiveElapsed) * 100.0, 1) } else { 0 }
+        [pscustomobject]@{ status = $wikiLiveStatus; error = $wikiLiveError; samples = $wikiLiveSamples.Count; peak_rss_mb = $wikiLivePeakRss; peak_private_mb = $wikiLivePeakPrivate; cpu_delta_seconds = $wikiLiveCpuDelta; elapsed_seconds = $wikiLiveElapsed; one_core_cpu_percent = $wikiLiveCorePct; screenshot = (Test-Path (Join-Path $Artifacts 'wikipedia-live.png')) } |
+            ConvertTo-Json -Depth 3 | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-live-summary.json')
 
         # Best-effort live Google evidence. External anti-abuse/network state is
         # intentionally non-gating, but we always try to capture the real native

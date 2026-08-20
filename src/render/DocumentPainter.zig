@@ -53,6 +53,7 @@ pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts)
     var paint_text_styles = std.AutoHashMap(usize, PaintTextStyle).init(allocator);
     defer paint_text_styles.deinit();
 
+    const root_font_size_px = try resolveDocumentRootFontSizePx(page);
     const root = if (page.window._document.is(HTMLDocument)) |html_doc|
         if (html_doc.getBody()) |body| body.asNode() else page.window._document.asNode()
     else
@@ -65,6 +66,7 @@ pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts)
         .opts = opts,
         .list = &list,
         .paint_text_styles = &paint_text_styles,
+        .root_font_size_px = root_font_size_px,
     };
     var cursor = FlowCursor.init(
         opts.page_margin,
@@ -595,6 +597,7 @@ const Painter = struct {
     opts: PaintOpts,
     list: *DisplayList,
     paint_text_styles: *std.AutoHashMap(usize, PaintTextStyle),
+    root_font_size_px: i32 = 16,
     cache_layout_boxes: bool = true,
     forced_item_node: ?*Node = null,
     forced_item_width: i32 = 0,
@@ -634,6 +637,26 @@ const Painter = struct {
         });
     }
 
+    fn elementFontSizeForLength(self: *const Painter, element: *Element) i32 {
+        if (self.paint_text_styles.get(@intFromPtr(element))) |style| {
+            return style.font_size;
+        }
+        return self.root_font_size_px;
+    }
+
+    fn translateCachedLayoutBoxesForDescendants(self: *Painter, element: *Element, dx: i32, dy: i32) void {
+        if (!self.cache_layout_boxes or (dx == 0 and dy == 0)) return;
+        var it = element.asNode().childrenIterator();
+        while (it.next()) |child| {
+            const child_element = child.is(Element) orelse continue;
+            if (self.page._element_layout_boxes.getPtr(child_element)) |box| {
+                box.x += dx;
+                box.y += dy;
+            }
+            self.translateCachedLayoutBoxesForDescendants(child_element, dx, dy);
+        }
+    }
+
     fn measureNodePaintedBox(self: *Painter, node: *Node, available_width: i32) !struct { width: i32, height: i32 } {
         var temp_list = DisplayList{
             .layout_scale = self.list.layout_scale,
@@ -648,6 +671,7 @@ const Painter = struct {
             .opts = self.opts,
             .list = &temp_list,
             .paint_text_styles = self.paint_text_styles,
+            .root_font_size_px = self.root_font_size_px,
             .cache_layout_boxes = false,
         };
         var cursor = FlowCursor.init(0, 0, @max(@as(i32, 40), available_width));
@@ -683,6 +707,7 @@ const Painter = struct {
             .opts = self.opts,
             .list = &temp_list,
             .paint_text_styles = self.paint_text_styles,
+            .root_font_size_px = self.root_font_size_px,
             .cache_layout_boxes = false,
         };
         var cursor = FlowCursor.init(0, 0, @max(@as(i32, 40), available_width));
@@ -1051,7 +1076,12 @@ const Painter = struct {
             .opts = self.opts,
             .list = &temp_list,
             .paint_text_styles = self.paint_text_styles,
-            .cache_layout_boxes = false,
+            .root_font_size_px = self.root_font_size_px,
+            // This is the final inline-flow paint, not a measurement-only pass.
+            // Preserve layout-box caching so descendant CSSOM geometry can be
+            // translated alongside the temporary display list below. A parent
+            // measurement painter already has cache_layout_boxes=false.
+            .cache_layout_boxes = self.cache_layout_boxes,
         };
         var child_cursor = FlowCursor.init(0, 0, @max(@as(i32, 40), content_width));
         var child_it = element.asNode().childrenIterator();
@@ -1077,6 +1107,7 @@ const Painter = struct {
         }
 
         try self.appendDisplayListWithOffset(&temp_list, offset_x, content_y, null);
+        self.translateCachedLayoutBoxesForDescendants(element, offset_x, content_y);
         if (out_of_flow_children.items.len > 0) {
             var overlay_cursor = FlowCursor.init(content_x, content_y, @max(@as(i32, 40), content_width));
             for (out_of_flow_children.items) |child| {
@@ -1110,7 +1141,12 @@ const Painter = struct {
 
         const raw_font_size = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("font-size", self.page));
         if (raw_font_size.len > 0) {
-            resolved.font_size = parseFontSizePx(raw_font_size) orelse resolved.font_size;
+            resolved.font_size = parseFontSizePxWithContext(
+                raw_font_size,
+                resolved.font_size,
+                self.root_font_size_px,
+                element.asNode().parentElement() == null,
+            ) orelse resolved.font_size;
         }
 
         const raw_line_height = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("line-height", self.page));
@@ -1157,7 +1193,8 @@ const Painter = struct {
         }
 
         const raw_color = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("color", self.page));
-        if (parseCssColor(raw_color)) |color| {
+        const resolved_color = resolveExactCssVariableReference(self.page, element, raw_color, 0);
+        if (parseCssColor(resolved_color)) |color| {
             resolved.color = color;
         } else if (tag == .anchor and element.getAttributeSafe(comptime .wrap("href")) != null) {
             resolved.color = .{ .r = 0, .g = 102, .b = 204 };
@@ -1302,8 +1339,8 @@ const Painter = struct {
         const block_like = isFlowBlockLike(tag, display, has_child_elements);
         const inline_leaf = !block_like and !inline_atomic_box and !has_child_elements;
         const inline_box = inline_leaf or inline_atomic_box;
-        const margins = resolveEdgeSizes(decl, self.page, "margin");
-        const padding = resolveEdgeSizes(decl, self.page, "padding");
+        const margins = resolveEdgeSizes(decl, self.page, "margin", font_size, self.root_font_size_px);
+        const padding = resolveEdgeSizes(decl, self.page, "padding", font_size, self.root_font_size_px);
         const font_family = text_style.font_family;
         const font_weight = text_style.font_weight;
         const italic = text_style.italic;
@@ -1380,6 +1417,9 @@ const Painter = struct {
         }
         const content_box_sizing = isContentBoxSizing(decl, self.page);
         const has_explicit_width = hasExplicitDimensionValue(element, self.page, "width");
+        if (inline_atomic_box and !has_explicit_width) {
+            width = @min(available_width, width + padding.horizontal() + resolveBorderHorizontalPx(decl, self.page));
+        }
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
         const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
         const box_sizing_extra_width = if (content_box_sizing and has_explicit_width) padding.horizontal() else 0;
@@ -1494,7 +1534,8 @@ const Painter = struct {
             const explicit_height = resolveExplicitHeight(self, element, decl, self.page, tag, self.opts.viewport_height);
             const css_min_height = resolveCssMinHeightPx(self, element, decl, self.page, self.opts.viewport_height);
             const css_max_height = resolveCssMaxHeightPx(self, element, decl, self.page, self.opts.viewport_height);
-            const min_required_height = @max(resolveMinimumHeight(self, tag, block_like, 0), css_min_height);
+            const intrinsic_min_height = if (has_explicit_height) 0 else resolveMinimumHeight(self, tag, block_like, 0);
+            const min_required_height = @max(intrinsic_min_height, css_min_height);
             const height = clampBoxHeight(
                 min_required_height,
                 css_max_height,
@@ -1592,6 +1633,7 @@ const Painter = struct {
                 .opts = self.opts,
                 .list = &temp_list,
                 .paint_text_styles = self.paint_text_styles,
+                .root_font_size_px = self.root_font_size_px,
                 // This pass uses final absolute child coordinates and is the
                 // actual block-flow paint, not a measurement pass. Preserve
                 // layout-box caching so descendant CSSOM geometry matches the
@@ -1610,10 +1652,10 @@ const Painter = struct {
             break :child_height height;
         } else 0;
         const explicit_height = resolveExplicitHeight(self, element, decl, self.page, tag, self.opts.viewport_height);
-        const min_height = resolveMinimumHeight(self, tag, block_like, own_content_height);
+        const intrinsic_min_height = if (has_explicit_height) 0 else resolveMinimumHeight(self, tag, block_like, own_content_height);
         const css_min_height = resolveCssMinHeightPx(self, element, decl, self.page, self.opts.viewport_height);
         const css_max_height = resolveCssMaxHeightPx(self, element, decl, self.page, self.opts.viewport_height);
-        const min_required_height = @max(min_height, css_min_height);
+        const min_required_height = @max(intrinsic_min_height, css_min_height);
         const height = clampBoxHeight(
             min_required_height,
             css_max_height,
@@ -1757,6 +1799,26 @@ const Painter = struct {
                     text_style.line_height,
                 );
             var text_x = rect.x + padding.left + 6;
+            const text_indent = parseCssLengthPxWithFontContext(
+                resolveCssPropertyValue(decl, self.page, element, "text-indent"),
+                rect.width,
+                self.opts.viewport_width,
+                font_size,
+                self.root_font_size_px,
+            ) orelse 0;
+            // A very large negative indent is the classic CSS image-replacement
+            // idiom. The text is deliberately not visible; emitting a command
+            // thousands of pixels off-screen would corrupt shrink-to-fit and
+            // temporary inline-flow bounds.
+            const replacement_threshold: i32 = @max(@as(i32, 1024), rect.width * 4);
+            const visually_replaced_text = text_indent <= 0 - replacement_threshold;
+            if (visually_replaced_text) {
+                if (!out_of_flow_positioned) {
+                    if (inline_box) cursor.advanceInlineLeaf(rect, margins, flowSpacingAfter(tag, block_like)) else cursor.advanceBlock(rect, margins, flowSpacingAfter(tag, block_like));
+                }
+                return;
+            }
+            text_x += text_indent;
             const text_align = resolveCssPropertyValue(decl, self.page, element, "text-align");
             if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, text_align, &std.ascii.whitespace), "center")) {
                 const measured_text_width = estimateStyledTextWidth(
@@ -1919,16 +1981,18 @@ const Painter = struct {
             if (child.is(Element)) |child_element| {
                 const child_style = try self.page.window.getComputedStyle(child_element, null, self.page);
                 const child_decl = child_style.asCSSStyleDeclaration();
+                const child_text_style = try self.resolvePaintTextStyle(child_element, child_decl, child_element.getTag());
+                const child_font_size = child_text_style.font_size;
                 flex_grow = resolveFlexGrow(child_decl, self.page);
                 flex_shrink = resolveFlexShrink(child_decl, self.page);
                 order = resolveFlexOrder(child_decl, self.page);
                 align_self = resolveFlexCrossAlignment(resolveCssPropertyValue(child_decl, self.page, child_element, "align-self"));
                 explicit_width = resolveExplicitWidth(self, child_element, child_decl, self.page, child_element.getTag(), content_width);
-                min_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width) orelse 0;
-                max_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width);
+                min_width = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width, child_font_size, self.root_font_size_px) orelse 0;
+                max_width = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width, child_font_size, self.root_font_size_px);
                 flex_basis = resolveFlexBasisHeightPx(self, child_element, child_decl, self.opts.viewport_height);
-                min_height = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-height", self.page), self.opts.viewport_height, self.opts.viewport_height) orelse 0;
-                max_height = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-height", self.page), self.opts.viewport_height, self.opts.viewport_height);
+                min_height = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("min-height", self.page), self.opts.viewport_height, self.opts.viewport_height, child_font_size, self.root_font_size_px) orelse 0;
+                max_height = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("max-height", self.page), self.opts.viewport_height, self.opts.viewport_height, child_font_size, self.root_font_size_px);
             }
 
             const measurement = try self.measureNodePaintedBox(child, content_width);
@@ -2225,15 +2289,17 @@ const Painter = struct {
             if (child.is(Element)) |child_element| {
                 const child_style = try self.page.window.getComputedStyle(child_element, null, self.page);
                 const child_decl = child_style.asCSSStyleDeclaration();
+                const child_text_style = try self.resolvePaintTextStyle(child_element, child_decl, child_element.getTag());
+                const child_font_size = child_text_style.font_size;
                 flex_grow = resolveFlexGrow(child_decl, self.page);
                 flex_shrink = resolveFlexShrink(child_decl, self.page);
                 align_self = resolveFlexCrossAlignment(resolveCssPropertyValue(child_decl, self.page, child_element, "align-self"));
                 flex_basis = resolveFlexBasisPx(self, child_element, child_decl, content_width);
                 order = resolveFlexOrder(child_decl, self.page);
-                min_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width) orelse 0;
-                max_width = parseCssLengthPxWithContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width);
+                min_width = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("min-width", self.page), content_width, self.opts.viewport_width, child_font_size, self.root_font_size_px) orelse 0;
+                max_width = parseCssLengthPxWithFontContext(child_decl.getPropertyValue("max-width", self.page), content_width, self.opts.viewport_width, child_font_size, self.root_font_size_px);
 
-                const child_margins = resolveEdgeSizes(child_decl, self.page, "margin");
+                const child_margins = resolveEdgeSizes(child_decl, self.page, "margin", child_font_size, self.root_font_size_px);
                 const margin_shorthand = child_decl.getPropertyValue("margin", self.page);
                 auto_margin_left = isCssAuto(child_decl.getPropertyValue("margin-left", self.page)) or
                     edgeShorthandContainsAuto(margin_shorthand, .left);
@@ -2965,7 +3031,16 @@ const Painter = struct {
                 }
                 return self.allocator.dupe(u8, "");
             },
-            .button, .option, .select => {
+            .button => {
+                // Child inline boxes paint their own text. Only use text nodes
+                // directly owned by the button here so nested icon labels are
+                // not painted/measured a second time at the button level.
+                const direct = try collectDirectText(self.allocator, element, self.page);
+                if (direct.len > 0) return direct;
+                self.allocator.free(direct);
+                return self.allocator.dupe(u8, "");
+            },
+            .option, .select => {
                 var text_buf = std.Io.Writer.Allocating.init(self.allocator);
                 defer text_buf.deinit();
                 try element.asNode().getTextContent(&text_buf.writer);
@@ -3047,8 +3122,9 @@ const Painter = struct {
                 }
                 const child_has_children = hasRenderableChildElements(child_el);
                 if (child_has_children) {
-                    const child_margins = resolveEdgeSizes(child_decl, self.page, "margin");
-                    const child_padding = resolveEdgeSizes(child_decl, self.page, "padding");
+                    const child_text_style = try self.resolvePaintTextStyle(child_el, child_decl, child_el.getTag());
+                    const child_margins = resolveEdgeSizes(child_decl, self.page, "margin", child_text_style.font_size, self.root_font_size_px);
+                    const child_padding = resolveEdgeSizes(child_decl, self.page, "padding", child_text_style.font_size, self.root_font_size_px);
                     const child_label = try self.elementLabel(child_el);
                     defer self.allocator.free(child_label);
                     if (!(try self.shouldPassThroughInlineContainer(
@@ -4402,20 +4478,47 @@ fn firstNonEmpty(values: []const []const u8) []const u8 {
     return "";
 }
 
+fn resolveExactCssVariableReference(page: *Page, element: *Element, value: []const u8, depth: u8) []const u8 {
+    if (depth >= 8) return value;
+    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
+    if (!std.mem.startsWith(u8, trimmed, "var(") or trimmed.len < 7 or trimmed[trimmed.len - 1] != ')') {
+        return trimmed;
+    }
+    const inner = std.mem.trim(u8, trimmed[4 .. trimmed.len - 1], &std.ascii.whitespace);
+    const comma = std.mem.indexOfScalar(u8, inner, ',');
+    const name = std.mem.trim(u8, if (comma) |i| inner[0..i] else inner, &std.ascii.whitespace);
+    if (!std.mem.startsWith(u8, name, "--")) return trimmed;
+
+    var current: ?*Element = element;
+    while (current) |candidate| : (current = candidate.asNode().parentElement()) {
+        if (page._style_manager.computedStyleValue(candidate, String.wrap(name))) |custom| {
+            const resolved = std.mem.trim(u8, custom, &std.ascii.whitespace);
+            if (resolved.len > 0 and !std.mem.eql(u8, resolved, trimmed)) {
+                return resolveExactCssVariableReference(page, element, resolved, depth + 1);
+            }
+        }
+    }
+    if (comma) |i| {
+        const fallback = std.mem.trim(u8, inner[i + 1 ..], &std.ascii.whitespace);
+        if (fallback.len > 0) return resolveExactCssVariableReference(page, element, fallback, depth + 1);
+    }
+    return trimmed;
+}
+
 fn resolveCssPropertyValue(
     decl: anytype,
     page: *Page,
     element: *Element,
     comptime property: []const u8,
 ) []const u8 {
-    if (inlineStylePropertyValue(element, property)) |inline_value| {
-        return inline_value;
-    }
-    const computed = decl.getPropertyValue(property, page);
-    if (std.mem.trim(u8, computed, &std.ascii.whitespace).len > 0) {
-        return computed;
-    }
-    return inlineStylePropertyValue(element, property) orelse "";
+    const raw = if (inlineStylePropertyValue(element, property)) |inline_value|
+        inline_value
+    else blk: {
+        const computed = decl.getPropertyValue(property, page);
+        if (std.mem.trim(u8, computed, &std.ascii.whitespace).len > 0) break :blk computed;
+        break :blk inlineStylePropertyValue(element, property) orelse "";
+    };
+    return resolveExactCssVariableReference(page, element, raw, 0);
 }
 
 fn resolvedDisplayValue(
@@ -4857,10 +4960,31 @@ fn positioningContextHeight(self: *const Painter, element: *Element, context_top
         return self.opts.viewport_height;
     }
     const parent = element.asNode().parentElement() orelse return self.opts.viewport_height;
-    return switch (parent.getTag()) {
-        .html, .body => self.opts.viewport_height,
-        else => @max(@as(i32, 0), self.opts.viewport_height - context_top),
-    };
+    if (parent.getTag() == .html or parent.getTag() == .body) {
+        return self.opts.viewport_height;
+    }
+
+    // Absolutely positioned percentages are resolved against the containing
+    // block, not against the remaining viewport. Some parent boxes (flex/table)
+    // are already cached before their children; generic block containers with
+    // an explicit height can resolve that authored height directly here.
+    if (self.page._element_layout_boxes.get(parent)) |box| {
+        if (box.height > 0) return box.height;
+    }
+    if (self.page.window.getComputedStyle(parent, null, self.page)) |parent_style| {
+        const parent_decl = parent_style.asCSSStyleDeclaration();
+        const explicit_height = resolveExplicitHeight(
+            self,
+            parent,
+            parent_decl,
+            self.page,
+            parent.getTag(),
+            self.opts.viewport_height,
+        );
+        if (explicit_height > 0) return explicit_height;
+    } else |_| {}
+
+    return @max(@as(i32, 0), self.opts.viewport_height - context_top);
 }
 
 fn resolveAvailableWidthForElement(
@@ -4878,8 +5002,9 @@ fn resolveAvailableWidthForElement(
     const available_width = @max(@as(i32, 80), context_width - margins.horizontal());
     if (!out_of_flow_positioned) return available_width;
 
-    const left = parseCssLengthPxWithContext(decl.getPropertyValue("left", self.page), context_width, self.opts.viewport_width);
-    const right = parseCssLengthPxWithContext(decl.getPropertyValue("right", self.page), context_width, self.opts.viewport_width);
+    const font_size = self.elementFontSizeForLength(element);
+    const left = parseCssLengthPxWithFontContext(decl.getPropertyValue("left", self.page), context_width, self.opts.viewport_width, font_size, self.root_font_size_px);
+    const right = parseCssLengthPxWithFontContext(decl.getPropertyValue("right", self.page), context_width, self.opts.viewport_width, font_size, self.root_font_size_px);
     if (left != null and right != null and decl.getPropertyValue("width", self.page).len == 0) {
         return @max(@as(i32, 80), context_width - left.? - right.? - margins.horizontal());
     }
@@ -4899,10 +5024,12 @@ fn resolveOutOfFlowPosition(
     const context_top = positioningContextTop(element, cursor, position);
     const context_width = positioningContextWidth(self, element, cursor, position);
     const context_height = positioningContextHeight(self, element, context_top, position);
-    const left = parseCssLengthPxWithContext(decl.getPropertyValue("left", self.page), context_width, self.opts.viewport_width);
-    const right = parseCssLengthPxWithContext(decl.getPropertyValue("right", self.page), context_width, self.opts.viewport_width);
-    const top = parseCssLengthPxWithContext(decl.getPropertyValue("top", self.page), context_height, self.opts.viewport_height);
-    const bottom = parseCssLengthPxWithContext(decl.getPropertyValue("bottom", self.page), context_height, self.opts.viewport_height);
+    const font_size = self.elementFontSizeForLength(element);
+    const left = parseCssLengthPxWithFontContext(decl.getPropertyValue("left", self.page), context_width, self.opts.viewport_width, font_size, self.root_font_size_px);
+    const right = parseCssLengthPxWithFontContext(decl.getPropertyValue("right", self.page), context_width, self.opts.viewport_width, font_size, self.root_font_size_px);
+    const top = parseCssLengthPxWithFontContext(decl.getPropertyValue("top", self.page), context_height, self.opts.viewport_height, font_size, self.root_font_size_px);
+    const bottom = parseCssLengthPxWithFontContext(decl.getPropertyValue("bottom", self.page), context_height, self.opts.viewport_height, font_size, self.root_font_size_px);
+    const positioned_height = resolveExplicitHeight(self, element, decl, self.page, element.getTag(), self.opts.viewport_height);
 
     const x = if (left) |value|
         context_left + value + margins.left
@@ -4914,7 +5041,7 @@ fn resolveOutOfFlowPosition(
     const y = if (top) |value|
         context_top + value + margins.top
     else if (bottom) |value|
-        context_top + @max(@as(i32, 0), context_height - value - margins.bottom)
+        context_top + @max(@as(i32, 0), context_height - value - positioned_height - margins.bottom)
     else
         context_top + margins.top;
 
@@ -5161,22 +5288,22 @@ fn resolveAutoMarginAlignedX(cursor: FlowCursor, decl: anytype, page: *Page, wid
     return default_x;
 }
 
-fn resolveEdgeSizes(decl: anytype, page: *Page, comptime prefix: []const u8) EdgeSizes {
+fn resolveEdgeSizes(decl: anytype, page: *Page, comptime prefix: []const u8, font_size: i32, root_font_size: i32) EdgeSizes {
     const shorthand = decl.getPropertyValue(prefix, page);
-    const shorthand_edges = parseCssEdgeShorthand(shorthand);
+    const shorthand_edges = parseCssEdgeShorthandWithFontContext(shorthand, font_size, root_font_size);
     return .{
-        .top = parseCssLengthPx(firstNonEmpty(&.{
+        .top = parseCssLengthPxWithFontContext(firstNonEmpty(&.{
             decl.getPropertyValue(prefix ++ "-top", page),
-        })) orelse shorthand_edges.top,
-        .right = parseCssLengthPx(firstNonEmpty(&.{
+        }), 0, 0, font_size, root_font_size) orelse shorthand_edges.top,
+        .right = parseCssLengthPxWithFontContext(firstNonEmpty(&.{
             decl.getPropertyValue(prefix ++ "-right", page),
-        })) orelse shorthand_edges.right,
-        .bottom = parseCssLengthPx(firstNonEmpty(&.{
+        }), 0, 0, font_size, root_font_size) orelse shorthand_edges.right,
+        .bottom = parseCssLengthPxWithFontContext(firstNonEmpty(&.{
             decl.getPropertyValue(prefix ++ "-bottom", page),
-        })) orelse shorthand_edges.bottom,
-        .left = parseCssLengthPx(firstNonEmpty(&.{
+        }), 0, 0, font_size, root_font_size) orelse shorthand_edges.bottom,
+        .left = parseCssLengthPxWithFontContext(firstNonEmpty(&.{
             decl.getPropertyValue(prefix ++ "-left", page),
-        })) orelse shorthand_edges.left,
+        }), 0, 0, font_size, root_font_size) orelse shorthand_edges.left,
     };
 }
 
@@ -5218,15 +5345,19 @@ fn resolveLayoutWidth(
     const explicit_height = resolveExplicitHeight(self, element, decl, page, tag, self.opts.viewport_height);
     const intrinsic_image = if (tag == .img) resolveIntrinsicImageDimensions(element, page) else null;
     const aspect_ratio = parseAspectRatioValue(resolveImageStyleValue(element, page, "aspect-ratio"));
-    const min_width = parseCssLengthPxWithContext(
+    const min_width = parseCssLengthPxWithFontContext(
         decl.getPropertyValue("min-width", page),
         available_width,
         self.opts.viewport_width,
+        font_size,
+        self.root_font_size_px,
     ) orelse 0;
-    const max_width = parseCssLengthPxWithContext(
+    const max_width = parseCssLengthPxWithFontContext(
         decl.getPropertyValue("max-width", page),
         available_width,
         self.opts.viewport_width,
+        font_size,
+        self.root_font_size_px,
     );
     if (self.forced_item_node == element.asNode() and self.forced_item_width > 0) {
         var forced = std.math.clamp(self.forced_item_width, 60, available_width);
@@ -5319,15 +5450,15 @@ fn resolveLayoutWidth(
     }
     preferred = @max(preferred, min_width);
     if (max_width) |limit| preferred = @min(preferred, limit);
-    return clampInlinePreferredWidth(tag, explicit_width, preferred, available_width);
+    return clampInlinePreferredWidth(inline_atomic_box, explicit_width, preferred, available_width);
 }
 
-fn clampInlinePreferredWidth(tag: Element.Tag, explicit_width: i32, preferred: i32, available_width: i32) i32 {
-    // Replaced inline content with an explicit width is allowed to overflow the
-    // remaining line/containing width. Shrinking an iframe from 304px to the
-    // ~80px currently left on the line clips embedded widgets such as
-    // reCAPTCHA. Keep the conservative clamp for auto-sized content.
-    if (tag == .iframe and explicit_width > 0) return @max(@as(i32, 1), preferred);
+fn clampInlinePreferredWidth(inline_atomic_box: bool, explicit_width: i32, preferred: i32, available_width: i32) i32 {
+    // An authored width is authoritative. Auto atomic inline boxes also need to
+    // shrink-wrap below 60px (icons and compact buttons routinely do); ordinary
+    // inline leaves keep the conservative readability floor.
+    if (explicit_width > 0) return @max(@as(i32, 1), preferred);
+    if (inline_atomic_box) return std.math.clamp(preferred, @as(i32, 1), available_width);
     return std.math.clamp(preferred, 60, available_width);
 }
 
@@ -5374,8 +5505,9 @@ fn estimateInlineAtomicDescendantWidth(
                 std.mem.trim(u8, child_decl.getPropertyValue("display", self.page), &std.ascii.whitespace),
                 "none",
             )) continue;
-            const child_padding = resolveEdgeSizes(child_decl, self.page, "padding");
-            const child_margins = resolveEdgeSizes(child_decl, self.page, "margin");
+            const child_text_style = try self.resolvePaintTextStyle(child_el, child_decl, child_tag);
+            const child_padding = resolveEdgeSizes(child_decl, self.page, "padding", child_text_style.font_size, self.root_font_size_px);
+            const child_margins = resolveEdgeSizes(child_decl, self.page, "margin", child_text_style.font_size, self.root_font_size_px);
             const child_extra = child_padding.left +
                 child_padding.right +
                 child_margins.left +
@@ -5385,13 +5517,15 @@ fn estimateInlineAtomicDescendantWidth(
             const explicit_child_width = resolveExplicitWidth(self, child_el, child_decl, self.page, child_tag, available_width);
             if (explicit_child_width > 0) {
                 best = @max(best, explicit_child_width + child_extra);
+                // Text may overflow or be visually indented out of the box, but
+                // it does not enlarge an explicitly sized atomic inline child.
+                continue;
             }
 
             const child_label = try self.elementLabel(child_el);
             defer self.allocator.free(child_label);
             const trimmed_label = std.mem.trim(u8, child_label, &std.ascii.whitespace);
             if (trimmed_label.len > 0 and trimmed_label[0] != '[') {
-                const child_text_style = try self.resolvePaintTextStyle(child_el, child_decl, child_tag);
                 const painted_label = if (child_text_style.text_transform == .none) trimmed_label else blk: {
                     const transformed = try transformTextForPaint(self.allocator, trimmed_label, child_text_style.text_transform);
                     break :blk transformed;
@@ -5448,7 +5582,7 @@ fn resolveOwnContentHeight(
         }
     } else if (tag == .textarea) {
         height = @max(height, 100);
-    } else if (tag == .input or tag == .button or tag == .select) {
+    } else if (tag == .input or tag == .select or (tag == .button and !hasRenderableChildElements(element))) {
         height = @max(height, 30);
     } else if (label.len > 0 and shouldPaintText(tag)) {
         height = @max(height, estimateStyledTextHeight(
@@ -5467,7 +5601,10 @@ fn resolveOwnContentHeight(
 
 fn resolveExplicitWidth(self: *const Painter, element: *Element, decl: anytype, page: *Page, tag: Element.Tag, available_width: i32) i32 {
     _ = decl;
-    if (parseCssLengthPxWithContext(authoredCssPropertyValue(element, page, "width"), available_width, self.opts.viewport_width)) |width| {
+    const font_size = self.elementFontSizeForLength(element);
+    const authored_width = authoredCssPropertyValue(element, page, "width");
+    const parsed_width = parseCssLengthPxWithFontContext(authored_width, available_width, self.opts.viewport_width, font_size, self.root_font_size_px);
+    if (parsed_width) |width| {
         return width;
     }
     if (tag == .canvas) {
@@ -5477,7 +5614,7 @@ fn resolveExplicitWidth(self: *const Painter, element: *Element, decl: anytype, 
     }
     if (tag == .img or tag == .iframe or tag == .canvas or tag == .input) {
         if (element.getAttributeSafe(comptime .wrap("width"))) |raw| {
-            return parseCssLengthPxWithContext(raw, available_width, self.opts.viewport_width) orelse 0;
+            return parseCssLengthPxWithFontContext(raw, available_width, self.opts.viewport_width, font_size, self.root_font_size_px) orelse 0;
         }
     }
     return 0;
@@ -5493,7 +5630,8 @@ fn resolveExplicitHeight(self: *const Painter, element: *Element, decl: anytype,
         resolveAncestorExplicitHeight(self, element, page, available_height)
     else
         available_height;
-    if (parseCssLengthPxWithContext(raw_height, height_basis, self.opts.viewport_height)) |height| {
+    const font_size = self.elementFontSizeForLength(element);
+    if (parseCssLengthPxWithFontContext(raw_height, height_basis, self.opts.viewport_height, font_size, self.root_font_size_px)) |height| {
         return height;
     }
     if (tag == .canvas) {
@@ -5503,7 +5641,7 @@ fn resolveExplicitHeight(self: *const Painter, element: *Element, decl: anytype,
     }
     if (tag == .img or tag == .iframe or tag == .canvas or tag == .textarea) {
         if (element.getAttributeSafe(comptime .wrap("height"))) |raw| {
-            return parseCssLengthPxWithContext(raw, available_height, self.opts.viewport_height) orelse 0;
+            return parseCssLengthPxWithFontContext(raw, available_height, self.opts.viewport_height, font_size, self.root_font_size_px) orelse 0;
         }
     }
     return 0;
@@ -5523,7 +5661,7 @@ fn resolveCssHeightConstraint(
         resolveAncestorExplicitHeight(self, element, page, available_height)
     else
         available_height;
-    return parseCssLengthPxWithContext(raw_value, height_basis, self.opts.viewport_height);
+    return parseCssLengthPxWithFontContext(raw_value, height_basis, self.opts.viewport_height, self.elementFontSizeForLength(element), self.root_font_size_px);
 }
 
 fn resolveCssMinHeightPx(
@@ -5576,12 +5714,12 @@ fn resolveAncestorExplicitHeight(self: *const Painter, element: *Element, page: 
         const decl = style.asCSSStyleDeclaration();
         const raw_height = decl.getPropertyValue("height", page);
         if (std.mem.trim(u8, raw_height, &std.ascii.whitespace).len > 0 and std.mem.indexOfScalar(u8, raw_height, '%') == null) {
-            if (parseCssLengthPxWithContext(raw_height, fallback_height, self.opts.viewport_height)) |height| {
+            if (parseCssLengthPxWithFontContext(raw_height, fallback_height, self.opts.viewport_height, self.elementFontSizeForLength(candidate), self.root_font_size_px)) |height| {
                 if (height > 0) return height;
             }
         }
         if (candidate.getAttributeSafe(comptime .wrap("height"))) |attr_height| {
-            if (parseCssLengthPxWithContext(attr_height, fallback_height, self.opts.viewport_height)) |height| {
+            if (parseCssLengthPxWithFontContext(attr_height, fallback_height, self.opts.viewport_height, self.elementFontSizeForLength(candidate), self.root_font_size_px)) |height| {
                 if (height > 0) return height;
             }
         }
@@ -5994,16 +6132,39 @@ fn collapseWhitespace(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
     return out.toOwnedSlice(allocator);
 }
 
-fn parseFontSizePx(value: []const u8) ?i32 {
+const INITIAL_ROOT_FONT_SIZE_PX: i32 = 16;
+
+fn parseFontSizePxWithContext(value: []const u8, parent_font_size: i32, root_font_size: i32, is_root: bool) ?i32 {
     const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
-    if (trimmed.len == 0) {
-        return null;
-    }
+    if (trimmed.len == 0) return null;
     if (std.mem.endsWith(u8, trimmed, "px")) {
         const raw = trimmed[0 .. trimmed.len - 2];
-        return @intFromFloat(std.fmt.parseFloat(f64, raw) catch return null);
+        return @max(@as(i32, 1), @as(i32, @intFromFloat(@round(std.fmt.parseFloat(f64, raw) catch return null))));
+    }
+    if (std.mem.endsWith(u8, trimmed, "rem")) {
+        const raw = trimmed[0 .. trimmed.len - 3];
+        const multiplier = std.fmt.parseFloat(f64, raw) catch return null;
+        const basis = if (is_root) INITIAL_ROOT_FONT_SIZE_PX else root_font_size;
+        return @max(@as(i32, 1), @as(i32, @intFromFloat(@round(@as(f64, @floatFromInt(basis)) * multiplier))));
+    }
+    if (std.mem.endsWith(u8, trimmed, "em")) {
+        const raw = trimmed[0 .. trimmed.len - 2];
+        const multiplier = std.fmt.parseFloat(f64, raw) catch return null;
+        return @max(@as(i32, 1), @as(i32, @intFromFloat(@round(@as(f64, @floatFromInt(parent_font_size)) * multiplier))));
+    }
+    if (std.mem.endsWith(u8, trimmed, "%")) {
+        const raw = trimmed[0 .. trimmed.len - 1];
+        const percent = std.fmt.parseFloat(f64, raw) catch return null;
+        return @max(@as(i32, 1), @as(i32, @intFromFloat(@round(@as(f64, @floatFromInt(parent_font_size)) * percent / 100.0))));
     }
     return null;
+}
+
+fn resolveDocumentRootFontSizePx(page: *Page) !i32 {
+    const root = page.document.getDocumentElement() orelse return INITIAL_ROOT_FONT_SIZE_PX;
+    const style = try page.window.getComputedStyle(root, null, page);
+    const raw = normalizeInheritedTextPropertyValue(style.asCSSStyleDeclaration().getPropertyValue("font-size", page));
+    return parseFontSizePxWithContext(raw, INITIAL_ROOT_FONT_SIZE_PX, INITIAL_ROOT_FONT_SIZE_PX, true) orelse INITIAL_ROOT_FONT_SIZE_PX;
 }
 
 fn parseCssFontWeight(value: []const u8) i32 {
@@ -6192,6 +6353,52 @@ fn parseCssIntegerValue(value: []const u8) ?i32 {
     return std.fmt.parseInt(i32, trimmed, 10) catch null;
 }
 
+fn parseCssLengthPxWithFontContext(value: []const u8, reference: i32, viewport: i32, font_size: i32, root_font_size: i32) ?i32 {
+    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
+    if (trimmed.len == 0) return null;
+    if (std.mem.startsWith(u8, trimmed, "min(") and trimmed[trimmed.len - 1] == ')') {
+        return parseCssExtremumFunctionPxWithFontContext(trimmed[4 .. trimmed.len - 1], .min, reference, viewport, font_size, root_font_size);
+    }
+    if (std.mem.startsWith(u8, trimmed, "max(") and trimmed[trimmed.len - 1] == ')') {
+        return parseCssExtremumFunctionPxWithFontContext(trimmed[4 .. trimmed.len - 1], .max, reference, viewport, font_size, root_font_size);
+    }
+    if (std.mem.startsWith(u8, trimmed, "clamp(") and trimmed[trimmed.len - 1] == ')') {
+        return parseCssClampFunctionPxWithFontContext(trimmed[6 .. trimmed.len - 1], reference, viewport, font_size, root_font_size);
+    }
+    if (std.mem.endsWith(u8, trimmed, "rem")) {
+        const raw = trimmed[0 .. trimmed.len - 3];
+        const multiplier = std.fmt.parseFloat(f64, raw) catch return null;
+        return @intFromFloat(@round(@as(f64, @floatFromInt(root_font_size)) * multiplier));
+    }
+    if (std.mem.endsWith(u8, trimmed, "em")) {
+        const raw = trimmed[0 .. trimmed.len - 2];
+        const multiplier = std.fmt.parseFloat(f64, raw) catch return null;
+        return @intFromFloat(@round(@as(f64, @floatFromInt(font_size)) * multiplier));
+    }
+    return parseCssLengthPxWithContext(trimmed, reference, viewport);
+}
+
+fn parseCssExtremumFunctionPxWithFontContext(value: []const u8, kind: ExtremumKind, reference: i32, viewport: i32, font_size: i32, root_font_size: i32) ?i32 {
+    var args = std.mem.splitScalar(u8, value, ',');
+    var best: ?i32 = null;
+    while (args.next()) |raw_arg| {
+        const parsed = parseCssLengthPxWithFontContext(std.mem.trim(u8, raw_arg, &std.ascii.whitespace), reference, viewport, font_size, root_font_size) orelse continue;
+        best = if (best) |current| switch (kind) {
+            .min => @min(current, parsed),
+            .max => @max(current, parsed),
+        } else parsed;
+    }
+    return best;
+}
+
+fn parseCssClampFunctionPxWithFontContext(value: []const u8, reference: i32, viewport: i32, font_size: i32, root_font_size: i32) ?i32 {
+    var args = std.mem.splitScalar(u8, value, ',');
+    const min_value = parseCssLengthPxWithFontContext(std.mem.trim(u8, args.next() orelse return null, &std.ascii.whitespace), reference, viewport, font_size, root_font_size) orelse return null;
+    const preferred_value = parseCssLengthPxWithFontContext(std.mem.trim(u8, args.next() orelse return null, &std.ascii.whitespace), reference, viewport, font_size, root_font_size) orelse return null;
+    const max_value = parseCssLengthPxWithFontContext(std.mem.trim(u8, args.next() orelse return null, &std.ascii.whitespace), reference, viewport, font_size, root_font_size) orelse return null;
+    return std.math.clamp(preferred_value, min_value, max_value);
+}
+
 fn parseCssLengthPxWithContext(value: []const u8, reference: i32, viewport: i32) ?i32 {
     const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
     if (trimmed.len == 0) {
@@ -6284,6 +6491,26 @@ fn parseCssEdgeShorthand(value: []const u8) EdgeSizes {
         count += 1;
     }
 
+    return switch (count) {
+        0 => .{},
+        1 => .{ .top = values[0], .right = values[0], .bottom = values[0], .left = values[0] },
+        2 => .{ .top = values[0], .right = values[1], .bottom = values[0], .left = values[1] },
+        3 => .{ .top = values[0], .right = values[1], .bottom = values[2], .left = values[1] },
+        else => .{ .top = values[0], .right = values[1], .bottom = values[2], .left = values[3] },
+    };
+}
+
+fn parseCssEdgeShorthandWithFontContext(value: []const u8, font_size: i32, root_font_size: i32) EdgeSizes {
+    const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
+    if (trimmed.len == 0) return .{};
+    var values: [4]i32 = undefined;
+    var count: usize = 0;
+    var it = std.mem.tokenizeAny(u8, trimmed, " \t\r\n");
+    while (it.next()) |part| {
+        if (count == values.len) break;
+        values[count] = parseCssLengthPxWithFontContext(part, 0, 0, font_size, root_font_size) orelse 0;
+        count += 1;
+    }
     return switch (count) {
         0 => .{},
         1 => .{ .top = values[0], .right = values[0], .bottom = values[0], .left = values[0] },
@@ -10353,4 +10580,54 @@ test "paintDocument keeps percent action row wide inside centered flex column" {
     try std.testing.expect(reject.width >= 182);
     try std.testing.expect(accept.width >= 182);
     try std.testing.expect(reject.x + reject.width <= accept.x);
+}
+
+test "paintDocument resolves Wikipedia-style root rem units and positioned percentage ring" {
+    var page = try testing.pageTest("page/wikipedia_portal_layout.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 1000,
+        .viewport_height = 900,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const ring = (try page.window._document.querySelector(.wrap("#ring"), page)).?;
+    const lang1 = (try page.window._document.querySelector(.wrap("#lang1"), page)).?;
+    const lang2 = (try page.window._document.querySelector(.wrap("#lang2"), page)).?;
+    const lang5 = (try page.window._document.querySelector(.wrap("#lang5"), page)).?;
+    const lang10 = (try page.window._document.querySelector(.wrap("#lang10"), page)).?;
+    const search = (try page.window._document.querySelector(.wrap("#search"), page)).?;
+
+    const ring_box = page._element_layout_boxes.get(ring) orelse return error.WikipediaRingLayoutMissing;
+    const lang1_box = page._element_layout_boxes.get(lang1) orelse return error.WikipediaLang1LayoutMissing;
+    const lang2_box = page._element_layout_boxes.get(lang2) orelse return error.WikipediaLang2LayoutMissing;
+    const lang5_box = page._element_layout_boxes.get(lang5) orelse return error.WikipediaLang5LayoutMissing;
+    const lang10_box = page._element_layout_boxes.get(lang10) orelse return error.WikipediaLang10LayoutMissing;
+    const search_box = page._element_layout_boxes.get(search) orelse return error.WikipediaSearchLayoutMissing;
+
+    try std.testing.expectApproxEqAbs(@as(f64, 546), @as(f64, @floatFromInt(ring_box.width)), 2.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 325), @as(f64, @floatFromInt(ring_box.height)), 2.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 156), @as(f64, @floatFromInt(lang1_box.width)), 2.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 40), @as(f64, @floatFromInt(lang1_box.height)), 2.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 62), @as(f64, @floatFromInt(lang1_box.x - ring_box.x)), 3.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 328), @as(f64, @floatFromInt(lang2_box.x - ring_box.x)), 3.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 130), @as(f64, @floatFromInt(lang5_box.y - ring_box.y)), 4.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 260), @as(f64, @floatFromInt(lang10_box.y - ring_box.y)), 4.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 540), @as(f64, @floatFromInt(search_box.width)), 2.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 44), @as(f64, @floatFromInt(search_box.height)), 2.0);
+
+    var saw_rem_text = false;
+    for (display_list.commands.items) |command| {
+        switch (command) {
+            .text => |text| {
+                if (std.mem.indexOf(u8, text.text, "Wikipedia") != null) {
+                    try std.testing.expectApproxEqAbs(@as(f64, 16), @as(f64, @floatFromInt(text.font_size)), 1.0);
+                    saw_rem_text = true;
+                }
+            },
+            else => {},
+        }
+    }
+    try std.testing.expect(saw_rem_text);
 }

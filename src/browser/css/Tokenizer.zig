@@ -281,15 +281,25 @@ fn hasNonAsciiAt(self: *const Tokenizer, offset: usize) bool {
 fn isIdentStart(self: *Tokenizer) bool {
     if (self.isEof()) return false;
 
-    var b = self.nextByteUnchecked();
-    if (b == '-') {
-        b = if (self.hasAtLeast(1)) self.byteAt(1) else return false;
+    const first = self.nextByteUnchecked();
+    if (first == '-') {
+        if (!self.hasAtLeast(1)) return false;
+        const second = self.byteAt(1);
+        // CSS Syntax "would start an identifier": a leading hyphen may be
+        // followed by another hyphen (custom properties), a name-start code
+        // point, or a valid escape.
+        if (second == '-') return true;
+        return switch (second) {
+            'a'...'z', 'A'...'Z', '_', 0x0 => true,
+            '\\' => !self.hasNewlineAt(2),
+            else => second > 0x7F,
+        };
     }
 
-    return switch (b) {
+    return switch (first) {
         'a'...'z', 'A'...'Z', '_', 0x0 => true,
         '\\' => !self.hasNewlineAt(1),
-        else => b > 0x7F, // not is ascii
+        else => first > 0x7F, // not is ascii
     };
 }
 
@@ -866,6 +876,15 @@ fn expectTokensEqual(input: []const u8, tokens: []const Token) !void {
 
     try testing.expectEqual(i, tokens.len);
     try testing.expectEqualDeep(null, lexer.next());
+}
+
+test "custom property names tokenize as identifiers" {
+    try expectTokensEqual("--background-color-progressive:#36c;", &.{
+        .{ .ident = "--background-color-progressive" },
+        .colon,
+        .{ .unrestricted_hash = "36c" },
+        .semicolon,
+    });
 }
 
 test "smoke" {

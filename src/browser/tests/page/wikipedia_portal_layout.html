@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html { font-size: 62.5%; }
+body { margin: 0; font-family: Arial, sans-serif; background: white; }
+.central-textlogo { position: relative; margin: 4rem auto .5rem; width: 270px; height: 42px; background: rgb(245,245,245); text-align: center; }
+.central-featured-logo { position: absolute; top: 158px; left: 35px; width: 200px; height: 183px; background: rgb(80,120,220); }
+.central-featured { position: relative; height: 32.5rem; width: 54.6rem; max-width: 100%; margin: 0 auto; background: rgb(248,249,250); }
+.central-featured-lang { position: absolute; width: 15.6rem; height: 4rem; background: rgb(220,230,240); }
+.lang1 { top: 0; right: 60%; }
+.lang2 { top: 0; left: 60%; }
+.lang3 { top: 20%; right: 70%; }
+.lang4 { top: 20%; left: 70%; }
+.lang5 { top: 40%; right: 72%; }
+.lang6 { top: 40%; left: 72%; }
+.lang7 { top: 60%; right: 70%; }
+.lang8 { top: 60%; left: 70%; }
+.lang9 { top: 80%; right: 60%; }
+.lang10 { top: 80%; left: 60%; }
+.lang1 { background: rgb(220,50,50); }
+.lang2 { background: rgb(40,110,220); }
+.lang5 { background: rgb(40,170,90); }
+.lang10 { background: rgb(190,90,190); }
+.search-container { width: 540px; height: 4.4rem; margin: .4rem auto 1.95rem; background: rgb(66,133,244); }
+.rem-text { font-size: 1.6rem; height: 2.4rem; margin: 1rem; background: rgb(245,200,80); }
+</style>
+</head>
+<body>
+  <div class="central-textlogo" id="title"><div class="central-featured-logo" id="logo"></div></div>
+  <nav class="central-featured" id="ring">
+    <div class="central-featured-lang lang1" id="lang1"></div>
+    <div class="central-featured-lang lang2" id="lang2"></div>
+    <div class="central-featured-lang lang3" id="lang3"></div>
+    <div class="central-featured-lang lang4" id="lang4"></div>
+    <div class="central-featured-lang lang5" id="lang5"></div>
+    <div class="central-featured-lang lang6" id="lang6"></div>
+    <div class="central-featured-lang lang7" id="lang7"></div>
+    <div class="central-featured-lang lang8" id="lang8"></div>
+    <div class="central-featured-lang lang9" id="lang9"></div>
+    <div class="central-featured-lang lang10" id="lang10"></div>
+  </nav>
+  <div class="search-container" id="search"></div>
+  <div class="rem-text" id="rem-text">Wikipedia unit probe</div>
+<script>
+function reportWikipediaGeometry(){
+  function r(id){return document.getElementById(id).getBoundingClientRect()}
+  var ring=r('ring'),l1=r('lang1'),l2=r('lang2'),l5=r('lang5'),l10=r('lang10'),search=r('search'),txt=r('rem-text');
+  var q='ring_x='+Math.round(ring.x)+'&ring_y='+Math.round(ring.y)+'&ring_w='+Math.round(ring.width)+'&ring_h='+Math.round(ring.height)+
+    '&l1_x='+Math.round(l1.x)+'&l1_y='+Math.round(l1.y)+'&l1_w='+Math.round(l1.width)+'&l1_h='+Math.round(l1.height)+
+    '&l2_x='+Math.round(l2.x)+'&l2_y='+Math.round(l2.y)+'&l5_y='+Math.round(l5.y)+'&l10_y='+Math.round(l10.y)+
+    '&search_w='+Math.round(search.width)+'&search_h='+Math.round(search.height)+'&txt_h='+Math.round(txt.height)+'&root_fs='+encodeURIComponent(getComputedStyle(document.documentElement).getPropertyValue('font-size'));
+  fetch('/wikipedia-portal-geometry?'+q,{method:'POST'}).catch(function(){});
+}
+addEventListener('load',function(){setTimeout(reportWikipediaGeometry,300);setTimeout(reportWikipediaGeometry,1000);setTimeout(reportWikipediaGeometry,2000)});
+</script>
+</body>
+</html>

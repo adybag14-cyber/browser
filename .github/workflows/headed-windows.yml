@@ -366,6 +366,75 @@ jobs:
             $googleBitmap.Dispose()
           }
 
+          $wikipediaPortalResultPath = Get-EvidenceFile 'wikipedia-portal-result.txt'
+          $wikipediaPortalResult = (Get-Content $wikipediaPortalResultPath -Raw).Trim()
+          if ($wikipediaPortalResult -ne 'WIKIPEDIA_PORTAL_OK') {
+            throw "Unexpected Wikipedia portal marker: $wikipediaPortalResult"
+          }
+          $wikipediaPortalShot = Get-PngInfo 'wikipedia-portal.png'
+          $wikipediaPortalGeometryPath = Get-EvidenceFile 'wikipedia-portal-geometry.json'
+          $wikipediaPortalGeometry = Get-Content $wikipediaPortalGeometryPath -Raw | ConvertFrom-Json
+          foreach ($property in @('ring_x','ring_y','ring_w','ring_h','l1_x','l1_y','l1_w','l1_h','l2_x','l2_y','l5_y','l10_y','search_w','search_h','root_fs')) {
+            if ($null -eq $wikipediaPortalGeometry.PSObject.Properties[$property]) { throw "wikipedia-portal-geometry.json is missing $property" }
+          }
+          if ([double]$wikipediaPortalGeometry.ring_w -lt 540 -or [double]$wikipediaPortalGeometry.ring_w -gt 552) { throw "Wikipedia portal ring width is $($wikipediaPortalGeometry.ring_w)px" }
+          if ([double]$wikipediaPortalGeometry.ring_h -lt 320 -or [double]$wikipediaPortalGeometry.ring_h -gt 330) { throw "Wikipedia portal ring height is $($wikipediaPortalGeometry.ring_h)px" }
+          if ([double]$wikipediaPortalGeometry.l1_w -lt 150 -or [double]$wikipediaPortalGeometry.l1_w -gt 162) { throw "Wikipedia language-card width is $($wikipediaPortalGeometry.l1_w)px" }
+          if ([double]$wikipediaPortalGeometry.l1_h -lt 38 -or [double]$wikipediaPortalGeometry.l1_h -gt 42) { throw "Wikipedia language-card height is $($wikipediaPortalGeometry.l1_h)px" }
+          $wikiL5Offset = [double]$wikipediaPortalGeometry.l5_y - [double]$wikipediaPortalGeometry.ring_y
+          $wikiL10Offset = [double]$wikipediaPortalGeometry.l10_y - [double]$wikipediaPortalGeometry.ring_y
+          if ($wikiL5Offset -lt 126 -or $wikiL5Offset -gt 134) { throw "Wikipedia 40% language row offset is $wikiL5Offset px" }
+          if ($wikiL10Offset -lt 256 -or $wikiL10Offset -gt 264) { throw "Wikipedia 80% language row offset is $wikiL10Offset px" }
+          if ([double]$wikipediaPortalGeometry.search_w -lt 536 -or [double]$wikipediaPortalGeometry.search_w -gt 544) { throw "Wikipedia portal search width is $($wikipediaPortalGeometry.search_w)px" }
+          if ([double]$wikipediaPortalGeometry.search_h -lt 42 -or [double]$wikipediaPortalGeometry.search_h -gt 46) { throw "Wikipedia portal search height is $($wikipediaPortalGeometry.search_h)px" }
+          if ([string]$wikipediaPortalGeometry.root_fs -ne '62.5%') { throw "Wikipedia root font-size serialization changed: $($wikipediaPortalGeometry.root_fs)" }
+
+          $wikipediaSearchResultPath = Get-EvidenceFile 'wikipedia-search-result.txt'
+          $wikipediaSearchResult = (Get-Content $wikipediaSearchResultPath -Raw).Trim()
+          if ($wikipediaSearchResult -ne 'WIKIPEDIA_SEARCH_OK') {
+            throw "Unexpected Wikipedia search marker: $wikipediaSearchResult"
+          }
+          $wikipediaSearchShot = Get-PngInfo 'wikipedia-search.png'
+          $wikipediaSearchGeometryPath = Get-EvidenceFile 'wikipedia-search-geometry.json'
+          $wikipediaSearchGeometry = Get-Content $wikipediaSearchGeometryPath -Raw | ConvertFrom-Json
+          foreach ($property in @('search-container_w','search-input_x','search-input_y','search-input_w','search-input_h','searchInput_w','searchInput_h','search-button_x','search-button_y','search-button_w','search-button_h','search-icon_w','search-icon_h','root_progressive')) {
+            if ($null -eq $wikipediaSearchGeometry.PSObject.Properties[$property]) { throw "wikipedia-search-geometry.json is missing $property" }
+          }
+          if ([double]$wikipediaSearchGeometry.'search-container_w' -lt 536 -or [double]$wikipediaSearchGeometry.'search-container_w' -gt 544) { throw "Wikipedia search container width is $($wikipediaSearchGeometry.'search-container_w')px" }
+          if ([double]$wikipediaSearchGeometry.'search-input_w' -lt 390 -or [double]$wikipediaSearchGeometry.'search-input_w' -gt 398) { throw "Wikipedia search wrapper width is $($wikipediaSearchGeometry.'search-input_w')px" }
+          if ([double]$wikipediaSearchGeometry.'search-input_h' -lt 42 -or [double]$wikipediaSearchGeometry.'search-input_h' -gt 46) { throw "Wikipedia search wrapper height is $($wikipediaSearchGeometry.'search-input_h')px" }
+          if ([double]$wikipediaSearchGeometry.'searchInput_w' -lt 390 -or [double]$wikipediaSearchGeometry.'searchInput_w' -gt 398) { throw "Wikipedia input width is $($wikipediaSearchGeometry.'searchInput_w')px" }
+          if ([double]$wikipediaSearchGeometry.'searchInput_h' -lt 42 -or [double]$wikipediaSearchGeometry.'searchInput_h' -gt 46) { throw "Wikipedia input height is $($wikipediaSearchGeometry.'searchInput_h')px" }
+          if ([double]$wikipediaSearchGeometry.'search-button_w' -lt 50 -or [double]$wikipediaSearchGeometry.'search-button_w' -gt 58) { throw "Wikipedia search button width is $($wikipediaSearchGeometry.'search-button_w')px" }
+          if ([double]$wikipediaSearchGeometry.'search-button_h' -lt 42 -or [double]$wikipediaSearchGeometry.'search-button_h' -gt 46) { throw "Wikipedia search button height is $($wikipediaSearchGeometry.'search-button_h')px" }
+          if ([double]$wikipediaSearchGeometry.'search-icon_w' -lt 20 -or [double]$wikipediaSearchGeometry.'search-icon_w' -gt 24) { throw "Wikipedia search icon width is $($wikipediaSearchGeometry.'search-icon_w')px" }
+          if ([double]$wikipediaSearchGeometry.'search-icon_h' -lt 20 -or [double]$wikipediaSearchGeometry.'search-icon_h' -gt 24) { throw "Wikipedia search icon height is $($wikipediaSearchGeometry.'search-icon_h')px" }
+          if ([string]$wikipediaSearchGeometry.root_progressive -ne '#36c') { throw "Wikipedia :root custom property did not resolve: $($wikipediaSearchGeometry.root_progressive)" }
+          if ([double]$wikipediaSearchGeometry.'search-button_x' -lt ([double]$wikipediaSearchGeometry.'search-input_x' + [double]$wikipediaSearchGeometry.'search-input_w')) { throw 'Wikipedia search button overlaps the input' }
+
+          $wikipediaSearchPath = Get-EvidenceFile 'wikipedia-search.png'
+          $wikipediaBitmap = [System.Drawing.Bitmap]::new($wikipediaSearchPath)
+          try {
+            $wikiBlue = [System.Collections.Generic.List[object]]::new()
+            for ($y = 0; $y -lt $wikipediaBitmap.Height; $y++) {
+              for ($x = 0; $x -lt $wikipediaBitmap.Width; $x++) {
+                $pixel = $wikipediaBitmap.GetPixel($x, $y)
+                if ($pixel.R -eq 51 -and $pixel.G -eq 102 -and $pixel.B -eq 204) { $wikiBlue.Add([pscustomobject]@{ x = $x; y = $y }) }
+              }
+            }
+            if ($wikiBlue.Count -lt 1200) { throw "Wikipedia search button has only $($wikiBlue.Count) exact #36c pixels" }
+            $wikiBlueX0 = ($wikiBlue.x | Measure-Object -Minimum).Minimum
+            $wikiBlueX1 = ($wikiBlue.x | Measure-Object -Maximum).Maximum
+            $wikiBlueY0 = ($wikiBlue.y | Measure-Object -Minimum).Minimum
+            $wikiBlueY1 = ($wikiBlue.y | Measure-Object -Maximum).Maximum
+            $wikiBlueWidth = $wikiBlueX1 - $wikiBlueX0 + 1
+            $wikiBlueHeight = $wikiBlueY1 - $wikiBlueY0 + 1
+            if ($wikiBlueWidth -lt 48 -or $wikiBlueWidth -gt 56) { throw "Wikipedia #36c button pixel width is $wikiBlueWidth" }
+            if ($wikiBlueHeight -lt 38 -or $wikiBlueHeight -gt 44) { throw "Wikipedia #36c button pixel height is $wikiBlueHeight" }
+          } finally {
+            $wikipediaBitmap.Dispose()
+          }
+
           $frames = @(
             Get-PngInfo 'frame-before.png'
             Get-PngInfo 'frame-typed.png'
@@ -434,6 +503,14 @@ jobs:
             google_layout_screenshot = $googleLayoutShot
             google_layout_blue_border_width = $googleBlueWidth
             google_layout_blue_border_height = $googleBlueHeight
+            wikipedia_portal_result = $wikipediaPortalResult
+            wikipedia_portal_geometry = $wikipediaPortalGeometry
+            wikipedia_portal_screenshot = $wikipediaPortalShot
+            wikipedia_search_result = $wikipediaSearchResult
+            wikipedia_search_geometry = $wikipediaSearchGeometry
+            wikipedia_search_screenshot = $wikipediaSearchShot
+            wikipedia_search_blue_button_width = $wikiBlueWidth
+            wikipedia_search_blue_button_height = $wikiBlueHeight
           }
           $frameSummary | ConvertTo-Json -Depth 4 |
             Set-Content -Encoding utf8 (Join-Path $artifacts 'frame-summary.json')
