@@ -2190,6 +2190,12 @@ pub fn renderChanged(self: *Frame) void {
     self._page.render_version +%= 1;
 }
 
+pub fn setHoveredElement(self: *Frame, element: ?*Element) void {
+    if (self.document._hovered_element == element) return;
+    self.document._hovered_element = element;
+    self.renderChanged();
+}
+
 pub fn domChanged(self: *Frame) void {
     self._page.dom_version += 1;
     self.renderChanged();

@@ -57,6 +57,7 @@ pub fn click(node: *DOMNode, frame: *Frame) !void {
 
 pub fn hover(node: *DOMNode, frame: *Frame) !void {
     const el = node.is(Element) orelse return error.InvalidNodeType;
+    frame.setHoveredElement(el);
 
     const mouseover_event: *MouseEvent = try .initTrusted(comptime .wrap("mouseover"), .{
         .bubbles = true,

@@ -1059,11 +1059,11 @@ fn getBucketKey(compound: Selector.Compound) ?BucketKey {
                 // Keep current best_key if we have something better
             },
             .pseudo_class => |pc| {
-                // Focus state is tracked by Document.activeElement and headed
-                // render generations, so those selectors can safely participate.
-                // Hover/active/focus-visible are not implemented by matching yet.
+                // Focus and hover state are tracked on Document and invalidate
+                // headed render generations, so those selectors can participate.
+                // Active/focus-visible are not implemented by matching yet.
                 switch (pc) {
-                    .hover, .active, .focus_visible => return null,
+                    .active, .focus_visible => return null,
                     else => {},
                 }
             },
@@ -1600,7 +1600,11 @@ test "StyleManager: focus selectors remain bucketable" {
         .{ .class = "hoverbox" },
         .{ .pseudo_class = .hover },
     } };
-    try std.testing.expect(getBucketKey(hover) == null);
+    const hover_key = getBucketKey(hover) orelse return error.ExpectedHoverBucket;
+    switch (hover_key) {
+        .class => |class| try std.testing.expectEqualStrings("hoverbox", class),
+        else => return error.ExpectedHoverClassBucket,
+    }
 }
 
 test "StyleManager: computeSpecificity: element selector" {

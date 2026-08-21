@@ -66,6 +66,7 @@ _elements_by_id: std.StringHashMapUnmanaged(*Element) = .empty,
 // Track IDs that were removed from the map - they might have duplicates in the tree
 _removed_ids: std.StringHashMapUnmanaged(void) = .empty,
 _active_element: ?*Element = null,
+_hovered_element: ?*Element = null,
 _style_sheets: ?*StyleSheetList = null,
 _implementation: ?*DOMImplementation = null,
 _fonts: ?*FontFaceSet = null,
@@ -897,6 +898,7 @@ fn elementFromPointImpl(self: *Document, x: f64, y: f64, ignore_x: bool, frame: 
     // We also share a single VisibilityCache across all elements so the
     // ancestor-walk inside isHidden gets amortized.
     var topmost: ?*Element = null;
+    const has_rendered_layout = frame._element_layout_boxes.count() > 0;
 
     const root = self.asNode();
     var stack: std.ArrayList(*Node) = .empty;
@@ -909,23 +911,39 @@ fn elementFromPointImpl(self: *Document, x: f64, y: f64, ignore_x: bool, frame: 
         const node = stack.pop() orelse break;
         const pos = preorder_index * 5.0;
 
-        if (pos > y) {
-            // Monotonic: no later element has top <= y, so none can contain (x, y).
+        if (!has_rendered_layout and pos > y) {
+            // Synthetic positions are monotonic in document order. Real layout
+            // boxes are not, so only this legacy path can stop early.
             return topmost;
         }
 
         preorder_index += 1;
         if (node.is(Element)) |element| {
             if (element.checkVisibilityCached(&visibility_cache, frame)) {
-                const dims = element.getElementDimensions(frame);
-                // x and y both come from preorder position in our faux layout.
-                const left = pos;
-                const top = pos;
-                const right = pos + dims.width;
-                const bottom = pos + dims.height;
-                const x_contained = ignore_x or (x >= left and x <= right);
-                if (x_contained and y >= top and y <= bottom) {
-                    topmost = element;
+                if (has_rendered_layout) {
+                    // Once native headed painting has recorded real boxes, hit
+                    // testing must use those same client-space rectangles. Mixing
+                    // rendered pixels with the legacy preorder geometry makes
+                    // pointer events select unrelated ancestors/siblings. Elements
+                    // that were not laid out are not candidates for rendered hits.
+                    if (frame._element_layout_boxes.get(element) != null) {
+                        const rect = element.boundingClientRectValuesForVisible(frame);
+                        const x_contained = ignore_x or (x >= rect.x and x <= rect.x + rect.width);
+                        if (x_contained and y >= rect.y and y <= rect.y + rect.height) {
+                            topmost = element;
+                        }
+                    }
+                } else {
+                    const dims = element.getElementDimensions(frame);
+                    // x and y both come from preorder position in our faux layout.
+                    const left = pos;
+                    const top = pos;
+                    const right = pos + dims.width;
+                    const bottom = pos + dims.height;
+                    const x_contained = ignore_x or (x >= left and x <= right);
+                    if (x_contained and y >= top and y <= bottom) {
+                        topmost = element;
+                    }
                 }
             }
         }

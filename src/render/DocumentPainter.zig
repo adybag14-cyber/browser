@@ -10229,6 +10229,12 @@ test "elementFromPoint sees translated button region" {
         var button_page = try testing.pageTest("page/transform_translate_layout.html");
         defer button_page._session.removePage();
 
+        var display_list = try paintDocument(std.testing.allocator, button_page, .{
+            .viewport_width = 960,
+            .viewport_height = 720,
+        });
+        defer display_list.deinit(std.testing.allocator);
+
         const button = (try button_page.window._document.querySelector(.wrap(".offset-pill button"), button_page)).?;
         const button_rect = button.getBoundingClientRect(button_page);
         const button_hit = (try button_page.window._document.elementFromPoint(
@@ -10238,6 +10244,40 @@ test "elementFromPoint sees translated button region" {
         )).?;
         try std.testing.expect(button_hit == button);
     }
+}
+
+test "rendered hit testing and hover state use painted child geometry" {
+    var page = try testing.pageTest("page/hover_state_layout.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 900,
+        .viewport_height = 760,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const outer = (try page.window._document.querySelector(.wrap("#outer"), page)).?;
+    const target = (try page.window._document.querySelector(.wrap("#target"), page)).?;
+    const target_rect = target.getBoundingClientRect(page);
+    const hit = (try page.window._document.elementFromPoint(
+        target_rect.getLeft() + target_rect.getWidth() / 2,
+        target_rect.getTop() + target_rect.getHeight() / 2,
+        page,
+    )).?;
+    try std.testing.expect(hit == target);
+
+    const outer_style = try page.window.getComputedStyle(outer, null, page);
+    const target_style = try page.window.getComputedStyle(target, null, page);
+    try std.testing.expectEqualStrings("rgb(240,240,240)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+    try std.testing.expectEqualStrings("rgb(255,0,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setHoveredElement(target);
+    try std.testing.expectEqualStrings("rgb(0,80,255)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+    try std.testing.expectEqualStrings("rgb(0,255,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setHoveredElement(null);
+    try std.testing.expectEqualStrings("rgb(240,240,240)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+    try std.testing.expectEqualStrings("rgb(255,0,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
 }
 
 test "paintDocument centers inline children when text-align is center" {

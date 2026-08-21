@@ -601,7 +601,12 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         .default => return false,
 
         // User interaction
-        .hover => return false,
+        .hover => {
+            const doc = node.ownerDocument(frame) orelse return false;
+            const hovered = doc._hovered_element orelse return false;
+            if (!hovered.asNode().isConnected()) return false;
+            return el == hovered or node.contains(hovered.asNode());
+        },
         .active => return false,
         .focus => {
             const doc = node.ownerDocument(frame) orelse return false;

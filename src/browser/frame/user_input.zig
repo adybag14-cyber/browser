@@ -82,7 +82,11 @@ pub fn triggerMousePress(frame: *Frame, x: f64, y: f64, button: i32) !void {
 }
 
 pub fn triggerMouseMove(frame: *Frame, x: f64, y: f64) !void {
-    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
+        frame.setHoveredElement(null);
+        return;
+    };
+    frame.setHoveredElement(target);
     if (comptime lp.IS_DEBUG) {
         log.debug(.frame, "frame mouse move", .{
             .url = frame.url,
@@ -901,7 +905,11 @@ pub fn triggerMouseClickHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMous
 }
 
 pub fn triggerMouseMoveHeaded(frame: *Frame, x: f64, y: f64, modifiers: MouseModifiers) !void {
-    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
+        frame.setHoveredElement(null);
+        return;
+    };
+    frame.setHoveredElement(target);
     _ = try dispatchHeadedMouseEvent(frame, target, "mousemove", x, y, .main, modifiers);
 }
 
