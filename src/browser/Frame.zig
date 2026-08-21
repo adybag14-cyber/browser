@@ -2190,6 +2190,21 @@ pub fn renderChanged(self: *Frame) void {
     self._page.render_version +%= 1;
 }
 
+pub fn viewportChanged(self: *Frame) !void {
+    self._style_manager.viewportChanged();
+    self.renderChanged();
+
+    const target = self.window.asEventTarget();
+    if (self._event_manager.hasDirectListeners(target, "resize", self.window._on_resize)) {
+        const event = try Event.initTrusted(comptime .wrap("resize"), .{}, self._page);
+        try self._event_manager.dispatchDirect(target, event, self.window._on_resize, .{ .context = "window resize" });
+    }
+
+    for (self.child_frames.items) |child| {
+        try child.viewportChanged();
+    }
+}
+
 pub fn setHoveredElement(self: *Frame, element: ?*Element) void {
     if (self.document._hovered_element == element) return;
     self.document._hovered_element = element;

@@ -51,6 +51,9 @@ const Win32Backend = if (builtin.os.tag == .windows) @import("win32_backend.zig"
         return false;
     }
     pub fn onViewportChanged(_: *@This(), _: u32, _: u32) void {}
+    pub fn takeClientResize(_: *@This()) ?Viewport {
+        return null;
+    }
     pub fn setNavigationState(_: *@This(), _: bool, _: bool, _: bool, _: i32) void {}
     pub fn setHistoryEntries(_: *@This(), _: []const []const u8, _: usize) void {}
     pub fn setDownloadEntries(_: *@This(), _: []const DownloadEntry) void {}
@@ -266,6 +269,19 @@ pub fn setViewport(self: *Display, width: u32, height: u32, device_pixel_ratio: 
         .bare_metal => |*backend| backend.onViewportChanged(self.viewport.width, self.viewport.height),
         .headed_windows => |*backend| backend.onViewportChanged(self.viewport.width, self.viewport.height),
     }
+}
+
+pub fn takeNativeViewportResize(self: *Display) ?Viewport {
+    const next = switch (self.backend) {
+        .headed_windows => |*backend| backend.takeClientResize(),
+        else => null,
+    } orelse return null;
+    const width = if (next.width == 0) 1 else next.width;
+    const height = if (next.height == 0) 1 else next.height;
+    if (width == self.viewport.width and height == self.viewport.height) return null;
+    self.viewport.width = width;
+    self.viewport.height = height;
+    return self.viewport;
 }
 
 pub fn resetViewport(self: *Display) void {

@@ -548,6 +548,14 @@ pub fn styleRevision(self: *const StyleManager) usize {
     return self.style_revision;
 }
 
+pub fn viewportChanged(self: *StyleManager) void {
+    // @media rules are indexed against the viewport during rebuild. Force a
+    // fresh cascade on the next style read after a native window resize.
+    self.dirty = true;
+    self.style_revision +%= 1;
+    Frame.observers.scheduleResizeDelivery(self.frame);
+}
+
 /// Rebuilds the rule list from all document stylesheets.
 /// Called lazily when dirty flag is set and rules are needed.
 fn rebuildIfDirty(self: *StyleManager) !void {

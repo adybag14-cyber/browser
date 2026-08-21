@@ -262,6 +262,11 @@ pub const Win32Backend = struct {
     requested_width: std.atomic.Value(u32),
     requested_height: std.atomic.Value(u32),
     resize_seq: std.atomic.Value(u64) = .init(0),
+    client_width: std.atomic.Value(u32),
+    client_height: std.atomic.Value(u32),
+    client_resize_seq: std.atomic.Value(u64) = .init(0),
+    consumed_client_resize_seq: u64 = 0, // main headed thread only
+    client_resize_ready: bool = false, // Win32 window thread only
     open_requested: std.atomic.Value(bool) = .init(false),
     shutdown_requested: std.atomic.Value(bool) = .init(false),
     user_closed: std.atomic.Value(bool) = .init(false),
@@ -407,6 +412,8 @@ pub const Win32Backend = struct {
             .allocator = allocator,
             .requested_width = .init(width),
             .requested_height = .init(height),
+            .client_width = .init(width),
+            .client_height = .init(height),
         };
     }
 
@@ -441,6 +448,16 @@ pub const Win32Backend = struct {
         self.requested_width.store(width, .release);
         self.requested_height.store(height, .release);
         _ = self.resize_seq.fetchAdd(1, .acq_rel);
+    }
+
+    pub fn takeClientResize(self: *Win32Backend) ?Display.Viewport {
+        const seq = self.client_resize_seq.load(.acquire);
+        if (seq == self.consumed_client_resize_seq) return null;
+        self.consumed_client_resize_seq = seq;
+        const width = self.client_width.load(.acquire);
+        const height = self.client_height.load(.acquire);
+        if (width == 0 or height == 0) return null;
+        return .{ .width = width, .height = height, .device_pixel_ratio = 1.0 };
     }
 
     pub fn setImageRequestCookieJar(self: *Win32Backend, cookie_jar: ?*CookieJar) void {
@@ -3398,12 +3415,11 @@ fn addressBarHitTest(x: f64, y: f64) bool {
 }
 
 fn presentationVisibleHeightPx(backend: *Win32Backend) i32 {
-    // requested_height is the requested *client* height (setClientSize adjusts
-    // the outer window around it). This gives presentation updates a safe scroll
-    // range before WM_PAINT runs; the paint path later refines the clamp using
-    // GetClientRect in case the OS supplied a different actual client size.
-    const requested_height = clampU32ToCInt(backend.requested_height.load(.acquire));
-    return @max(0, requested_height - PRESENTATION_HEADER_HEIGHT - PRESENTATION_MARGIN);
+    // Use the OS-published client size so scroll ranges follow interactive
+    // window resizing. client_height is initialized from the requested size and
+    // updated by WM_SIZE whenever the actual client rectangle changes.
+    const client_height = clampU32ToCInt(backend.client_height.load(.acquire));
+    return @max(0, client_height - PRESENTATION_HEADER_HEIGHT - PRESENTATION_MARGIN);
 }
 
 fn updatePresentationMaxScroll(backend: *Win32Backend, max_scroll: i32) i32 {
@@ -6126,8 +6142,8 @@ fn capturePresentationPixels(backend: *Win32Backend) !RenderedPresentation {
     const snapshot = try copyPresentationSnapshot(backend);
     errdefer snapshot.deinit(backend.allocator);
 
-    const width = clampU32ToCInt(backend.requested_width.load(.acquire));
-    const height = clampU32ToCInt(backend.requested_height.load(.acquire));
+    const width = clampU32ToCInt(backend.client_width.load(.acquire));
+    const height = clampU32ToCInt(backend.client_height.load(.acquire));
     if (width <= 0 or height <= 0) {
         return error.InvalidDimensions;
     }
@@ -7548,7 +7564,7 @@ fn hasImeCompositionString(lparam: c.LPARAM) bool {
 const WINDOW_CLASS_NAME = std.unicode.utf8ToUtf16LeStringLiteral("LightpandaHeadedWindowClass");
 const WINDOW_TITLE = std.unicode.utf8ToUtf16LeStringLiteral("Lightpanda Browser");
 
-const WINDOW_STYLE: c.DWORD = c.WS_OVERLAPPED | c.WS_CAPTION | c.WS_SYSMENU | c.WS_MINIMIZEBOX | c.WS_VISIBLE;
+const WINDOW_STYLE: c.DWORD = c.WS_OVERLAPPED | c.WS_CAPTION | c.WS_SYSMENU | c.WS_MINIMIZEBOX | c.WS_MAXIMIZEBOX | c.WS_THICKFRAME | c.WS_VISIBLE;
 const WINDOW_EX_STYLE: c.DWORD = c.WS_EX_APPWINDOW;
 
 fn registerWindowClass() !void {
@@ -7577,6 +7593,7 @@ fn registerWindowClass() !void {
 }
 
 fn createWindow(backend: *Win32Backend, width: u32, height: u32) !c.HWND {
+    backend.client_resize_ready = false;
     try registerWindowClass();
 
     const hinstance = c.GetModuleHandleW(null);
@@ -7610,6 +7627,11 @@ fn createWindow(backend: *Win32Backend, width: u32, height: u32) !c.HWND {
     _ = c.SetActiveWindow(hwnd);
     _ = c.SetFocus(hwnd);
 
+    // CreateWindow/ShowWindow can clamp a resizable window to the host work
+    // area (notably small CI/service desktops). Keep the CLI viewport virtual
+    // and exact through creation; only subsequent WM_SIZE messages represent a
+    // native resize that should replace --width/--height.
+    backend.client_resize_ready = true;
     return hwnd;
 }
 
@@ -7681,6 +7703,22 @@ fn wndProc(hwnd: c.HWND, msg: c.UINT, wparam: c.WPARAM, lparam: c.LPARAM) callco
             const backend_ptr = cs.lpCreateParams orelse return 0;
             _ = c.SetWindowLongPtrW(hwnd, c.GWLP_USERDATA, @intCast(@intFromPtr(backend_ptr)));
             return 1;
+        },
+        c.WM_SIZE => {
+            if (getBackendPtr(hwnd)) |backend| {
+                if (!backend.client_resize_ready) return 0;
+                const raw: usize = @bitCast(lparam);
+                const width: u32 = @intCast(raw & 0xFFFF);
+                const height: u32 = @intCast((raw >> 16) & 0xFFFF);
+                if (width > 0 and height > 0) {
+                    const old_width = backend.client_width.swap(width, .acq_rel);
+                    const old_height = backend.client_height.swap(height, .acq_rel);
+                    if (old_width != width or old_height != height) {
+                        _ = backend.client_resize_seq.fetchAdd(1, .acq_rel);
+                    }
+                }
+            }
+            return 0;
         },
         c.WM_CLOSE => {
             if (getBackendPtr(hwnd)) |backend| {

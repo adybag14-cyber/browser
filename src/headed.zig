@@ -567,6 +567,24 @@ const Shell = struct {
         try self.display.presentPageView(title, frame.url, text, &list);
     }
 
+    fn applyNativeViewportResize(self: *Shell, viewport: Display.Viewport) !void {
+        self.width = viewport.width;
+        self.height = viewport.height;
+
+        // All tabs in this native window share its client viewport. Update the
+        // browser-level source of truth first so resize handlers/media queries
+        // observe the new dimensions synchronously.
+        for (self.tabs.items) |tab| {
+            tab.browser.viewport_override = .{ .width = viewport.width, .height = viewport.height };
+            var isolate_scope = TabIsolateScope.init(tab);
+            defer isolate_scope.deinit();
+            for (tab.session.pages.items) |page| {
+                try page.viewportChanged();
+            }
+            tab.last_presented_hash = 0;
+        }
+    }
+
     fn drainCommands(self: *Shell) !void {
         while (self.display.nextBrowserCommand()) |command| {
             defer command.deinit(self.app.allocator);
@@ -780,6 +798,9 @@ pub fn browse(app: *App, opts: anytype) !void {
 
     try shell.restoreOrStart(opts.url);
     while (shell.tabs.items.len > 0 and !shell.display.userClosed()) {
+        if (shell.display.takeNativeViewportResize()) |viewport| {
+            try shell.applyNativeViewportResize(viewport);
+        }
         if (shell.activeTab()) |tab| {
             if (tab.frame()) |frame| {
                 var isolate_scope = TabIsolateScope.init(tab);
