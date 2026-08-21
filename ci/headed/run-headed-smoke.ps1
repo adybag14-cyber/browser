@@ -33,6 +33,7 @@ $googleLayoutGeometry = Join-Path $state 'google-layout-geometry.json'
 $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
 $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
+$flowLayoutGeometry = Join-Path $state 'flow-layout-geometry.json'
 $hoverGeometry = Join-Path $state 'hover-geometry.json'
 $focusVisibleGeometry = Join-Path $state 'focus-visible-geometry.json'
 $formStateInitial = Join-Path $state 'form-state-initial.json'
@@ -43,7 +44,7 @@ $modalStateNonmodal = Join-Path $state 'modal-state-nonmodal.json'
 $modalStateModal = Join-Path $state 'modal-state-modal.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$modalStateNonmodal,$modalStateModal,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$flowLayoutGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$modalStateNonmodal,$modalStateModal,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -274,6 +275,7 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--google-layout-fail-file', $googleLayoutFail,
     '--wikipedia-portal-file', $wikipediaPortalGeometry,
     '--wikipedia-search-file', $wikipediaSearchGeometry,
+    '--flow-layout-file', $flowLayoutGeometry,
     '--hover-geometry-file', $hoverGeometry,
     '--focus-visible-geometry-file', $focusVisibleGeometry,
     '--form-state-initial-file', $formStateInitial,
@@ -571,6 +573,26 @@ try {
             Start-Sleep -Milliseconds 250
             [void](Request-PngEvidence $hwnd $Artifacts 'wikipedia-search.png')
             'WIKIPEDIA_SEARCH_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-search-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Core flow-layout regression distilled from the real Wikipedia portal:
+        # mixed inline descendants, empty helper boxes, and whitespace-separated floats.
+        Remove-Item $flowLayoutGeometry -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'flow-layout-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'flow-layout.stdout.log'
+        $stderr = Join-Path $Artifacts 'flow-layout.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/flow-layout.html','--width','1000','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $flowLayoutGeometry 15 2)
+            Copy-Item $flowLayoutGeometry (Join-Path $Artifacts 'flow-layout-geometry.json') -Force
+            'FLOW_LAYOUT_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'flow-layout-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

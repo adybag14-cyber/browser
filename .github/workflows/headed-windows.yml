@@ -442,6 +442,25 @@ jobs:
             $wikipediaBitmap.Dispose()
           }
 
+          $flowLayoutResult = (Get-Content (Get-EvidenceFile 'flow-layout-result.txt') -Raw).Trim()
+          if ($flowLayoutResult -ne 'FLOW_LAYOUT_OK') { throw "Unexpected flow-layout marker: $flowLayoutResult" }
+          $flowLayout = Get-Content (Get-EvidenceFile 'flow-layout-geometry.json') -Raw | ConvertFrom-Json
+          foreach ($property in @('mixed_w','mixed_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h')) {
+            if ($null -eq $flowLayout.PSObject.Properties[$property]) { throw "flow-layout-geometry.json is missing $property" }
+          }
+          if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 24 -or [int]$flowLayout.mixed_h -gt 34) {
+            throw "Mixed inline-block wrapped unexpectedly: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.input_h -ne 44 -or [int]$flowLayout.wrap_h -lt 44 -or [int]$flowLayout.wrap_h -gt 46 -or [int]$flowLayout.empty_h -gt 1) {
+            throw "Empty helper inflated the input wrapper: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.float_host_h -lt 88 -or [int]$flowLayout.float_host_h -gt 94 -or [int]$flowLayout.a_h -ne 90 -or [int]$flowLayout.b_h -ne 90 -or [int]$flowLayout.c_h -ne 90) {
+            throw "Floated tile row height is wrong: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.a_y -ne [int]$flowLayout.b_y -or [int]$flowLayout.a_y -ne [int]$flowLayout.c_y -or [int]$flowLayout.a_x -ge [int]$flowLayout.b_x -or [int]$flowLayout.b_x -ge [int]$flowLayout.c_x) {
+            throw "Whitespace broke the float row: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+
           $formStateResult = (Get-Content (Get-EvidenceFile 'form-state-result.txt') -Raw).Trim()
           if ($formStateResult -ne 'FORM_STATE_PSEUDOS_OK') { throw "Unexpected form-state marker: $formStateResult" }
           $formInitial = Get-Content (Get-EvidenceFile 'form-state-initial.json') -Raw | ConvertFrom-Json

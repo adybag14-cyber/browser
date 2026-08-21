@@ -188,6 +188,7 @@ class Handler(BaseHTTPRequestHandler):
     google_layout_fail_file: str | None = None
     wikipedia_portal_file: str | None = None
     wikipedia_search_file: str | None = None
+    flow_layout_file: str | None = None
     hover_geometry_file: str | None = None
     focus_visible_geometry_file: str | None = None
     form_state_initial_file: str | None = None
@@ -234,6 +235,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, _fixture("wikipedia_portal_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/wikipedia-search.html":
             return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/flow-layout.html":
+            return self._body(200, _fixture("flow_layout_primitives.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/form-state.html":
             reporter = b"""<script>
 (function(){
@@ -472,6 +475,14 @@ class Handler(BaseHTTPRequestHandler):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/flow-layout-geometry":
+            if self.flow_layout_file:
+                params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+                payload = {name: values[0] if values else "" for name, values in params.items()}
+                path = pathlib.Path(self.flow_layout_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/hover-geometry":
             if self.hover_geometry_file:
                 params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
@@ -550,6 +561,7 @@ def main() -> int:
     parser.add_argument("--google-layout-fail-file")
     parser.add_argument("--wikipedia-portal-file")
     parser.add_argument("--wikipedia-search-file")
+    parser.add_argument("--flow-layout-file")
     parser.add_argument("--hover-geometry-file")
     parser.add_argument("--focus-visible-geometry-file")
     parser.add_argument("--form-state-initial-file")
@@ -573,6 +585,7 @@ def main() -> int:
     Handler.google_layout_fail_file = args.google_layout_fail_file
     Handler.wikipedia_portal_file = args.wikipedia_portal_file
     Handler.wikipedia_search_file = args.wikipedia_search_file
+    Handler.flow_layout_file = args.flow_layout_file
     Handler.hover_geometry_file = args.hover_geometry_file
     Handler.focus_visible_geometry_file = args.focus_visible_geometry_file
     Handler.form_state_initial_file = args.form_state_initial_file
