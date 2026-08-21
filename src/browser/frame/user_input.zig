@@ -66,6 +66,7 @@ fn dispatchMouseEventOn(frame: *Frame, target: *Element, comptime typ: []const u
 }
 
 pub fn triggerMousePress(frame: *Frame, x: f64, y: f64, button: i32) !void {
+    if (button == mouse_button.main) frame.setFocusVisibleKeyboardModality(false);
     const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
         if (button == mouse_button.main) frame.setActivePointerElement(null);
         return;
@@ -462,6 +463,7 @@ fn followLink(frame: *Frame, target: *Node, element: *Element, href: []const u8,
 }
 
 pub fn triggerKeyboard(frame: *Frame, keyboard_event: *KeyboardEvent) !void {
+    frame.setFocusVisibleKeyboardModality(true);
     const event = keyboard_event.asEvent();
     // Dispatch to the effective active element. When nothing is explicitly
     // focused this resolves to <body> (matching `document.activeElement`), so
@@ -847,6 +849,7 @@ fn dispatchHeadedMouseEvent(frame: *Frame, target: *Element, comptime typ: []con
 }
 
 pub fn triggerMouseDownHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
+    if (button == .main) frame.setFocusVisibleKeyboardModality(false);
     const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
         if (button == .main) frame.setActivePointerElement(null);
         return;
@@ -1000,6 +1003,7 @@ fn triggerKeyboardHeaded(frame: *Frame, keyboard_event: *KeyboardEvent) !bool {
 }
 
 pub fn triggerKeyboardKeyDownNoTextWithRepeatHeaded(frame: *Frame, key: []const u8, modifiers: KeyboardModifiers, repeat: bool) !bool {
+    frame.setFocusVisibleKeyboardModality(true);
     frame.headed_keyboard_text_suppression_depth += 1;
     defer frame.headed_keyboard_text_suppression_depth -= 1;
     const keyboard_event = try KeyboardEvent.initTrusted(comptime .wrap("keydown"), .{ .key = key, .altKey = modifiers.alt, .ctrlKey = modifiers.ctrl, .metaKey = modifiers.meta, .shiftKey = modifiers.shift, .repeat = repeat }, frame);

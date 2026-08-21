@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; }
+  .focus-button {
+    display: block;
+    width: 240px;
+    height: 64px;
+    margin: 0 0 28px 0;
+    background-color: rgb(255,0,0);
+  }
+  .focus-button:focus { background-color: rgb(0,80,255); }
+  .focus-button:focus-visible { background-color: rgb(0,255,0); }
+  #focus-text {
+    display: block;
+    width: 320px;
+    height: 52px;
+    background-color: rgb(255,128,0);
+  }
+  #focus-text:focus { background-color: rgb(0,80,255); }
+  #focus-text:focus-visible { background-color: rgb(0,255,255); }
+</style>
+<button id="pointer-button" class="focus-button">Pointer focus</button>
+<button id="keyboard-button" class="focus-button">Keyboard focus</button>
+<input id="focus-text" value="text entry">

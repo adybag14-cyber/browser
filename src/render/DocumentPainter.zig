@@ -10288,6 +10288,42 @@ test "rendered hit testing and hover state use painted child geometry" {
     try std.testing.expectEqualStrings("rgb(255,0,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
 }
 
+test "focus-visible follows keyboard modality and text-entry heuristic" {
+    var page = try testing.pageTest("page/focus_visible_layout.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 900,
+        .viewport_height = 760,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    const pointer_button = (try page.window._document.querySelector(.wrap("#pointer-button"), page)).?;
+    const keyboard_button = (try page.window._document.querySelector(.wrap("#keyboard-button"), page)).?;
+    const text_input = (try page.window._document.querySelector(.wrap("#focus-text"), page)).?;
+    const pointer_style = try page.window.getComputedStyle(pointer_button, null, page);
+    const keyboard_style = try page.window.getComputedStyle(keyboard_button, null, page);
+    const text_style = try page.window.getComputedStyle(text_input, null, page);
+
+    page.setFocusVisibleKeyboardModality(false);
+    try pointer_button.focus(page);
+    try std.testing.expectEqualStrings("rgb(0,80,255)", pointer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setFocusVisibleKeyboardModality(true);
+    try std.testing.expectEqualStrings("rgb(0,255,0)", pointer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setFocusVisibleKeyboardModality(false);
+    try std.testing.expectEqualStrings("rgb(0,80,255)", pointer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setFocusVisibleKeyboardModality(true);
+    try keyboard_button.focus(page);
+    try std.testing.expectEqualStrings("rgb(0,255,0)", keyboard_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setFocusVisibleKeyboardModality(false);
+    try text_input.focus(page);
+    try std.testing.expectEqualStrings("rgb(0,255,255)", text_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+}
+
 test "paintDocument centers inline children when text-align is center" {
     var page = try testing.pageTest("page/text_align_center_layout.html");
     defer page._session.removePage();

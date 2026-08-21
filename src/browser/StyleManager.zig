@@ -1067,13 +1067,10 @@ fn getBucketKey(compound: Selector.Compound) ?BucketKey {
                 // Keep current best_key if we have something better
             },
             .pseudo_class => |pc| {
-                // Focus, hover, and pointer-active state are tracked on Document and
-                // invalidate headed render generations, so those selectors can participate.
-                // Focus-visible is not implemented by matching yet.
-                switch (pc) {
-                    .focus_visible => return null,
-                    else => {},
-                }
+                // Focus, hover, pointer-active, and focus-visible modality state are
+                // tracked on Document and invalidate headed render generations, so
+                // interaction selectors can participate in the author cascade.
+                _ = pc;
             },
             .universal, .attribute => {},
         }
@@ -1622,6 +1619,16 @@ test "StyleManager: focus selectors remain bucketable" {
     switch (active_key) {
         .class => |class| try std.testing.expectEqualStrings("activebox", class),
         else => return error.ExpectedActiveClassBucket,
+    }
+
+    const focus_visible = Selector.Compound{ .parts = &.{
+        .{ .class = "focusvisiblebox" },
+        .{ .pseudo_class = .focus_visible },
+    } };
+    const focus_visible_key = getBucketKey(focus_visible) orelse return error.ExpectedFocusVisibleBucket;
+    switch (focus_visible_key) {
+        .class => |class| try std.testing.expectEqualStrings("focusvisiblebox", class),
+        else => return error.ExpectedFocusVisibleClassBucket,
     }
 }
 

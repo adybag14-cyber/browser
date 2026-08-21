@@ -68,6 +68,9 @@ _removed_ids: std.StringHashMapUnmanaged(void) = .empty,
 _active_element: ?*Element = null,
 _hovered_element: ?*Element = null,
 _active_pointer_element: ?*Element = null,
+// Last focus-input modality used by :focus-visible. Keyboard starts true so
+// script/autofocus gets a visible indicator until a pointer interaction occurs.
+_focus_visible_keyboard_modality: bool = true,
 _style_sheets: ?*StyleSheetList = null,
 _implementation: ?*DOMImplementation = null,
 _fonts: ?*FontFaceSet = null,

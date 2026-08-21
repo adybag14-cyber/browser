@@ -2217,6 +2217,13 @@ pub fn setActivePointerElement(self: *Frame, element: ?*Element) void {
     self.renderChanged();
 }
 
+pub fn setFocusVisibleKeyboardModality(self: *Frame, keyboard: bool) void {
+    if (self.document._focus_visible_keyboard_modality == keyboard) return;
+    self.document._focus_visible_keyboard_modality = keyboard;
+    // Modality can change :focus-visible while activeElement stays unchanged.
+    self.renderChanged();
+}
+
 pub fn domChanged(self: *Frame) void {
     self._page.dom_version += 1;
     self.renderChanged();

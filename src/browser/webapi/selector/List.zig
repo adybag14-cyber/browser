@@ -528,6 +528,17 @@ fn attributeContainsWord(value: []const u8, word: []const u8) bool {
     return false;
 }
 
+fn focusVisibleAlwaysIndicated(el: *Node.Element) bool {
+    if (el.is(Node.Element.Html.TextArea) != null) return true;
+    if (el.is(Node.Element.Html.Input)) |input| {
+        return switch (input._input_type) {
+            .text, .password, .email, .url, .tel, .search, .number => true,
+            else => false,
+        };
+    }
+    return false;
+}
+
 fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *Node, frame: *Frame) bool {
     const node = el.asNode();
     switch (pseudo) {
@@ -623,7 +634,12 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
             const active = doc._active_element orelse return false;
             return node.contains(active.asNode());
         },
-        .focus_visible => return false,
+        .focus_visible => {
+            const doc = node.ownerDocument(frame) orelse return false;
+            const active = doc._active_element orelse return false;
+            if (active != el) return false;
+            return doc._focus_visible_keyboard_modality or focusVisibleAlwaysIndicated(el);
+        },
 
         // Link states. In a headless browser no link is ever visited, so
         // :link matches every hyperlink (a or area with an href attribute)
