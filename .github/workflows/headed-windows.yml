@@ -492,6 +492,42 @@ jobs:
           if ($hoverBefore.sha256 -eq $hoverActive.sha256) { throw 'Native hover produced no visible PNG change' }
           if ($hoverActive.sha256 -eq $hoverCleared.sha256) { throw 'Moving away did not clear the visible hover state' }
 
+          $resizeResultPath = Get-EvidenceFile 'resize-result.txt'
+          $resizeResult = (Get-Content $resizeResultPath -Raw).Trim()
+          if ($resizeResult -ne 'NATIVE_RESIZE_OK') { throw "Unexpected native-resize marker: $resizeResult" }
+          $resizeBeforeState = Get-Content (Get-EvidenceFile 'resize-before-state.json') -Raw | ConvertFrom-Json
+          $resizeAfterState = Get-Content (Get-EvidenceFile 'resize-after-state.json') -Raw | ConvertFrom-Json
+          if ($resizeBeforeState.kind -ne 'load' -or [int]$resizeBeforeState.w -ne 900 -or [int]$resizeBeforeState.h -ne 760 -or $resizeBeforeState.color -ne 'rgb(255,0,0)') {
+            throw "Unexpected pre-resize state: $($resizeBeforeState | ConvertTo-Json -Compress)"
+          }
+          if ($resizeAfterState.kind -ne 'resize' -or [int]$resizeAfterState.w -ne 660 -or [int]$resizeAfterState.h -ne 700 -or $resizeAfterState.color -ne 'rgb(0,255,0)') {
+            throw "Unexpected post-resize state: $($resizeAfterState | ConvertTo-Json -Compress)"
+          }
+          $resizeBefore = Get-PngInfo 'resize-before.png'
+          $resizeAfter = Get-PngInfo 'resize-after.png'
+          if ($resizeBefore.width -ne 900 -or $resizeBefore.height -ne 760) { throw "Pre-resize PNG is $($resizeBefore.width)x$($resizeBefore.height), expected 900x760" }
+          if ($resizeAfter.width -ne 660 -or $resizeAfter.height -ne 700) { throw "Post-resize PNG is $($resizeAfter.width)x$($resizeAfter.height), expected 660x700" }
+          function Get-ResizeColorCounts([string]$Name) {
+            $path = Get-EvidenceFile $Name
+            $bitmap = [System.Drawing.Bitmap]::new($path)
+            try {
+              $red=0; $green=0
+              for ($y=80; $y -lt [Math]::Min(500,$bitmap.Height); $y++) {
+                for ($x=20; $x -lt [Math]::Min(700,$bitmap.Width); $x++) {
+                  $pixel=$bitmap.GetPixel($x,$y)
+                  if ($pixel.R -eq 255 -and $pixel.G -eq 0 -and $pixel.B -eq 0) { $red++ }
+                  elseif ($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 0) { $green++ }
+                }
+              }
+              return [pscustomobject]@{red=$red;green=$green}
+            } finally { $bitmap.Dispose() }
+          }
+          $resizeBeforeColors=Get-ResizeColorCounts 'resize-before.png'
+          $resizeAfterColors=Get-ResizeColorCounts 'resize-after.png'
+          if ($resizeBeforeColors.red -lt 70000 -or $resizeBeforeColors.green -gt 50) { throw "Unexpected pre-resize pixels: red=$($resizeBeforeColors.red) green=$($resizeBeforeColors.green)" }
+          if ($resizeAfterColors.green -lt 60000 -or $resizeAfterColors.red -gt 50) { throw "Responsive resize did not repaint green: red=$($resizeAfterColors.red) green=$($resizeAfterColors.green)" }
+          if ($resizeBefore.sha256 -eq $resizeAfter.sha256) { throw 'Native resize produced no PNG change' }
+
           $frames = @(
             Get-PngInfo 'frame-before.png'
             Get-PngInfo 'frame-typed.png'

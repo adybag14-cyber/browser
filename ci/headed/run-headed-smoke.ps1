@@ -34,7 +34,9 @@ $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
 $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
 $hoverGeometry = Join-Path $state 'hover-geometry.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry -Force -ErrorAction SilentlyContinue
+$resizeLoadState = Join-Path $state 'resize-load.json'
+$resizeAfterState = Join-Path $state 'resize-after.json'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -50,6 +52,10 @@ public static class LPWin32 {
   [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
   [DllImport("user32.dll")] public static extern uint GetGuiResources(IntPtr process, uint flags);
   [DllImport("kernel32.dll", SetLastError=true)] public static extern bool GetExitCodeProcess(IntPtr process, out uint code);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+  public struct RECT { public int left, top, right, bottom; }
 }
 '@
 
@@ -82,6 +88,19 @@ function Send-Click([IntPtr]$Hwnd, [int]$X, [int]$Y) {
     Start-Sleep -Milliseconds 80
     [void][LPWin32]::PostMessage($Hwnd, 0x0202, [IntPtr]0, $lp) # WM_LBUTTONUP
     Start-Sleep -Milliseconds 120
+}
+
+function Resize-ClientArea([IntPtr]$Hwnd, [int]$Width, [int]$Height) {
+    $windowRect = New-Object LPWin32+RECT
+    $clientRect = New-Object LPWin32+RECT
+    if (-not [LPWin32]::GetWindowRect($Hwnd, [ref]$windowRect)) { throw 'GetWindowRect failed during resize gate' }
+    if (-not [LPWin32]::GetClientRect($Hwnd, [ref]$clientRect)) { throw 'GetClientRect failed during resize gate' }
+    $borderWidth = ($windowRect.right - $windowRect.left) - ($clientRect.right - $clientRect.left)
+    $borderHeight = ($windowRect.bottom - $windowRect.top) - ($clientRect.bottom - $clientRect.top)
+    $flags = 0x0002 -bor 0x0004 -bor 0x0010 # NOMOVE | NOZORDER | NOACTIVATE
+    if (-not [LPWin32]::SetWindowPos($Hwnd, [IntPtr]::Zero, 0, 0, $Width + $borderWidth, $Height + $borderHeight, $flags)) {
+        throw 'SetWindowPos failed during resize gate'
+    }
 }
 
 function Send-MouseMove([IntPtr]$Hwnd, [int]$X, [int]$Y) {
@@ -238,7 +257,9 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--google-layout-fail-file', $googleLayoutFail,
     '--wikipedia-portal-file', $wikipediaPortalGeometry,
     '--wikipedia-search-file', $wikipediaSearchGeometry,
-    '--hover-geometry-file', $hoverGeometry
+    '--hover-geometry-file', $hoverGeometry,
+    '--resize-load-file', $resizeLoadState,
+    '--resize-after-file', $resizeAfterState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -568,6 +589,34 @@ try {
             Start-Sleep -Milliseconds 350
             [void](Request-PngEvidence $hwnd $Artifacts 'hover-cleared.png')
             'NATIVE_HOVER_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'hover-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Native window resize + responsive CSS regression. Creation preserves
+        # the requested virtual viewport; a subsequent real WM_SIZE must update
+        # innerWidth/innerHeight, @media cascade, resize events and PNG dimensions.
+        Remove-Item $resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'resize-state-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'resize-state.stdout.log'
+        $stderr = Join-Path $Artifacts 'resize-state.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/resize-state.html','--width','900','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $resizeLoadState 15 2)
+            Copy-Item $resizeLoadState (Join-Path $Artifacts 'resize-before-state.json') -Force
+            Start-Sleep -Milliseconds 1200
+            [void](Request-PngEvidence $hwnd $Artifacts 'resize-before.png')
+            Resize-ClientArea $hwnd 660 700
+            [void](Wait-File $resizeAfterState 15 2)
+            Copy-Item $resizeAfterState (Join-Path $Artifacts 'resize-after-state.json') -Force
+            Start-Sleep -Milliseconds 500
+            [void](Request-PngEvidence $hwnd $Artifacts 'resize-after.png')
+            'NATIVE_RESIZE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'resize-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

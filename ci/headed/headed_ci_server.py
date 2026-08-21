@@ -189,6 +189,8 @@ class Handler(BaseHTTPRequestHandler):
     wikipedia_portal_file: str | None = None
     wikipedia_search_file: str | None = None
     hover_geometry_file: str | None = None
+    resize_load_file: str | None = None
+    resize_after_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -247,6 +249,20 @@ class Handler(BaseHTTPRequestHandler):
 })();
 </script>"""
             return self._body(200, _fixture("hover_state_layout.html") + reporter, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/resize-state.html":
+            reporter = b"""<script>
+(function(){
+  function report(kind){
+    var target=document.getElementById('resize-target');
+    var color=getComputedStyle(target).getPropertyValue('background-color');
+    var q='kind='+kind+'&w='+innerWidth+'&h='+innerHeight+'&color='+encodeURIComponent(color);
+    fetch('/resize-state-report?'+q,{method:'POST'}).catch(function(){});
+  }
+  addEventListener('load',function(){setTimeout(function(){report('load')},250)});
+  addEventListener('resize',function(){setTimeout(function(){report('resize')},100)});
+})();
+</script>"""
+            return self._body(200, _fixture("resize_state_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/rich.html":
             return self._body(200, RICH, "text/html; charset=utf-8")
         if port == 18773 and self.path.startswith("/asset.png"):
@@ -288,6 +304,16 @@ class Handler(BaseHTTPRequestHandler):
                 path = pathlib.Path(self.navigation_state_file)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n".join(fields) + "\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/resize-state-report":
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            payload = {name: values[0] if values else "" for name, values in params.items()}
+            kind = payload.get("kind", "")
+            output = self.resize_load_file if kind == "load" else self.resize_after_file if kind == "resize" else None
+            if output:
+                path = pathlib.Path(output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/hover-geometry":
             if self.hover_geometry_file:
@@ -368,6 +394,8 @@ def main() -> int:
     parser.add_argument("--wikipedia-portal-file")
     parser.add_argument("--wikipedia-search-file")
     parser.add_argument("--hover-geometry-file")
+    parser.add_argument("--resize-load-file")
+    parser.add_argument("--resize-after-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
@@ -382,6 +410,8 @@ def main() -> int:
     Handler.wikipedia_portal_file = args.wikipedia_portal_file
     Handler.wikipedia_search_file = args.wikipedia_search_file
     Handler.hover_geometry_file = args.hover_geometry_file
+    Handler.resize_load_file = args.resize_load_file
+    Handler.resize_after_file = args.resize_after_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:
