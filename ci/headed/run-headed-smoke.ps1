@@ -33,7 +33,8 @@ $googleLayoutGeometry = Join-Path $state 'google-layout-geometry.json'
 $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
 $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry -Force -ErrorAction SilentlyContinue
+$hoverGeometry = Join-Path $state 'hover-geometry.json'
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -48,6 +49,7 @@ public static class LPWin32 {
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
   [DllImport("user32.dll")] public static extern uint GetGuiResources(IntPtr process, uint flags);
+  [DllImport("kernel32.dll", SetLastError=true)] public static extern bool GetExitCodeProcess(IntPtr process, out uint code);
 }
 '@
 
@@ -80,6 +82,12 @@ function Send-Click([IntPtr]$Hwnd, [int]$X, [int]$Y) {
     Start-Sleep -Milliseconds 80
     [void][LPWin32]::PostMessage($Hwnd, 0x0202, [IntPtr]0, $lp) # WM_LBUTTONUP
     Start-Sleep -Milliseconds 120
+}
+
+function Send-MouseMove([IntPtr]$Hwnd, [int]$X, [int]$Y) {
+    $lp = [IntPtr](($Y -shl 16) -bor ($X -band 0xffff))
+    [void][LPWin32]::PostMessage($Hwnd, 0x0200, [IntPtr]0, $lp) # WM_MOUSEMOVE
+    Start-Sleep -Milliseconds 180
 }
 
 function Send-Text([IntPtr]$Hwnd, [string]$Text) {
@@ -136,6 +144,14 @@ function Request-PngEvidence([IntPtr]$Hwnd, [string]$Directory, [string]$TargetN
 
 function Stop-Browser($Process, [IntPtr]$Hwnd) {
     if (-not $Process) { return }
+    # Keep the OS process handle before shutdown. Windows PowerShell can leave
+    # System.Diagnostics.Process.ExitCode unset for Start-Process -PassThru
+    # children with redirected streams even after a clean exit.
+    try {
+        $processHandle = $Process.Handle
+    } catch {
+        throw "Unable to obtain headed browser process handle: $($_.Exception.Message)"
+    }
     if (-not $Process.HasExited) {
         if ($Hwnd -ne [IntPtr]::Zero -and [LPWin32]::IsWindow($Hwnd)) {
             [void][LPWin32]::PostMessage($Hwnd, 0x0010, [IntPtr]0, [IntPtr]0) # WM_CLOSE
@@ -146,8 +162,21 @@ function Stop-Browser($Process, [IntPtr]$Hwnd) {
             [void]$Process.WaitForExit(5000)
         }
     }
-    if ($Process.ExitCode -ne 0) {
-        throw "Headed browser exited with code $($Process.ExitCode); DebugAllocator leaks and crashes are fatal"
+    if (-not $Process.HasExited) {
+        throw "Headed browser did not exit after WM_CLOSE/forced-stop cleanup"
+    }
+    # Finalize redirected output, then read the authoritative Windows process
+    # status from the retained native handle. STILL_ACTIVE (259) is invalid here.
+    $Process.WaitForExit()
+    $nativeExitCode = [uint32]259
+    if (-not [LPWin32]::GetExitCodeProcess($processHandle, [ref]$nativeExitCode)) {
+        throw "Unable to read headed browser native exit code (Win32 error $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))"
+    }
+    if ($nativeExitCode -eq 259) {
+        throw "Headed browser process remained active after shutdown"
+    }
+    if ($nativeExitCode -ne 0) {
+        throw ('Headed browser exited with code 0x{0:X8}; DebugAllocator leaks and crashes are fatal' -f $nativeExitCode)
     }
 }
 
@@ -208,7 +237,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--google-layout-file', $googleLayoutGeometry,
     '--google-layout-fail-file', $googleLayoutFail,
     '--wikipedia-portal-file', $wikipediaPortalGeometry,
-    '--wikipedia-search-file', $wikipediaSearchGeometry
+    '--wikipedia-search-file', $wikipediaSearchGeometry,
+    '--hover-geometry-file', $hoverGeometry
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
 
 try {
@@ -496,6 +526,48 @@ try {
             Start-Sleep -Milliseconds 250
             [void](Request-PngEvidence $hwnd $Artifacts 'wikipedia-search.png')
             'WIKIPEDIA_SEARCH_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-search-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Native rendered hit-testing + :hover regression. The CI server reuses
+        # the tracked source fixture and reports its real CSSOM geometry after paint.
+        Remove-Item $hoverGeometry -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'hover-state-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'hover-state.stdout.log'
+        $stderr = Join-Path $Artifacts 'hover-state.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/hover-state.html','--width','900','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $hoverGeometry 15 2)
+            Copy-Item $hoverGeometry (Join-Path $Artifacts 'hover-geometry.json') -Force
+            $hover = Get-Content $hoverGeometry -Raw | ConvertFrom-Json
+            foreach ($property in @('outer_x','outer_y','outer_w','outer_h','target_x','target_y','target_w','target_h')) {
+                if ($null -eq $hover.PSObject.Properties[$property]) { throw "hover geometry is missing $property" }
+            }
+            # Display-list page coordinates are painted at +12 client X and
+            # +100 client Y (92px chrome + 8px content gap). Use CSSOM geometry
+            # rather than hard-coded target coordinates so layout changes remain testable.
+            $targetClientX = [int][Math]::Round([double]$hover.target_x + ([double]$hover.target_w / 2.0) + 12.0)
+            $targetClientY = [int][Math]::Round([double]$hover.target_y + ([double]$hover.target_h / 2.0) + 100.0)
+            $awayPageX = [Math]::Min(760.0, [double]$hover.outer_x + [double]$hover.outer_w + 80.0)
+            $awayPageY = [Math]::Min(560.0, [double]$hover.outer_y + [double]$hover.outer_h + 80.0)
+            $awayClientX = [int][Math]::Round($awayPageX + 12.0)
+            $awayClientY = [int][Math]::Round($awayPageY + 100.0)
+            Send-MouseMove $hwnd $awayClientX $awayClientY
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'hover-before.png')
+            Send-MouseMove $hwnd $targetClientX $targetClientY
+            Start-Sleep -Milliseconds 350
+            [void](Request-PngEvidence $hwnd $Artifacts 'hover-active.png')
+            Send-MouseMove $hwnd $awayClientX $awayClientY
+            Start-Sleep -Milliseconds 350
+            [void](Request-PngEvidence $hwnd $Artifacts 'hover-cleared.png')
+            'NATIVE_HOVER_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'hover-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

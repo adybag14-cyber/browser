@@ -442,6 +442,56 @@ jobs:
             $wikipediaBitmap.Dispose()
           }
 
+          $hoverResultPath = Get-EvidenceFile 'hover-result.txt'
+          $hoverResult = (Get-Content $hoverResultPath -Raw).Trim()
+          if ($hoverResult -ne 'NATIVE_HOVER_OK') {
+            throw "Unexpected native-hover marker: $hoverResult"
+          }
+          $hoverGeometryPath = Get-EvidenceFile 'hover-geometry.json'
+          $hoverGeometry = Get-Content $hoverGeometryPath -Raw | ConvertFrom-Json
+          foreach ($property in @('outer_x','outer_y','outer_w','outer_h','target_x','target_y','target_w','target_h')) {
+            if ($null -eq $hoverGeometry.PSObject.Properties[$property]) { throw "hover-geometry.json is missing $property" }
+          }
+          if ([double]$hoverGeometry.target_w -lt 308 -or [double]$hoverGeometry.target_w -gt 324) { throw "Hover target width is $($hoverGeometry.target_w)px" }
+          if ([double]$hoverGeometry.target_h -lt 64 -or [double]$hoverGeometry.target_h -gt 76) { throw "Hover target height is $($hoverGeometry.target_h)px" }
+          $hoverBefore = Get-PngInfo 'hover-before.png'
+          $hoverActive = Get-PngInfo 'hover-active.png'
+          $hoverCleared = Get-PngInfo 'hover-cleared.png'
+          function Get-HoverColorCounts([string]$Name) {
+            $path = Get-EvidenceFile $Name
+            $bitmap = [System.Drawing.Bitmap]::new($path)
+            try {
+              $red = 0; $green = 0; $blue = 0
+              $maxX = [Math]::Min($bitmap.Width - 1, 700)
+              $maxY = [Math]::Min($bitmap.Height - 1, 520)
+              for ($y = 100; $y -le $maxY; $y++) {
+                for ($x = 20; $x -le $maxX; $x++) {
+                  $pixel = $bitmap.GetPixel($x, $y)
+                  if ($pixel.R -eq 255 -and $pixel.G -eq 0 -and $pixel.B -eq 0) { $red++ }
+                  elseif ($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 0) { $green++ }
+                  elseif ($pixel.R -eq 0 -and $pixel.G -eq 80 -and $pixel.B -eq 255) { $blue++ }
+                }
+              }
+              return [pscustomobject]@{ red = $red; green = $green; blue = $blue }
+            } finally {
+              $bitmap.Dispose()
+            }
+          }
+          $hoverBeforeColors = Get-HoverColorCounts 'hover-before.png'
+          $hoverActiveColors = Get-HoverColorCounts 'hover-active.png'
+          $hoverClearedColors = Get-HoverColorCounts 'hover-cleared.png'
+          if ($hoverBeforeColors.red -lt 15000 -or $hoverBeforeColors.green -gt 50 -or $hoverBeforeColors.blue -gt 50) {
+            throw "Unexpected pre-hover pixels: red=$($hoverBeforeColors.red) green=$($hoverBeforeColors.green) blue=$($hoverBeforeColors.blue)"
+          }
+          if ($hoverActiveColors.green -lt 15000 -or $hoverActiveColors.blue -lt 30000) {
+            throw "Native hover did not paint target/ancestor state: green=$($hoverActiveColors.green) blue=$($hoverActiveColors.blue)"
+          }
+          if ($hoverClearedColors.red -lt 15000 -or $hoverClearedColors.green -gt 50 -or $hoverClearedColors.blue -gt 50) {
+            throw "Hover state did not clear: red=$($hoverClearedColors.red) green=$($hoverClearedColors.green) blue=$($hoverClearedColors.blue)"
+          }
+          if ($hoverBefore.sha256 -eq $hoverActive.sha256) { throw 'Native hover produced no visible PNG change' }
+          if ($hoverActive.sha256 -eq $hoverCleared.sha256) { throw 'Moving away did not clear the visible hover state' }
+
           $frames = @(
             Get-PngInfo 'frame-before.png'
             Get-PngInfo 'frame-typed.png'

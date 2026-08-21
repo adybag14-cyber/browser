@@ -188,6 +188,7 @@ class Handler(BaseHTTPRequestHandler):
     google_layout_fail_file: str | None = None
     wikipedia_portal_file: str | None = None
     wikipedia_search_file: str | None = None
+    hover_geometry_file: str | None = None
 
     def _body(self, status: int, body: bytes, content_type: str = "text/plain") -> None:
         self.send_response(status)
@@ -224,6 +225,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, _fixture("wikipedia_portal_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/wikipedia-search.html":
             return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/hover-state.html":
+            reporter = b"""<script>
+(function(){
+  var attempts=0;
+  function n(v){return Math.round(v)}
+  function report(){
+    attempts++;
+    var outer=document.getElementById('outer').getBoundingClientRect();
+    var target=document.getElementById('target').getBoundingClientRect();
+    var sane=target.width>=300&&target.height>=60&&target.x>=outer.x+20&&target.y>=outer.y+20;
+    if(sane||attempts>=10){
+      var q='outer_x='+n(outer.x)+'&outer_y='+n(outer.y)+'&outer_w='+n(outer.width)+'&outer_h='+n(outer.height)+
+        '&target_x='+n(target.x)+'&target_y='+n(target.y)+'&target_w='+n(target.width)+'&target_h='+n(target.height);
+      fetch('/hover-geometry?'+q,{method:'POST'}).catch(function(){});
+      return;
+    }
+    setTimeout(report,200);
+  }
+  addEventListener('load',function(){setTimeout(report,250)});
+})();
+</script>"""
+            return self._body(200, _fixture("hover_state_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/rich.html":
             return self._body(200, RICH, "text/html; charset=utf-8")
         if port == 18773 and self.path.startswith("/asset.png"):
@@ -265,6 +288,14 @@ class Handler(BaseHTTPRequestHandler):
                 path = pathlib.Path(self.navigation_state_file)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n".join(fields) + "\n", encoding="utf-8")
+            return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/hover-geometry":
+            if self.hover_geometry_file:
+                params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+                payload = {name: values[0] if values else "" for name, values in params.items()}
+                path = pathlib.Path(self.hover_geometry_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path in ("/wikipedia-portal-geometry", "/wikipedia-search-geometry"):
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
@@ -336,6 +367,7 @@ def main() -> int:
     parser.add_argument("--google-layout-fail-file")
     parser.add_argument("--wikipedia-portal-file")
     parser.add_argument("--wikipedia-search-file")
+    parser.add_argument("--hover-geometry-file")
     args = parser.parse_args()
     Handler.verified_file = args.verified_file
     Handler.styled_file = args.styled_file
@@ -349,6 +381,7 @@ def main() -> int:
     Handler.google_layout_fail_file = args.google_layout_fail_file
     Handler.wikipedia_portal_file = args.wikipedia_portal_file
     Handler.wikipedia_search_file = args.wikipedia_search_file
+    Handler.hover_geometry_file = args.hover_geometry_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]
     for t in threads:
