@@ -609,12 +609,8 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
             }
             return false;
         },
-        .read_only => {
-            return el.getAttributeSafe(comptime .wrap("readonly")) != null;
-        },
-        .read_write => {
-            return el.getAttributeSafe(comptime .wrap("readonly")) == null;
-        },
+        .read_only => return !isReadWriteElement(el),
+        .read_write => return isReadWriteElement(el),
         .default => return isDefaultControl(el, frame),
 
         // User interaction
@@ -792,6 +788,28 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
             return false;
         },
     }
+}
+
+fn effectiveContentEditable(el: *Node.Element) bool {
+    var current: ?*Node.Element = el;
+    while (current) |element| : (current = element.parentElement()) {
+        const raw = element.getAttributeSafe(.wrap("contenteditable")) orelse continue;
+        const value = std.mem.trim(u8, raw, &std.ascii.whitespace);
+        if (value.len == 0 or std.ascii.eqlIgnoreCase(value, "true") or std.ascii.eqlIgnoreCase(value, "plaintext-only")) return true;
+        if (std.ascii.eqlIgnoreCase(value, "false")) return false;
+        // Invalid values inherit the nearest valid ancestor state.
+    }
+    return false;
+}
+
+fn isReadWriteElement(el: *Node.Element) bool {
+    if (effectiveContentEditable(el)) return true;
+    if (el.is(Node.Element.Html.Input)) |input| return input.isReadWriteForSelector();
+    if (el.is(Node.Element.Html.TextArea)) |textarea| {
+        if (textarea.getDisabled()) return false;
+        return textarea.asConstElement().getAttributeSafe(comptime .wrap("readonly")) == null;
+    }
+    return false;
 }
 
 fn validationState(el: *Node.Element, frame: *Frame) ?bool {

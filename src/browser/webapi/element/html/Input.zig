@@ -1313,6 +1313,18 @@ pub fn getMin(self: *const Input) []const u8 {
     return self.asConstElement().getAttributeSafe(comptime .wrap("min")) orelse "";
 }
 
+pub fn supportsReadOnly(self: *const Input) bool {
+    return switch (self._input_type) {
+        .text, .search, .tel, .url, .email, .password, .date, .month, .week, .time, .@"datetime-local", .number => true,
+        else => false,
+    };
+}
+
+pub fn isReadWriteForSelector(self: *const Input) bool {
+    if (!self.supportsReadOnly() or self.getDisabled()) return false;
+    return self.asConstElement().getAttributeSafe(comptime .wrap("readonly")) == null;
+}
+
 pub fn supportsRequired(self: *const Input) bool {
     return switch (self._input_type) {
         .hidden, .range, .color, .submit, .image, .reset, .button => false,

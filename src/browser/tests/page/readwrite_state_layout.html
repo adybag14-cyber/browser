@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  .case { display:block; width:220px; height:34px; margin:5px; background-color:rgb(80,80,80); }
+  .case:read-only { background-color:rgb(255,0,0); }
+  .case:read-write { background-color:rgb(0,255,0); }
+</style>
+<div id="plain" class="case">plain</div>
+<input id="text" class="case" value="text">
+<input id="readonlyText" class="case" value="ro" readonly>
+<input id="disabledText" class="case" value="disabled" disabled>
+<input id="range" class="case" type="range" readonly>
+<textarea id="ta" class="case">hello</textarea>
+<textarea id="readonlyTa" class="case" readonly>hello</textarea>
+<div id="ceTrue" class="case" contenteditable="true">
+  <span id="ceChild" class="case">child</span>
+  <span id="ceInvalid" class="case" contenteditable="bogus">invalid inherits</span>
+  <span id="ceFalse" class="case" contenteditable="false">false
+    <span id="ceFalseChild" class="case">false child</span>
+    <span id="ceReenabled" class="case" contenteditable="plaintext-only">reenabled</span>
+  </span>
+</div>
+<div id="ceEmpty" class="case" contenteditable>empty</div>
+<div id="invalidTop" class="case" contenteditable="bogus">invalid top</div>
