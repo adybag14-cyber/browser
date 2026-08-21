@@ -55,6 +55,9 @@ session: *Session,
 // putting this on the Page, and having an DOM mutation in Frame 1 invalidate
 // a cached lookup on Frame 2. We picked the latter.
 dom_version: usize = 0,
+// Visual/render generation. Unlike dom_version, this also tracks paint-only
+// state such as form values, focus/selection and canvas pixels.
+render_version: usize = 0,
 
 // Monotonic creation counter for BroadcastChannels in this Page. A postMessage
 // captures the current value so delivery targets only channels that existed

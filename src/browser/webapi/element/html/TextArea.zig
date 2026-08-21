@@ -89,6 +89,7 @@ pub fn getValue(self: *const TextArea) []const u8 {
 pub fn setValue(self: *TextArea, value: []const u8, frame: *Frame) !void {
     const owned = try frame.arena.dupe(u8, value);
     self._value = owned;
+    frame.renderChanged();
 }
 
 pub fn getDefaultValue(self: *const TextArea) []const u8 {
@@ -199,6 +200,7 @@ pub fn getSelectionStart(self: *const TextArea) u32 {
 
 pub fn setSelectionStart(self: *TextArea, value: u32, frame: *Frame) !void {
     self._selection_start = value;
+    frame.renderChanged();
     try self.dispatchSelectionChangeEvent(frame);
 }
 
@@ -208,6 +210,7 @@ pub fn getSelectionEnd(self: *const TextArea) u32 {
 
 pub fn setSelectionEnd(self: *TextArea, value: u32, frame: *Frame) !void {
     self._selection_end = value;
+    frame.renderChanged();
     try self.dispatchSelectionChangeEvent(frame);
 }
 
@@ -243,6 +246,7 @@ pub fn setSelectionRange(
     self._selection_direction = direction;
     self._selection_start = start;
     self._selection_end = end;
+    frame.renderChanged();
 
     try self.dispatchSelectionChangeEvent(frame);
 }

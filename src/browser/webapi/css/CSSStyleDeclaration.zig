@@ -31,9 +31,16 @@ const Allocator = std.mem.Allocator;
 
 const CSSStyleDeclaration = @This();
 
+const ComputedCascadeCacheEntry = struct {
+    dom_version: usize,
+    style_revision: usize,
+    value: ?[]const u8,
+};
+
 _element: ?*Element = null,
 _properties: std.DoublyLinkedList = .{},
 _is_computed: bool = false,
+_computed_cascade_cache: std.StringHashMapUnmanaged(ComputedCascadeCacheEntry) = .empty,
 
 // Parse the element's existing style attribute into _properties so that
 // subsequent JS reads and writes see all CSS properties, not just newly
@@ -69,23 +76,47 @@ pub fn item(self: *const CSSStyleDeclaration, index: u32) []const u8 {
     return "";
 }
 
+fn computedCascadeValue(element: *Element, wrapped: String, frame: *Frame) ?[]const u8 {
+    if (wrapped.eql(comptime .wrap("display"))) {
+        if (frame._style_manager.hasDisplayNone(element)) return "none";
+    } else if (wrapped.eql(comptime .wrap("visibility"))) {
+        if (frame._style_manager.hasVisibilityHiddenInherited(element)) return "hidden";
+    }
+    return frame._style_manager.computedStyleValue(element, wrapped);
+}
+
 pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const u8, frame: *Frame) []const u8 {
     const normalized = normalizePropertyName(property_name, &frame.buf);
     const wrapped = String.wrap(normalized);
 
-    // Computed styles must reflect stylesheet rules, not just the element's
-    // inline `style=` attribute. Limited to display/visibility — what aria
-    // tree builders (Playwright ariaSnapshot) consult on every element.
+    // Computed styles persist per element, while native layout reads many of the
+    // same properties repeatedly. Cache the author-cascade answer (including a
+    // negative lookup) by DOM + stylesheet generation. Stale values are never
+    // read after StyleManager rebuilds because style_revision changes first.
     if (self._is_computed) {
         if (self._element) |element| {
-            if (wrapped.eql(comptime .wrap("display"))) {
-                if (frame._style_manager.hasDisplayNone(element)) return "none";
-            } else if (wrapped.eql(comptime .wrap("visibility"))) {
-                if (frame._style_manager.hasVisibilityHiddenInherited(element)) return "hidden";
-            }
-
-            if (frame._style_manager.computedStyleValue(element, wrapped)) |value| {
-                return value;
+            const dom_version = frame._page.dom_version;
+            const style_revision = frame._style_manager.styleRevision();
+            const cache = &@constCast(self)._computed_cascade_cache;
+            if (cache.getPtr(normalized)) |entry| {
+                if (entry.dom_version == dom_version and entry.style_revision == style_revision) {
+                    if (entry.value) |value| return value;
+                } else {
+                    const value = computedCascadeValue(element, wrapped, frame);
+                    entry.* = .{ .dom_version = dom_version, .style_revision = style_revision, .value = value };
+                    if (value) |resolved| return resolved;
+                }
+            } else {
+                const owned_name = frame.arena.dupe(u8, normalized) catch null;
+                const value = computedCascadeValue(element, wrapped, frame);
+                if (owned_name) |name| {
+                    cache.put(frame.arena, name, .{
+                        .dom_version = dom_version,
+                        .style_revision = style_revision,
+                        .value = value,
+                    }) catch {};
+                }
+                if (value) |resolved| return resolved;
             }
         }
     }

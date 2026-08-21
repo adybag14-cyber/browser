@@ -166,6 +166,7 @@ pub fn setValue(self: *Input, value: []const u8, frame: *Frame) !void {
     }
     // This should _not_ call setAttribute. It updates the current state only
     self._value = try self.sanitizeValue(true, value, frame);
+    frame.renderChanged();
 }
 
 pub fn getDefaultValue(self: *const Input) []const u8 {
@@ -188,14 +189,16 @@ pub fn setChecked(self: *Input, checked: bool, frame: *Frame) !void {
     // This should _not_ call setAttribute. It updates the current state only
     self._checked = checked;
     self._checked_dirty = true;
+    frame.renderChanged();
 }
 
 pub fn getIndeterminate(self: *const Input) bool {
     return self._indeterminate;
 }
 
-pub fn setIndeterminate(self: *Input, value: bool) !void {
+pub fn setIndeterminate(self: *Input, value: bool, frame: *Frame) !void {
     self._indeterminate = value;
+    frame.renderChanged();
 }
 
 pub fn getDefaultChecked(self: *const Input) bool {
@@ -693,6 +696,7 @@ pub fn getSelectionStart(self: *const Input) !?u32 {
 pub fn setSelectionStart(self: *Input, value: u32, frame: *Frame) !void {
     if (!self.selectionAvailable()) return error.InvalidStateError;
     self._selection_start = value;
+    frame.renderChanged();
     try self.dispatchSelectionChangeEvent(frame);
 }
 
@@ -704,6 +708,7 @@ pub fn getSelectionEnd(self: *const Input) !?u32 {
 pub fn setSelectionEnd(self: *Input, value: u32, frame: *Frame) !void {
     if (!self.selectionAvailable()) return error.InvalidStateError;
     self._selection_end = value;
+    frame.renderChanged();
     try self.dispatchSelectionChangeEvent(frame);
 }
 
@@ -741,6 +746,7 @@ pub fn setSelectionRange(
     self._selection_direction = direction;
     self._selection_start = start;
     self._selection_end = end;
+    frame.renderChanged();
 
     try self.dispatchSelectionChangeEvent(frame);
 }

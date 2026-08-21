@@ -2186,8 +2186,13 @@ pub fn openPopup(self: *Frame, opts: OpenPopupOpts) !*Frame {
     return popup;
 }
 
+pub fn renderChanged(self: *Frame) void {
+    self._page.render_version +%= 1;
+}
+
 pub fn domChanged(self: *Frame) void {
     self._page.dom_version += 1;
+    self.renderChanged();
 
     // A DOM change is our "rendering opportunity": re-evaluate the layout
     // observers. Both are no-ops unless something they track actually changed.
@@ -2960,6 +2965,9 @@ pub fn _insertNodeRelative(self: *Frame, comptime from_parser: bool, parent: *No
     // The parser path does its own (limited) notification and
     // connected-callback work, then returns.
     if (comptime from_parser) {
+        // Parser insertions change what headed rendering can paint without
+        // invalidating live-collection DOM caches on every parsed node.
+        self.renderChanged();
         // Main-document parser insertions notify per node: scripts running
         // during parsing can observe the document. Fragment parses
         // (innerHTML et al.) stay silent; Node.setHTML queues one combined

@@ -79,6 +79,8 @@ const Tab = struct {
     zoom_percent: i32 = DEFAULT_ZOOM,
     loading: bool = false,
     last_presented_hash: u64 = 0,
+    last_presented_render_version: usize = 0,
+    last_presented_loading: bool = false,
     last_error: ?anyerror = null,
 
     fn init(
@@ -497,10 +499,15 @@ const Shell = struct {
 
     fn present(self: *Shell) !void {
         const tab = self.activeTab() orelse return;
-        // Browser/network/input work keeps its fast 4 ms tick, but rebuilding the
-        // entire display list faster than the native window can present wastes CPU
-        // and creates uneven visual pacing. Limit presentation construction to
-        // roughly 60 Hz; forced hash invalidation is still visible on the next frame.
+        const frame = tab.frame() orelse return;
+        const render_changed = frame._page.render_version != tab.last_presented_render_version;
+        const loading_changed = tab.loading != tab.last_presented_loading;
+        const force_present = tab.last_presented_hash == 0;
+        // Rebuild presentation only when page/UI state can actually have changed.
+        // Parser/DOM/CSS/control/canvas changes advance Page.render_version;
+        // native input/navigation also explicitly invalidate presentation.
+        // Coalesce bursts to ~60 Hz.
+        if (!force_present and !render_changed and !loading_changed) return;
         if (self.last_presentation_attempt) |last| {
             const elapsed_ms: u64 = @intCast(last.untilNow(lp.io, .boot).toMilliseconds());
             if (elapsed_ms < PRESENTATION_INTERVAL_MS) return;
@@ -509,7 +516,6 @@ const Shell = struct {
 
         var isolate_scope = TabIsolateScope.init(tab);
         defer isolate_scope.deinit();
-        const frame = tab.frame() orelse return;
 
         if (tab.last_error) |err| {
             var buf: [256]u8 = undefined;
@@ -553,6 +559,8 @@ const Shell = struct {
         hasher.update(text);
         list.hashInto(&hasher);
         const hash = hasher.final();
+        tab.last_presented_render_version = frame._page.render_version;
+        tab.last_presented_loading = tab.loading;
         if (hash == tab.last_presented_hash) return;
         tab.last_presented_hash = hash;
         self.display.setImageRequestCookieJar(tab.session.cookieJar());
@@ -776,9 +784,11 @@ pub fn browse(app: *App, opts: anytype) !void {
             if (tab.frame()) |frame| {
                 var isolate_scope = TabIsolateScope.init(tab);
                 defer isolate_scope.deinit();
-                shell.display.dispatchNativeInput(frame) catch |err| {
+                const input_changed = shell.display.dispatchNativeInput(frame) catch |err| blk: {
                     lp.log.warn(.app, "headed input", .{ .err = err });
+                    break :blk false;
                 };
+                if (input_changed) tab.last_presented_hash = 0;
             }
         }
         try shell.drainCommands();

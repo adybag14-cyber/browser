@@ -79,6 +79,8 @@ next_doc_order: u32 = 1,
 
 // When true, rules need to be rebuilt
 dirty: bool = false,
+// Monotonic author-style generation used by computed-style caches.
+style_revision: usize = 0,
 
 pub fn init(frame: *Frame) !StyleManager {
     return .{
@@ -455,10 +457,15 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
     if (selector_text.len == 0) return;
 
     var props = VisibilityProperties{};
-    var has_declarations = false;
+    var parsed: std.ArrayList(RawDeclaration) = .empty;
+    defer parsed.deinit(self.arena.allocator());
     var it = CssParser.parseDeclarationsList(block_text);
     while (it.next()) |decl| {
-        has_declarations = true;
+        try parsed.append(self.arena.allocator(), .{
+            .name = decl.name,
+            .value = decl.value,
+            .important = decl.important,
+        });
         const name = decl.name;
         const val = decl.value;
         if (std.ascii.eqlIgnoreCase(name, "display")) {
@@ -476,7 +483,8 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
     // resolves layout/paint properties through getComputedStyle(), so dropping
     // width, height, borders, colors, flex/positioning, etc. here leaves loaded
     // external widgets effectively unstyled.
-    if (!has_declarations) return;
+    if (parsed.items.len == 0) return;
+    const raw_declarations = try self.arena.allocator().dupe(RawDeclaration, parsed.items);
 
     const selectors = SelectorParser.parseList(self.arena.allocator(), selector_text) catch return;
     for (selectors) |selector| {
@@ -486,7 +494,7 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
             .props = props,
             .selector = selector,
             .style = null,
-            .raw_block = block_text,
+            .raw_declarations = raw_declarations,
             .priority = (@as(u64, computeSpecificity(selector)) << SPEC_SHIFT) | @min(self.next_doc_order, MAX_DOC_ORDER),
         };
         self.next_doc_order += 1;
@@ -517,12 +525,20 @@ fn addRawRule(self: *StyleManager, build_arena: Allocator, selector_text: []cons
 
 pub fn sheetRemoved(self: *StyleManager) void {
     self.dirty = true;
+    self.style_revision +%= 1;
+    self.frame.renderChanged();
     Frame.observers.scheduleResizeDelivery(self.frame);
 }
 
 pub fn sheetModified(self: *StyleManager) void {
     self.dirty = true;
+    self.style_revision +%= 1;
+    self.frame.renderChanged();
     Frame.observers.scheduleResizeDelivery(self.frame);
+}
+
+pub fn styleRevision(self: *const StyleManager) usize {
+    return self.style_revision;
 }
 
 /// Rebuilds the rule list from all document stylesheets.
@@ -971,7 +987,6 @@ fn addRule(self: *StyleManager, build_arena: Allocator, style_rule: *CSSStyleRul
             .props = props,
             .selector = selector,
             .style = style,
-            .raw_block = "",
             .priority = (@as(u64, computeSpecificity(selector)) << SPEC_SHIFT) | @min(self.next_doc_order, MAX_DOC_ORDER),
         };
         self.next_doc_order += 1;
@@ -1145,14 +1160,20 @@ const VisibilityProperties = struct {
     }
 };
 
+const RawDeclaration = struct {
+    name: []const u8,
+    value: []const u8,
+    important: bool,
+};
+
 const VisibilityRule = struct {
     selector: Selector.Selector, // Single selector, not a list
     props: VisibilityProperties,
-    // Parsed CSSStyleRule declarations (external sheets / CSSOM rules), or a
-    // raw declaration block for inline <style>/nested @media/@layer rules.
+    // Parsed CSSStyleRule declarations (external sheets / CSSOM rules), or
+    // pre-parsed declarations for inline <style>/nested @media/@layer rules.
     // Exactly one source is populated for author rules.
     style: ?*CSSStyleProperties = null,
-    raw_block: []const u8 = "",
+    raw_declarations: []const RawDeclaration = &.{},
 
     // Packed priority: layer_rank:12 | specificity:30 | doc_order:22.
     // The rank bits are 0 until finalizeLayerRanks stamps them (the rank
@@ -1365,10 +1386,9 @@ fn inlineRuleProperty(el: *Element, property_name: String, frame: *Frame) ?Casca
     return styleRuleProperty(style, property_name);
 }
 
-fn rawRuleProperty(block: []const u8, property_name: String) ?CascadedProperty {
+fn rawRuleProperty(declarations: []const RawDeclaration, property_name: String) ?CascadedProperty {
     var result: ?CascadedProperty = null;
-    var it = CssParser.parseDeclarationsList(block);
-    while (it.next()) |decl| {
+    for (declarations) |decl| {
         const value = if (std.ascii.eqlIgnoreCase(decl.name, property_name.str()))
             decl.value
         else
@@ -1414,9 +1434,9 @@ pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: Stri
             const priorities = rules.items(.priority);
             const selectors = rules.items(.selector);
             const styles = rules.items(.style);
-            const raw_blocks = rules.items(.raw_block);
+            const raw_declarations = rules.items(.raw_declarations);
 
-            for (priorities, selectors, styles, raw_blocks) |priority, selector, style, raw_block| {
+            for (priorities, selectors, styles, raw_declarations) |priority, selector, style, declarations| {
                 // A normal stylesheet declaration cannot beat an inline normal
                 // declaration (INLINE_PRIORITY), nor any !important winner.
                 if (ctx.important.* and priority <= ctx.priority.*) continue;
@@ -1426,7 +1446,7 @@ pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: Stri
                 const candidate = if (style) |properties|
                     styleRuleProperty(properties, ctx.property_name) orelse continue
                 else
-                    rawRuleProperty(raw_block, ctx.property_name) orelse continue;
+                    rawRuleProperty(declarations, ctx.property_name) orelse continue;
 
                 if (candidate.important) {
                     if (!ctx.important.* or priority > ctx.priority.*) {
@@ -1521,6 +1541,23 @@ fn parseFontSize(self: *StyleManager, raw: []const u8, parent: ?*Element, depth:
 }
 
 const testing = @import("../testing.zig");
+test "StyleManager: pre-parsed raw declarations preserve cascade order" {
+    const declarations = [_]RawDeclaration{
+        .{ .name = "color", .value = "red", .important = false },
+        .{ .name = "color", .value = "blue", .important = true },
+        .{ .name = "color", .value = "green", .important = false },
+    };
+    const result = rawRuleProperty(&declarations, comptime .wrap("color")) orelse return error.ExpectedRawProperty;
+    try std.testing.expectEqualStrings("blue", result.value);
+    try std.testing.expect(result.important);
+
+    const later = [_]RawDeclaration{
+        .{ .name = "width", .value = "10px", .important = false },
+        .{ .name = "width", .value = "20px", .important = false },
+    };
+    const later_result = rawRuleProperty(&later, comptime .wrap("width")) orelse return error.ExpectedLaterRawProperty;
+    try std.testing.expectEqualStrings("20px", later_result.value);
+}
 test "StyleManager: computeSpecificity: element selector" {
     // div -> (0, 0, 1)
     const selector = Selector.Selector{

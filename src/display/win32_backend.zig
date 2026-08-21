@@ -863,12 +863,13 @@ pub const Win32Backend = struct {
         }
     }
 
-    pub fn dispatchInput(self: *Win32Backend, page: *Page) !void {
+    pub fn dispatchInput(self: *Win32Backend, page: *Page) !bool {
         var pending: std.ArrayListUnmanaged(InputEvent) = .empty;
         self.input_lock.lock();
         std.mem.swap(std.ArrayListUnmanaged(InputEvent), &pending, &self.input_events);
         self.input_lock.unlock();
         defer pending.deinit(self.allocator);
+        const had_input = pending.items.len > 0;
 
         var key_buf: [2]u8 = undefined;
         for (pending.items) |event| {
@@ -951,6 +952,7 @@ pub const Win32Backend = struct {
                 },
             }
         }
+        return had_input;
     }
 
     pub fn presentDocument(self: *Win32Backend, title: []const u8, url: []const u8, body: []const u8) !void {

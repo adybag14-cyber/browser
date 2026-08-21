@@ -86,6 +86,7 @@ pub fn createImageData(
 
 pub fn putImageData(self: *const CanvasRenderingContext2D, image_data: *ImageData, dx: f64, dy: f64, dirty_x: ?f64, dirty_y: ?f64, dirty_width: ?f64, dirty_height: ?f64, exec: *Execution) !void {
     try self._surface.putImageData(image_data, dx, dy, dirty_x, dirty_y, dirty_width, dirty_height, exec);
+    exec.page.render_version +%= 1;
 }
 
 // CanvasImageSource (HTMLImageElement, HTMLCanvasElement, ImageBitmap, ...) is
@@ -113,11 +114,13 @@ pub fn transform(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64, _
 pub fn setTransform(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64) void {}
 pub fn resetTransform(_: *CanvasRenderingContext2D) void {}
 pub fn setStrokeStyle(_: *CanvasRenderingContext2D, _: []const u8) void {}
-pub fn clearRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64) void {
+pub fn clearRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64, exec: *Execution) void {
     self._surface.clearRect(x, y, width, height);
+    exec.page.render_version +%= 1;
 }
-pub fn fillRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64) void {
+pub fn fillRect(self: *CanvasRenderingContext2D, x: f64, y: f64, width: f64, height: f64, exec: *Execution) void {
     self._surface.fillRect(self._fill_style, x, y, width, height);
+    exec.page.render_version +%= 1;
 }
 pub fn strokeRect(_: *CanvasRenderingContext2D, _: f64, _: f64, _: f64, _: f64) void {}
 pub fn beginPath(_: *CanvasRenderingContext2D) void {}

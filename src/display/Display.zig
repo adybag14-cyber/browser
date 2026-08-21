@@ -334,11 +334,14 @@ pub fn setImageRequestCookieJar(self: *Display, cookie_jar: ?*CookieJar) void {
     }
 }
 
-pub fn dispatchNativeInput(self: *Display, page: anytype) !void {
+pub fn dispatchNativeInput(self: *Display, page: anytype) !bool {
     switch (self.backend) {
-        .bare_metal => |*backend| try backend.dispatchInput(page),
-        .headed_windows => |*backend| try backend.dispatchInput(page),
-        else => {},
+        .bare_metal => |*backend| {
+            _ = try backend.dispatchInput(page);
+            return false;
+        },
+        .headed_windows => |*backend| return try backend.dispatchInput(page),
+        else => return false,
     }
 }
 
