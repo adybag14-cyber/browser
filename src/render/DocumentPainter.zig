@@ -2702,6 +2702,11 @@ const Painter = struct {
                 try out_of_flow_children.append(self.allocator, child);
                 continue;
             }
+            // Inter-element formatting whitespace creates no normal-flow box and
+            // must not flush a row of adjacent floated siblings.
+            if (child.is(Node.CData.Text)) |text| {
+                if (std.mem.trim(u8, text.ownData(), &std.ascii.whitespace).len == 0) continue;
+            }
             if (legacy_center) {
                 if (child.is(Node.CData.Text)) |_| {
                     legacy_center_use_viewport_width = true;
@@ -3077,11 +3082,12 @@ const Painter = struct {
         padding: EdgeSizes,
         label: []const u8,
     ) !bool {
-        _ = tag;
         _ = label;
-        if (!has_child_elements) {
-            return false;
-        }
+        _ = has_child_elements;
+        // Replaced elements remain atomic even when computed display is inline.
+        if (tag == .img or tag == .iframe or tag == .canvas) return false;
+        // Decoration-free pure inline elements participate directly in the
+        // parent's inline formatting context, including text-only spans/anchors.
         if (!isPureInlineDisplay(display)) {
             return false;
         }
@@ -4626,7 +4632,10 @@ fn usesInlineContentFlowContainer(
     page: *Page,
     display: []const u8,
 ) !bool {
-    if (isInlineDisplay(display)) return false;
+    // Pure inline containers use the pass-through path. Atomic inline boxes such
+    // as inline-block keep their own box but still establish an inline formatting
+    // context for text and inline descendants.
+    if (isPureInlineDisplay(display)) return false;
     if (hasVisibleBorder(decl, page)) return false;
     if (parseCssColor(resolveCssPropertyValue(decl, page, element, "background-color"))) |background| {
         if (background.a > 0) return false;
@@ -5468,6 +5477,7 @@ fn estimateInlineAtomicDescendantWidth(
     available_width: i32,
 ) !i32 {
     var best: i32 = 0;
+    var inline_row_width: i32 = 0;
     const style = try self.page.window.getComputedStyle(element, null, self.page);
     const decl = style.asCSSStyleDeclaration();
     const text_style = try self.resolvePaintTextStyle(element, decl, element.getTag());
@@ -5488,7 +5498,16 @@ fn estimateInlineAtomicDescendantWidth(
                 break :blk transformed;
             };
             defer if (text_style.text_transform != .none) self.allocator.free(painted);
-            best = @max(best, estimateStyledTextWidth(painted, font_size, font_family, font_weight, italic, text_style.letter_spacing, text_style.word_spacing) + 16);
+            inline_row_width += estimateStyledTextWidth(
+                painted,
+                font_size,
+                font_family,
+                font_weight,
+                italic,
+                text_style.letter_spacing,
+                text_style.word_spacing,
+            ) + 16;
+            best = @max(best, inline_row_width);
             continue;
         }
         if (child.is(Element)) |child_el| {
@@ -5501,48 +5520,47 @@ fn estimateInlineAtomicDescendantWidth(
 
             const child_style = try self.page.window.getComputedStyle(child_el, null, self.page);
             const child_decl = child_style.asCSSStyleDeclaration();
-            if (std.ascii.eqlIgnoreCase(
-                std.mem.trim(u8, child_decl.getPropertyValue("display", self.page), &std.ascii.whitespace),
-                "none",
-            )) continue;
+            const child_display = resolvedDisplayValue(child_decl, self.page, child_el);
+            if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, child_display, &std.ascii.whitespace), "none")) continue;
             const child_text_style = try self.resolvePaintTextStyle(child_el, child_decl, child_tag);
             const child_padding = resolveEdgeSizes(child_decl, self.page, "padding", child_text_style.font_size, self.root_font_size_px);
             const child_margins = resolveEdgeSizes(child_decl, self.page, "margin", child_text_style.font_size, self.root_font_size_px);
-            const child_extra = child_padding.left +
-                child_padding.right +
-                child_margins.left +
-                child_margins.right +
-                resolveBorderHorizontalPx(child_decl, self.page);
+            const child_extra = child_padding.left + child_padding.right + child_margins.left + child_margins.right + resolveBorderHorizontalPx(child_decl, self.page);
 
+            var contribution: i32 = 0;
             const explicit_child_width = resolveExplicitWidth(self, child_el, child_decl, self.page, child_tag, available_width);
             if (explicit_child_width > 0) {
-                best = @max(best, explicit_child_width + child_extra);
-                // Text may overflow or be visually indented out of the box, but
-                // it does not enlarge an explicitly sized atomic inline child.
-                continue;
+                contribution = explicit_child_width + child_extra;
+            } else {
+                const child_label = try self.elementLabel(child_el);
+                defer self.allocator.free(child_label);
+                const trimmed_label = std.mem.trim(u8, child_label, &std.ascii.whitespace);
+                if (trimmed_label.len > 0 and trimmed_label[0] != '[') {
+                    const painted_label = if (child_text_style.text_transform == .none) trimmed_label else blk: {
+                        const transformed = try transformTextForPaint(self.allocator, trimmed_label, child_text_style.text_transform);
+                        break :blk transformed;
+                    };
+                    defer if (child_text_style.text_transform != .none) self.allocator.free(painted_label);
+                    contribution = @max(contribution, estimateStyledTextWidth(
+                        painted_label,
+                        child_text_style.font_size,
+                        child_text_style.font_family,
+                        child_text_style.font_weight,
+                        child_text_style.italic,
+                        child_text_style.letter_spacing,
+                        child_text_style.word_spacing,
+                    ) + 24 + child_extra);
+                }
+                contribution = @max(contribution, (try estimateInlineAtomicDescendantWidth(self, child_el, available_width)) + child_extra);
             }
 
-            const child_label = try self.elementLabel(child_el);
-            defer self.allocator.free(child_label);
-            const trimmed_label = std.mem.trim(u8, child_label, &std.ascii.whitespace);
-            if (trimmed_label.len > 0 and trimmed_label[0] != '[') {
-                const painted_label = if (child_text_style.text_transform == .none) trimmed_label else blk: {
-                    const transformed = try transformTextForPaint(self.allocator, trimmed_label, child_text_style.text_transform);
-                    break :blk transformed;
-                };
-                defer if (child_text_style.text_transform != .none) self.allocator.free(painted_label);
-                best = @max(best, estimateStyledTextWidth(
-                    painted_label,
-                    child_text_style.font_size,
-                    child_text_style.font_family,
-                    child_text_style.font_weight,
-                    child_text_style.italic,
-                    child_text_style.letter_spacing,
-                    child_text_style.word_spacing,
-                ) + 24 + child_extra);
+            if (isInlineFlowDisplayForElement(child_el, child_display) or isAtomicInlineDisplay(child_display)) {
+                inline_row_width += contribution;
+                best = @max(best, inline_row_width);
+            } else {
+                best = @max(best, contribution);
+                inline_row_width = 0;
             }
-
-            best = @max(best, (try estimateInlineAtomicDescendantWidth(self, child_el, available_width)) + child_extra);
         }
     }
 
@@ -5757,7 +5775,10 @@ fn resolveMinimumHeight(self: *const Painter, tag: Element.Tag, block_like: bool
     if (tag == .img) return 120;
     if (tag == .iframe) return 150;
     if (tag == .input or tag == .button or tag == .select) return 30;
-    return if (block_like) self.opts.min_height else 20;
+    _ = block_like;
+    // CSS auto height for an empty ordinary box is zero. A synthetic 20/24px
+    // floor makes empty helper elements create phantom rows in compact layouts.
+    return 0;
 }
 
 fn shouldPaintBackground(tag: Element.Tag, has_child_elements: bool) bool {
@@ -5778,11 +5799,13 @@ fn resolveChildIndent(tag: Element.Tag, has_child_elements: bool) i32 {
 }
 
 fn flowSpacingAfter(tag: Element.Tag, block_like: bool) i32 {
+    _ = block_like;
     return switch (tag) {
-        .html, .body => 0,
+        // Preserve a small UA-like fallback rhythm for common unstyled prose and
+        // lists. Generic containers get no invented gap; author margins own spacing.
         .h1, .h2, .h3, .h4, .h5, .h6 => 10,
-        .p, .div, .section, .article, .header, .footer, .nav, .main, .aside, .ul, .ol, .li, .form => 8,
-        else => if (block_like) 4 else 2,
+        .p, .ul, .ol => 8,
+        else => 0,
     };
 }
 

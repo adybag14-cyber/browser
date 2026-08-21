@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html { font-size: 62.5%; }
+body { margin: 0; font-family: Arial, sans-serif; }
+#inline-host { width: 15.6rem; background: rgb(248,249,250); }
+#inline-link { display: block; width: 15.6rem; }
+#mixed-inline { display: inline-block; font-size: 1.3rem; line-height: 1.6; }
+#input-wrap { display: inline-block; width: 394px; background: rgb(230,240,250); }
+#flow-input { display: inline-block; box-sizing: border-box; width: 100%; height: 44px; margin: 0; border: 0; padding: 0; }
+#empty-helper { }
+#float-host { width: 780px; background: rgb(245,245,245); }
+.float-tile { float: left; width: 33%; height: 90px; background: rgb(210,220,230); }
+</style>
+</head>
+<body>
+<div id="inline-host"><a id="inline-link"><small id="mixed-inline">7,189,000+ <span>articles</span></small></a></div>
+<div id="input-wrap"><input id="flow-input"><div id="empty-helper"></div></div>
+<div id="float-host">
+  <div class="float-tile" id="float-a"></div>
+  <div class="float-tile" id="float-b"></div>
+  <div class="float-tile" id="float-c"></div>
+</div>
+<script>
+function reportFlowLayout(){
+  function r(id){return document.getElementById(id).getBoundingClientRect()}
+  const mixed=r('mixed-inline'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
+  const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
+  const q=[
+    'mixed_w='+Math.round(mixed.width),'mixed_h='+Math.round(mixed.height),
+    'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
+    'input_w='+Math.round(input.width),'input_h='+Math.round(input.height),
+    'empty_h='+Math.round(empty.height),
+    'float_host_w='+Math.round(host.width),'float_host_h='+Math.round(host.height),
+    'a_x='+Math.round(a.x),'a_y='+Math.round(a.y),'a_w='+Math.round(a.width),'a_h='+Math.round(a.height),
+    'b_x='+Math.round(b.x),'b_y='+Math.round(b.y),'b_w='+Math.round(b.width),'b_h='+Math.round(b.height),
+    'c_x='+Math.round(c.x),'c_y='+Math.round(c.y),'c_w='+Math.round(c.width),'c_h='+Math.round(c.height)
+  ];
+  fetch('/flow-layout-geometry?'+q.join('&'),{method:'POST'}).catch(()=>{});
+}
+addEventListener('load',()=>{setTimeout(reportFlowLayout,300);setTimeout(reportFlowLayout,1000)});
+</script>
+</body>
+</html>
