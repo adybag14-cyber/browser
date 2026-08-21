@@ -66,7 +66,11 @@ fn dispatchMouseEventOn(frame: *Frame, target: *Element, comptime typ: []const u
 }
 
 pub fn triggerMousePress(frame: *Frame, x: f64, y: f64, button: i32) !void {
-    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
+        if (button == mouse_button.main) frame.setActivePointerElement(null);
+        return;
+    };
+    if (button == mouse_button.main) frame.setActivePointerElement(target);
     if (comptime lp.IS_DEBUG) {
         log.debug(.frame, "frame mouse press", .{
             .url = frame.url,
@@ -124,6 +128,7 @@ pub fn triggerMouseMove(frame: *Frame, x: f64, y: f64) !void {
 }
 
 pub fn triggerMouseRelease(frame: *Frame, x: f64, y: f64, button: i32, click_count: i32) !void {
+    defer if (button == mouse_button.main) frame.setActivePointerElement(null);
     const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
     if (comptime lp.IS_DEBUG) {
         log.debug(.frame, "frame mouse release", .{
@@ -842,12 +847,17 @@ fn dispatchHeadedMouseEvent(frame: *Frame, target: *Element, comptime typ: []con
 }
 
 pub fn triggerMouseDownHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
-    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
+    const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse {
+        if (button == .main) frame.setActivePointerElement(null);
+        return;
+    };
+    if (button == .main) frame.setActivePointerElement(target);
     _ = try dispatchHeadedMouseEvent(frame, target, "mousedown", x, y, button, modifiers);
     try focusEditingHostForMouseDown(frame, target);
 }
 
 pub fn triggerMouseUpHeaded(frame: *Frame, x: f64, y: f64, button: HeadedMouseButton, modifiers: MouseModifiers) !void {
+    defer if (button == .main) frame.setActivePointerElement(null);
     const target = (try frame.window._document.elementFromPoint(x, y, frame)) orelse return;
     _ = try dispatchHeadedMouseEvent(frame, target, "mouseup", x, y, button, modifiers);
 }

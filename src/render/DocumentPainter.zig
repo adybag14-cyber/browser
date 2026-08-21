@@ -10275,6 +10275,14 @@ test "rendered hit testing and hover state use painted child geometry" {
     try std.testing.expectEqualStrings("rgb(0,80,255)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
     try std.testing.expectEqualStrings("rgb(0,255,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
 
+    page.setActivePointerElement(target);
+    try std.testing.expectEqualStrings("rgb(255,0,255)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+    try std.testing.expectEqualStrings("rgb(255,255,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
+    page.setActivePointerElement(null);
+    try std.testing.expectEqualStrings("rgb(0,80,255)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+    try std.testing.expectEqualStrings("rgb(0,255,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
+
     page.setHoveredElement(null);
     try std.testing.expectEqualStrings("rgb(240,240,240)", outer_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));
     try std.testing.expectEqualStrings("rgb(255,0,0)", target_style.asCSSStyleDeclaration().getPropertyValue("background-color", page));

@@ -2211,6 +2211,12 @@ pub fn setHoveredElement(self: *Frame, element: ?*Element) void {
     self.renderChanged();
 }
 
+pub fn setActivePointerElement(self: *Frame, element: ?*Element) void {
+    if (self.document._active_pointer_element == element) return;
+    self.document._active_pointer_element = element;
+    self.renderChanged();
+}
+
 pub fn domChanged(self: *Frame) void {
     self._page.dom_version += 1;
     self.renderChanged();
