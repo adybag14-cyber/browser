@@ -82,12 +82,21 @@ function Get-LightpandaWindow([int]$ProcessId, [int]$TimeoutSeconds = 30) {
     throw "Timed out waiting for LightpandaHeadedWindowClass for PID $ProcessId"
 }
 
-function Send-Click([IntPtr]$Hwnd, [int]$X, [int]$Y) {
+function Send-MouseDown([IntPtr]$Hwnd, [int]$X, [int]$Y) {
     $lp = [IntPtr](($Y -shl 16) -bor ($X -band 0xffff))
     [void][LPWin32]::PostMessage($Hwnd, 0x0201, [IntPtr]1, $lp) # WM_LBUTTONDOWN / MK_LBUTTON
     Start-Sleep -Milliseconds 80
+}
+
+function Send-MouseUp([IntPtr]$Hwnd, [int]$X, [int]$Y) {
+    $lp = [IntPtr](($Y -shl 16) -bor ($X -band 0xffff))
     [void][LPWin32]::PostMessage($Hwnd, 0x0202, [IntPtr]0, $lp) # WM_LBUTTONUP
     Start-Sleep -Milliseconds 120
+}
+
+function Send-Click([IntPtr]$Hwnd, [int]$X, [int]$Y) {
+    Send-MouseDown $Hwnd $X $Y
+    Send-MouseUp $Hwnd $X $Y
 }
 
 function Resize-ClientArea([IntPtr]$Hwnd, [int]$Width, [int]$Height) {
@@ -103,9 +112,10 @@ function Resize-ClientArea([IntPtr]$Hwnd, [int]$Width, [int]$Height) {
     }
 }
 
-function Send-MouseMove([IntPtr]$Hwnd, [int]$X, [int]$Y) {
+function Send-MouseMove([IntPtr]$Hwnd, [int]$X, [int]$Y, [bool]$PrimaryDown = $false) {
     $lp = [IntPtr](($Y -shl 16) -bor ($X -band 0xffff))
-    [void][LPWin32]::PostMessage($Hwnd, 0x0200, [IntPtr]0, $lp) # WM_MOUSEMOVE
+    $wparam = if ($PrimaryDown) { [IntPtr]1 } else { [IntPtr]0 }
+    [void][LPWin32]::PostMessage($Hwnd, 0x0200, $wparam, $lp) # WM_MOUSEMOVE
     Start-Sleep -Milliseconds 180
 }
 
@@ -585,6 +595,19 @@ try {
             Send-MouseMove $hwnd $targetClientX $targetClientY
             Start-Sleep -Milliseconds 350
             [void](Request-PngEvidence $hwnd $Artifacts 'hover-active.png')
+
+            # :active must begin on primary mouse-down, override :hover while
+            # held, propagate to the ancestor, and clear even if mouse-up occurs
+            # away from the original pressed element.
+            Send-MouseDown $hwnd $targetClientX $targetClientY
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'active-held.png')
+            Send-MouseMove $hwnd $awayClientX $awayClientY $true
+            Send-MouseUp $hwnd $awayClientX $awayClientY
+            Start-Sleep -Milliseconds 350
+            [void](Request-PngEvidence $hwnd $Artifacts 'active-cleared.png')
+            'NATIVE_ACTIVE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'active-result.txt')
+
             Send-MouseMove $hwnd $awayClientX $awayClientY
             Start-Sleep -Milliseconds 350
             [void](Request-PngEvidence $hwnd $Artifacts 'hover-cleared.png')

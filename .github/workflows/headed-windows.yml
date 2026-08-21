@@ -456,12 +456,14 @@ jobs:
           if ([double]$hoverGeometry.target_h -lt 64 -or [double]$hoverGeometry.target_h -gt 76) { throw "Hover target height is $($hoverGeometry.target_h)px" }
           $hoverBefore = Get-PngInfo 'hover-before.png'
           $hoverActive = Get-PngInfo 'hover-active.png'
+          $activeHeld = Get-PngInfo 'active-held.png'
+          $activeCleared = Get-PngInfo 'active-cleared.png'
           $hoverCleared = Get-PngInfo 'hover-cleared.png'
           function Get-HoverColorCounts([string]$Name) {
             $path = Get-EvidenceFile $Name
             $bitmap = [System.Drawing.Bitmap]::new($path)
             try {
-              $red = 0; $green = 0; $blue = 0
+              $red = 0; $green = 0; $blue = 0; $yellow = 0; $magenta = 0
               $maxX = [Math]::Min($bitmap.Width - 1, 700)
               $maxY = [Math]::Min($bitmap.Height - 1, 520)
               for ($y = 100; $y -le $maxY; $y++) {
@@ -470,15 +472,19 @@ jobs:
                   if ($pixel.R -eq 255 -and $pixel.G -eq 0 -and $pixel.B -eq 0) { $red++ }
                   elseif ($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 0) { $green++ }
                   elseif ($pixel.R -eq 0 -and $pixel.G -eq 80 -and $pixel.B -eq 255) { $blue++ }
+                  elseif ($pixel.R -eq 255 -and $pixel.G -eq 255 -and $pixel.B -eq 0) { $yellow++ }
+                  elseif ($pixel.R -eq 255 -and $pixel.G -eq 0 -and $pixel.B -eq 255) { $magenta++ }
                 }
               }
-              return [pscustomobject]@{ red = $red; green = $green; blue = $blue }
+              return [pscustomobject]@{ red = $red; green = $green; blue = $blue; yellow = $yellow; magenta = $magenta }
             } finally {
               $bitmap.Dispose()
             }
           }
           $hoverBeforeColors = Get-HoverColorCounts 'hover-before.png'
           $hoverActiveColors = Get-HoverColorCounts 'hover-active.png'
+          $activeHeldColors = Get-HoverColorCounts 'active-held.png'
+          $activeClearedColors = Get-HoverColorCounts 'active-cleared.png'
           $hoverClearedColors = Get-HoverColorCounts 'hover-cleared.png'
           if ($hoverBeforeColors.red -lt 15000 -or $hoverBeforeColors.green -gt 50 -or $hoverBeforeColors.blue -gt 50) {
             throw "Unexpected pre-hover pixels: red=$($hoverBeforeColors.red) green=$($hoverBeforeColors.green) blue=$($hoverBeforeColors.blue)"
@@ -486,6 +492,16 @@ jobs:
           if ($hoverActiveColors.green -lt 15000 -or $hoverActiveColors.blue -lt 30000) {
             throw "Native hover did not paint target/ancestor state: green=$($hoverActiveColors.green) blue=$($hoverActiveColors.blue)"
           }
+          $activeResult = (Get-Content (Get-EvidenceFile 'active-result.txt') -Raw).Trim()
+          if ($activeResult -ne 'NATIVE_ACTIVE_OK') { throw "Unexpected native-active marker: $activeResult" }
+          if ($activeHeldColors.yellow -lt 15000 -or $activeHeldColors.magenta -lt 30000 -or $activeHeldColors.green -gt 50 -or $activeHeldColors.blue -gt 50) {
+            throw "Native active did not override hover or propagate: yellow=$($activeHeldColors.yellow) magenta=$($activeHeldColors.magenta) green=$($activeHeldColors.green) blue=$($activeHeldColors.blue)"
+          }
+          if ($activeClearedColors.red -lt 15000 -or $activeClearedColors.yellow -gt 50 -or $activeClearedColors.magenta -gt 50) {
+            throw "Native active did not clear after off-target mouse-up: red=$($activeClearedColors.red) yellow=$($activeClearedColors.yellow) magenta=$($activeClearedColors.magenta)"
+          }
+          if ($hoverActive.sha256 -eq $activeHeld.sha256) { throw 'Primary mouse-down produced no visible :active PNG change' }
+          if ($activeHeld.sha256 -eq $activeCleared.sha256) { throw 'Mouse-up did not clear the visible :active state' }
           if ($hoverClearedColors.red -lt 15000 -or $hoverClearedColors.green -gt 50 -or $hoverClearedColors.blue -gt 50) {
             throw "Hover state did not clear: red=$($hoverClearedColors.red) green=$($hoverClearedColors.green) blue=$($hoverClearedColors.blue)"
           }
