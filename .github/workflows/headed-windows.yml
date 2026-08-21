@@ -442,6 +442,52 @@ jobs:
             $wikipediaBitmap.Dispose()
           }
 
+          $formStateResult = (Get-Content (Get-EvidenceFile 'form-state-result.txt') -Raw).Trim()
+          if ($formStateResult -ne 'FORM_STATE_PSEUDOS_OK') { throw "Unexpected form-state marker: $formStateResult" }
+          $formInitial = Get-Content (Get-EvidenceFile 'form-state-initial.json') -Raw | ConvertFrom-Json
+          $formMutated = Get-Content (Get-EvidenceFile 'form-state-mutated.json') -Raw | ConvertFrom-Json
+          if ($formInitial.kind -ne 'initial' -or $formMutated.kind -ne 'mutated') {
+            throw "Unexpected form-state kinds: initial=$($formInitial.kind) mutated=$($formMutated.kind)"
+          }
+          function Assert-FormStateBool($Object, [string]$Name, [bool]$Expected, [string]$Label) {
+            $property = $Object.PSObject.Properties[$Name]
+            if ($null -eq $property) { throw "$Label form-state is missing $Name" }
+            if ([bool]$property.Value -ne $Expected) { throw "$Label form-state $Name=$($property.Value), expected $Expected" }
+          }
+          $initialTrue = @(
+            'ph','ta','rinIn','routOut','defcheckDefault','defoptDefault','fallback1Default','submitExternalDefault',
+            'defoptChecked','r1Ind','r2Ind','indcheckInd','patternInvalid','requiredTaInvalid','plainValid','formInvalid','fieldsetInvalid',
+            'textareaRequired','plainOptional'
+          )
+          $initialFalse = @(
+            'numberph','rinOut','routIn','norangeIn','norangeOut','emptyIn','emptyOut','fallbackDisabledDefault','fallback2Default','submit1Default','submit2Default',
+            'otheroptChecked','r1Checked','patternValid','requiredTaValid','disabledValid','disabledInvalid','hiddenValid','hiddenInvalid','formValid','fieldsetValid',
+            'fakeRequired','fakeOptional','rangeRequired','rangeOptional','textareaOptional','plainRequired'
+          )
+          foreach ($name in $initialTrue) { Assert-FormStateBool $formInitial $name $true 'initial' }
+          foreach ($name in $initialFalse) { Assert-FormStateBool $formInitial $name $false 'initial' }
+          $mutatedTrue = @(
+            'rinOut','routIn','defcheckDefault','defoptDefault','fallback1Default','submitExternalDefault','otheroptChecked','r1Checked',
+            'patternValid','requiredTaValid','plainValid','formValid','fieldsetValid','textareaRequired','plainOptional'
+          )
+          $mutatedFalse = @(
+            'ph','ta','numberph','rinIn','routOut','norangeIn','norangeOut','emptyIn','emptyOut','fallbackDisabledDefault','fallback2Default','submit1Default','submit2Default',
+            'defoptChecked','r1Ind','r2Ind','indcheckInd','patternInvalid','requiredTaInvalid','disabledValid','disabledInvalid','hiddenValid','hiddenInvalid','formInvalid','fieldsetInvalid',
+            'fakeRequired','fakeOptional','rangeRequired','rangeOptional','textareaOptional','plainRequired'
+          )
+          foreach ($name in $mutatedTrue) { Assert-FormStateBool $formMutated $name $true 'mutated' }
+          foreach ($name in $mutatedFalse) { Assert-FormStateBool $formMutated $name $false 'mutated' }
+          if ($formInitial.phColor -ne 'rgb(0,255,0)' -or $formMutated.phColor -ne 'rgb(80,80,80)') {
+            throw "Unexpected placeholder-shown paint transition: $($formInitial.phColor) -> $($formMutated.phColor)"
+          }
+          if ($formInitial.rinColor -ne 'rgb(0,180,255)' -or $formMutated.rinColor -ne 'rgb(255,180,0)') {
+            throw "Unexpected in/out-range paint transition for rin: $($formInitial.rinColor) -> $($formMutated.rinColor)"
+          }
+          if ($formInitial.routColor -ne 'rgb(255,180,0)' -or $formMutated.routColor -ne 'rgb(0,180,255)') {
+            throw "Unexpected in/out-range paint transition for rout: $($formInitial.routColor) -> $($formMutated.routColor)"
+          }
+          [void](Get-PngInfo 'form-state-mutated.png')
+
           $hoverResultPath = Get-EvidenceFile 'hover-result.txt'
           $hoverResult = (Get-Content $hoverResultPath -Raw).Trim()
           if ($hoverResult -ne 'NATIVE_HOVER_OK') {

@@ -190,6 +190,8 @@ class Handler(BaseHTTPRequestHandler):
     wikipedia_search_file: str | None = None
     hover_geometry_file: str | None = None
     focus_visible_geometry_file: str | None = None
+    form_state_initial_file: str | None = None
+    form_state_mutated_file: str | None = None
     resize_load_file: str | None = None
     resize_after_file: str | None = None
 
@@ -228,6 +230,44 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, _fixture("wikipedia_portal_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/wikipedia-search.html":
             return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/form-state.html":
+            reporter = b"""<script>
+(function(){
+  function byId(id){return document.getElementById(id)}
+  function m(id,selector){return byId(id).matches(selector)}
+  function state(kind){return {
+    kind:kind,
+    ph:m('ph',':placeholder-shown'),ta:m('ta',':placeholder-shown'),numberph:m('numberph',':placeholder-shown'),
+    rinIn:m('rin',':in-range'),rinOut:m('rin',':out-of-range'),routIn:m('rout',':in-range'),routOut:m('rout',':out-of-range'),
+    norangeIn:m('norange',':in-range'),norangeOut:m('norange',':out-of-range'),emptyIn:m('emptyrange',':in-range'),emptyOut:m('emptyrange',':out-of-range'),
+    defcheckDefault:m('defcheck',':default'),defoptDefault:m('defopt',':default'),fallbackDisabledDefault:m('fallbackDisabled',':default'),
+    fallback1Default:m('fallback1',':default'),fallback2Default:m('fallback2',':default'),submitExternalDefault:m('submitExternal',':default'),
+    submit1Default:m('submit1',':default'),submit2Default:m('submit2',':default'),
+    defoptChecked:m('defopt',':checked'),otheroptChecked:m('otheropt',':checked'),r1Checked:m('r1',':checked'),
+    r1Ind:m('r1',':indeterminate'),r2Ind:m('r2',':indeterminate'),indcheckInd:m('indcheck',':indeterminate'),
+    patternValid:m('pattern',':valid'),patternInvalid:m('pattern',':invalid'),requiredTaValid:m('requiredta',':valid'),requiredTaInvalid:m('requiredta',':invalid'),
+    plainValid:m('plainvalid',':valid'),disabledValid:m('disabledInvalid',':valid'),disabledInvalid:m('disabledInvalid',':invalid'),
+    hiddenValid:m('hiddenInvalid',':valid'),hiddenInvalid:m('hiddenInvalid',':invalid'),formValid:m('validityForm',':valid'),formInvalid:m('validityForm',':invalid'),
+    fieldsetValid:m('validityFieldset',':valid'),fieldsetInvalid:m('validityFieldset',':invalid'),
+    fakeRequired:m('fakeRequired',':required'),fakeOptional:m('fakeRequired',':optional'),rangeRequired:m('rangeRequired',':required'),rangeOptional:m('rangeRequired',':optional'),
+    textareaRequired:m('requiredta',':required'),textareaOptional:m('requiredta',':optional'),plainRequired:m('plainvalid',':required'),plainOptional:m('plainvalid',':optional'),
+    phColor:getComputedStyle(byId('ph')).getPropertyValue('background-color'),
+    rinColor:getComputedStyle(byId('rin')).getPropertyValue('background-color'),
+    routColor:getComputedStyle(byId('rout')).getPropertyValue('background-color')
+  }}
+  function report(value){return fetch('/form-state-report?kind='+encodeURIComponent(value.kind),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(value)})}
+  addEventListener('load',function(){setTimeout(function(){
+    byId('indcheck').indeterminate=true;
+    report(state('initial')).then(function(){
+      byId('ph').value='Ada'; byId('ta').value='Hello'; byId('rin').value='20'; byId('rout').value='5';
+      byId('defcheck').checked=false; byId('defopt').selected=false; byId('otheropt').selected=true; byId('r1').checked=true;
+      byId('indcheck').indeterminate=false; byId('pattern').value='ABC'; byId('requiredta').value='filled';
+      setTimeout(function(){report(state('mutated')).catch(function(){})},180);
+    }).catch(function(){});
+  },250)});
+})();
+</script>"""
+            return self._body(200, _fixture("form_state_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/focus-visible.html":
             reporter = b"""<script>
 (function(){
@@ -330,6 +370,21 @@ class Handler(BaseHTTPRequestHandler):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n".join(fields) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/form-state-report":
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            kind = params.get("kind", [""])[0]
+            output = self.form_state_initial_file if kind == "initial" else self.form_state_mutated_file if kind == "mutated" else None
+            content_length = int(self.headers.get("Content-Length", "0") or 0)
+            body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            if output:
+                path = pathlib.Path(output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    payload = json.loads(body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = {"kind": kind, "parse_error": True}
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/resize-state-report":
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             payload = {name: values[0] if values else "" for name, values in params.items()}
@@ -428,6 +483,8 @@ def main() -> int:
     parser.add_argument("--wikipedia-search-file")
     parser.add_argument("--hover-geometry-file")
     parser.add_argument("--focus-visible-geometry-file")
+    parser.add_argument("--form-state-initial-file")
+    parser.add_argument("--form-state-mutated-file")
     parser.add_argument("--resize-load-file")
     parser.add_argument("--resize-after-file")
     args = parser.parse_args()
@@ -445,6 +502,8 @@ def main() -> int:
     Handler.wikipedia_search_file = args.wikipedia_search_file
     Handler.hover_geometry_file = args.hover_geometry_file
     Handler.focus_visible_geometry_file = args.focus_visible_geometry_file
+    Handler.form_state_initial_file = args.form_state_initial_file
+    Handler.form_state_mutated_file = args.form_state_mutated_file
     Handler.resize_load_file = args.resize_load_file
     Handler.resize_after_file = args.resize_after_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]

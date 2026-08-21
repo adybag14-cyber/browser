@@ -35,9 +35,11 @@ $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
 $hoverGeometry = Join-Path $state 'hover-geometry.json'
 $focusVisibleGeometry = Join-Path $state 'focus-visible-geometry.json'
+$formStateInitial = Join-Path $state 'form-state-initial.json'
+$formStateMutated = Join-Path $state 'form-state-mutated.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -270,6 +272,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--wikipedia-search-file', $wikipediaSearchGeometry,
     '--hover-geometry-file', $hoverGeometry,
     '--focus-visible-geometry-file', $focusVisibleGeometry,
+    '--form-state-initial-file', $formStateInitial,
+    '--form-state-mutated-file', $formStateMutated,
     '--resize-load-file', $resizeLoadState,
     '--resize-after-file', $resizeAfterState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
@@ -559,6 +563,30 @@ try {
             Start-Sleep -Milliseconds 250
             [void](Request-PngEvidence $hwnd $Artifacts 'wikipedia-search.png')
             'WIKIPEDIA_SEARCH_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'wikipedia-search-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Form-control pseudo-class regression. The page reports both its initial
+        # state and a JS-mutated state so selector cache invalidation is gated too.
+        Remove-Item $formStateInitial,$formStateMutated -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'form-state-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'form-state.stdout.log'
+        $stderr = Join-Path $Artifacts 'form-state.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/form-state.html','--width','1000','--height','900','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $formStateInitial 15 2)
+            [void](Wait-File $formStateMutated 15 2)
+            Copy-Item $formStateInitial (Join-Path $Artifacts 'form-state-initial.json') -Force
+            Copy-Item $formStateMutated (Join-Path $Artifacts 'form-state-mutated.json') -Force
+            Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'form-state-mutated.png')
+            'FORM_STATE_PSEUDOS_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'form-state-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd
