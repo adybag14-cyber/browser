@@ -32,7 +32,7 @@ const Allocator = std.mem.Allocator;
 const CSSStyleDeclaration = @This();
 
 const ComputedCascadeCacheEntry = struct {
-    dom_version: usize,
+    render_version: usize,
     style_revision: usize,
     value: ?[]const u8,
 };
@@ -91,19 +91,19 @@ pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const
 
     // Computed styles persist per element, while native layout reads many of the
     // same properties repeatedly. Cache the author-cascade answer (including a
-    // negative lookup) by DOM + stylesheet generation. Stale values are never
+    // negative lookup) by render + stylesheet generation. Stale values are never
     // read after StyleManager rebuilds because style_revision changes first.
     if (self._is_computed) {
         if (self._element) |element| {
-            const dom_version = frame._page.dom_version;
+            const render_version = frame._page.render_version;
             const style_revision = frame._style_manager.styleRevision();
             const cache = &@constCast(self)._computed_cascade_cache;
             if (cache.getPtr(normalized)) |entry| {
-                if (entry.dom_version == dom_version and entry.style_revision == style_revision) {
+                if (entry.render_version == render_version and entry.style_revision == style_revision) {
                     if (entry.value) |value| return value;
                 } else {
                     const value = computedCascadeValue(element, wrapped, frame);
-                    entry.* = .{ .dom_version = dom_version, .style_revision = style_revision, .value = value };
+                    entry.* = .{ .render_version = render_version, .style_revision = style_revision, .value = value };
                     if (value) |resolved| return resolved;
                 }
             } else {
@@ -111,7 +111,7 @@ pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const
                 const value = computedCascadeValue(element, wrapped, frame);
                 if (owned_name) |name| {
                     cache.put(frame.arena, name, .{
-                        .dom_version = dom_version,
+                        .render_version = render_version,
                         .style_revision = style_revision,
                         .value = value,
                     }) catch {};

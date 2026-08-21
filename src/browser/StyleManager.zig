@@ -46,6 +46,11 @@ pub const PointerEventsCache = std.AutoHashMapUnmanaged(*Element, bool);
 // Rules are bucketed by their rightmost selector part for fast lookup.
 const StyleManager = @This();
 
+const SelectorMatchKey = struct {
+    element: *Element,
+    selector: *const Selector.Selector,
+};
+
 const Tag = Element.Tag;
 const Input = Element.Html.Input;
 const RuleList = std.MultiArrayList(VisibilityRule);
@@ -59,6 +64,8 @@ id_rules: std.StringHashMapUnmanaged(RuleList) = .empty,
 class_rules: std.StringHashMapUnmanaged(RuleList) = .empty,
 tag_rules: std.AutoHashMapUnmanaged(Tag, RuleList) = .empty,
 other_rules: RuleList = .empty, // universal, attribute, pseudo-class endings
+selector_match_cache: std.AutoHashMapUnmanaged(SelectorMatchKey, bool) = .empty,
+selector_match_render_version: usize = 0,
 
 /// The thing to remember about layers is that we can't determine priority's
 /// layer_rank until everything is parsed. So we need to build up meta data when
@@ -568,6 +575,8 @@ fn rebuildIfDirty(self: *StyleManager) !void {
     const other_rules_count = self.other_rules.len;
 
     self.arena.resetRetain();
+    self.selector_match_cache = .empty;
+    self.selector_match_render_version = self.frame._page.render_version;
 
     self.next_doc_order = 1;
 
@@ -1024,7 +1033,8 @@ const BucketKey = union(enum) {
 };
 
 /// Returns the best bucket key for a compound selector, or null if it contains
-/// a dynamic pseudo-class we should skip (hover, active, focus, etc.)
+/// an interaction pseudo-class whose state is not implemented by the selector
+/// matcher. Focus/focus-within are supported and are invalidated by render_version.
 /// Priority: id > class > tag > other
 fn getBucketKey(compound: Selector.Compound) ?BucketKey {
     var best_key: BucketKey = .other;
@@ -1049,11 +1059,11 @@ fn getBucketKey(compound: Selector.Compound) ?BucketKey {
                 // Keep current best_key if we have something better
             },
             .pseudo_class => |pc| {
-                // Skip dynamic pseudo-classes - they depend on interaction state
+                // Focus state is tracked by Document.activeElement and headed
+                // render generations, so those selectors can safely participate.
+                // Hover/active/focus-visible are not implemented by matching yet.
                 switch (pc) {
-                    .hover, .active, .focus, .focus_within, .focus_visible, .visited, .target => {
-                        return null; // Skip this selector entirely
-                    },
+                    .hover, .active, .focus_visible => return null,
                     else => {},
                 }
             },
@@ -1404,6 +1414,20 @@ fn rawRuleProperty(declarations: []const RawDeclaration, property_name: String) 
     return result;
 }
 
+fn matchesSelectorCached(self: *StyleManager, el: *Element, selector: *const Selector.Selector) bool {
+    const render_version = self.frame._page.render_version;
+    if (self.selector_match_render_version != render_version) {
+        self.selector_match_cache.clearRetainingCapacity();
+        self.selector_match_render_version = render_version;
+    }
+
+    const key = SelectorMatchKey{ .element = el, .selector = selector };
+    if (self.selector_match_cache.get(key)) |matched| return matched;
+    const matched = matchesSelector(el, selector.*, self.frame);
+    self.selector_match_cache.put(self.arena.allocator(), key, matched) catch return matched;
+    return matched;
+}
+
 /// Resolve an author-origin property from inline style and matching stylesheet
 /// rules. The rule index already carries selector specificity, source order and
 /// normal cascade-layer rank; this extends that same index beyond the historical
@@ -1429,6 +1453,7 @@ pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: Stri
         el: *Element,
         property_name: String,
         frame: *Frame,
+        manager: *StyleManager,
 
         fn checkRules(ctx: @This(), rules: *const RuleList) void {
             const priorities = rules.items(.priority);
@@ -1436,12 +1461,13 @@ pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: Stri
             const styles = rules.items(.style);
             const raw_declarations = rules.items(.raw_declarations);
 
-            for (priorities, selectors, styles, raw_declarations) |priority, selector, style, declarations| {
+            for (priorities, selectors, styles, raw_declarations, 0..) |priority, selector, style, declarations, i| {
                 // A normal stylesheet declaration cannot beat an inline normal
                 // declaration (INLINE_PRIORITY), nor any !important winner.
                 if (ctx.important.* and priority <= ctx.priority.*) continue;
 
-                if (!matchesSelector(ctx.el, selector, ctx.frame)) continue;
+                _ = selector;
+                if (!ctx.manager.matchesSelectorCached(ctx.el, &selectors[i])) continue;
 
                 const candidate = if (style) |properties|
                     styleRuleProperty(properties, ctx.property_name) orelse continue
@@ -1473,6 +1499,7 @@ pub fn computedStyleValue(self: *StyleManager, el: *Element, property_name: Stri
         .el = el,
         .property_name = property_name,
         .frame = self.frame,
+        .manager = self,
     };
 
     if (el.getAttributeSafe(comptime .wrap("id"))) |id| {
@@ -1558,6 +1585,24 @@ test "StyleManager: pre-parsed raw declarations preserve cascade order" {
     const later_result = rawRuleProperty(&later, comptime .wrap("width")) orelse return error.ExpectedLaterRawProperty;
     try std.testing.expectEqualStrings("20px", later_result.value);
 }
+test "StyleManager: focus selectors remain bucketable" {
+    const focus = Selector.Compound{ .parts = &.{
+        .{ .id = "focusbox" },
+        .{ .pseudo_class = .focus },
+    } };
+    const focus_key = getBucketKey(focus) orelse return error.ExpectedFocusBucket;
+    switch (focus_key) {
+        .id => |id| try std.testing.expectEqualStrings("focusbox", id),
+        else => return error.ExpectedFocusIdBucket,
+    }
+
+    const hover = Selector.Compound{ .parts = &.{
+        .{ .class = "hoverbox" },
+        .{ .pseudo_class = .hover },
+    } };
+    try std.testing.expect(getBucketKey(hover) == null);
+}
+
 test "StyleManager: computeSpecificity: element selector" {
     // div -> (0, 0, 1)
     const selector = Selector.Selector{

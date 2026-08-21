@@ -788,7 +788,12 @@ pub fn browse(app: *App, opts: anytype) !void {
                     lp.log.warn(.app, "headed input", .{ .err = err });
                     break :blk false;
                 };
-                if (input_changed) tab.last_presented_hash = 0;
+                if (input_changed) {
+                    // Native input can change selector state (:hover/:active/:focus)
+                    // without a DOM mutation, so invalidate render/style caches too.
+                    frame.renderChanged();
+                    tab.last_presented_hash = 0;
+                }
             }
         }
         try shell.drainCommands();
