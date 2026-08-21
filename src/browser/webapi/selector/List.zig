@@ -546,8 +546,14 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         .modal => return false,
         .popover_open => return @import("../element/popover.zig").isOpen(el, frame),
         .checked => {
-            const input = el.is(Node.Element.Html.Input) orelse return false;
-            return input.getChecked();
+            if (el.is(Node.Element.Html.Input)) |input| {
+                return switch (input._input_type) {
+                    .checkbox, .radio => input.getChecked(),
+                    else => false,
+                };
+            }
+            if (el.is(Node.Element.Html.Option)) |option| return option.getSelected();
+            return false;
         },
         .disabled => {
             return el.isDisabled();
@@ -557,59 +563,59 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
         },
         .indeterminate => {
             const input = el.is(Node.Element.Html.Input) orelse return false;
-            return switch (input._input_type) {
-                .checkbox => input.getIndeterminate(),
-                else => false,
-            };
+            return input.isIndeterminateForSelector(frame);
         },
 
         // Form validation
         .valid => {
-            if (el.is(Node.Element.Html.Input)) |input| {
-                return switch (input._input_type) {
-                    .hidden, .submit, .reset, .button => false,
-                    else => !input.getRequired() or input.getValue().len > 0,
-                };
-            }
-            if (el.is(Node.Element.Html.Select)) |select| {
-                return !select.getRequired() or select.getValue(frame).len > 0;
-            }
+            if (validationState(el, frame)) |valid| return valid;
             if (el.is(Node.Element.Html.Form) != null or el.is(Node.Element.Html.FieldSet) != null) {
                 return !hasInvalidDescendant(node, frame);
             }
             return false;
         },
         .invalid => {
-            if (el.is(Node.Element.Html.Input)) |input| {
-                return switch (input._input_type) {
-                    .hidden, .submit, .reset, .button => false,
-                    else => input.getRequired() and input.getValue().len == 0,
-                };
-            }
-            if (el.is(Node.Element.Html.Select)) |select| {
-                return select.getRequired() and select.getValue(frame).len == 0;
-            }
+            if (validationState(el, frame)) |valid| return !valid;
             if (el.is(Node.Element.Html.Form) != null or el.is(Node.Element.Html.FieldSet) != null) {
                 return hasInvalidDescendant(node, frame);
             }
             return false;
         },
         .required => {
-            return el.getAttributeSafe(comptime .wrap("required")) != null;
+            if (el.is(Node.Element.Html.Input)) |input| return input.supportsRequired() and input.getRequired();
+            if (el.is(Node.Element.Html.Select)) |select| return select.getRequired();
+            if (el.is(Node.Element.Html.TextArea)) |textarea| return textarea.getRequired();
+            return false;
         },
         .optional => {
-            return el.getAttributeSafe(comptime .wrap("required")) == null;
+            if (el.is(Node.Element.Html.Input)) |input| return input.supportsRequired() and !input.getRequired();
+            if (el.is(Node.Element.Html.Select)) |select| return !select.getRequired();
+            if (el.is(Node.Element.Html.TextArea)) |textarea| return !textarea.getRequired();
+            return false;
         },
-        .in_range => return false,
-        .out_of_range => return false,
-        .placeholder_shown => return false,
+        .in_range => {
+            const input = el.is(Node.Element.Html.Input) orelse return false;
+            return input.rangePseudoState() == .in_range;
+        },
+        .out_of_range => {
+            const input = el.is(Node.Element.Html.Input) orelse return false;
+            return input.rangePseudoState() == .out_of_range;
+        },
+        .placeholder_shown => {
+            if (el.is(Node.Element.Html.Input)) |input| return input.isPlaceholderShown();
+            if (el.is(Node.Element.Html.TextArea)) |textarea| {
+                if (textarea.asConstElement().getAttributeSafe(comptime .wrap("placeholder")) == null) return false;
+                return textarea.getValue().len == 0;
+            }
+            return false;
+        },
         .read_only => {
             return el.getAttributeSafe(comptime .wrap("readonly")) != null;
         },
         .read_write => {
             return el.getAttributeSafe(comptime .wrap("readonly")) == null;
         },
-        .default => return false,
+        .default => return isDefaultControl(el, frame),
 
         // User interaction
         .hover => {
@@ -788,18 +794,99 @@ fn matchesPseudoClass(el: *Node.Element, pseudo: Selector.PseudoClass, scope: *N
     }
 }
 
+fn validationState(el: *Node.Element, frame: *Frame) ?bool {
+    if (el.is(Node.Element.Html.Input)) |input| {
+        if (!input.getWillValidate()) return null;
+        const validity = input.getValidity(frame) catch return null;
+        return validity.getValid(frame);
+    }
+    if (el.is(Node.Element.Html.Select)) |select| {
+        if (!select.getWillValidate()) return null;
+        const validity = select.getValidity(frame) catch return null;
+        return validity.getValid(frame);
+    }
+    if (el.is(Node.Element.Html.TextArea)) |textarea| {
+        if (!textarea.getWillValidate()) return null;
+        const validity = textarea.getValidity(frame) catch return null;
+        return validity.getValid(frame);
+    }
+    if (el.is(Node.Element.Html.Button)) |button| {
+        if (!button.getWillValidate()) return null;
+        const validity = button.getValidity(frame) catch return null;
+        return validity.getValid(frame);
+    }
+    return null;
+}
+
+fn formOwnerOfSubmitControl(el: *Node.Element, frame: *Frame) ?*Node.Element.Html.Form {
+    if (el.is(Node.Element.Html.Input)) |input| return input.getForm(frame);
+    if (el.is(Node.Element.Html.Button)) |button| return button.getForm(frame);
+    return null;
+}
+
+fn isDefaultSubmitControl(el: *Node.Element, frame: *Frame) bool {
+    if (!Node.Element.Html.Form.isSubmitButton(el)) return false;
+    const form = formOwnerOfSubmitControl(el, frame) orelse return false;
+    // A submit control can be associated through form="id" while living
+    // outside the form subtree, so default-button order is document order.
+    var tw = TreeWalker.init(frame.document.asNode(), .{});
+    _ = tw.next();
+    while (tw.next()) |candidate| {
+        const candidate_el = candidate.is(Node.Element) orelse continue;
+        if (!Node.Element.Html.Form.isSubmitButton(candidate_el)) continue;
+        const owner = formOwnerOfSubmitControl(candidate_el, frame) orelse continue;
+        if (owner != form) continue;
+        return candidate_el == el;
+    }
+    return false;
+}
+
+fn owningSelect(option: *Node.Element.Html.Option) ?*Node.Element.Html.Select {
+    var parent = option.asNode().parentElement();
+    while (parent) |element| : (parent = element.parentElement()) {
+        if (element.is(Node.Element.Html.Select)) |select| return select;
+    }
+    return null;
+}
+
+fn isDefaultOption(option: *Node.Element.Html.Option) bool {
+    const select = owningSelect(option) orelse return false;
+    var first_enabled: ?*Node.Element.Html.Option = null;
+    var has_explicit_default = false;
+    var tw = TreeWalker.init(select.asNode(), .{});
+    _ = tw.next();
+    while (tw.next()) |candidate| {
+        const candidate_el = candidate.is(Node.Element) orelse continue;
+        const candidate_option = candidate_el.is(Node.Element.Html.Option) orelse continue;
+        if (candidate_option.getDefaultSelected()) {
+            has_explicit_default = true;
+            if (candidate_option == option) return true;
+        }
+        if (first_enabled == null and !candidate_el.isDisabled()) first_enabled = candidate_option;
+    }
+    if (has_explicit_default) return false;
+    return first_enabled == option;
+}
+
+fn isDefaultControl(el: *Node.Element, frame: *Frame) bool {
+    if (el.is(Node.Element.Html.Input)) |input| {
+        switch (input._input_type) {
+            .checkbox, .radio => return input.getDefaultChecked(),
+            .submit, .image => return isDefaultSubmitControl(el, frame),
+            else => {},
+        }
+    }
+    if (el.is(Node.Element.Html.Button) != null) return isDefaultSubmitControl(el, frame);
+    if (el.is(Node.Element.Html.Option)) |option| return isDefaultOption(option);
+    return false;
+}
+
 fn hasInvalidDescendant(parent: *Node, frame: *Frame) bool {
     var child = parent.firstChild();
     while (child) |c| {
         if (c.is(Node.Element)) |child_el| {
-            if (child_el.is(Node.Element.Html.Input)) |input| {
-                const invalid = switch (input._input_type) {
-                    .hidden, .submit, .reset, .button => false,
-                    else => input.getRequired() and input.getValue().len == 0,
-                };
-                if (invalid) return true;
-            } else if (child_el.is(Node.Element.Html.Select)) |select| {
-                if (select.getRequired() and select.getValue(frame).len == 0) return true;
+            if (validationState(child_el, frame)) |valid| {
+                if (!valid) return true;
             }
         }
         if (hasInvalidDescendant(c, frame)) return true;

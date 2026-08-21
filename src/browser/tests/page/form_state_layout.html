@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  .box { width:180px; height:36px; margin:5px; background-color:rgb(80,80,80); }
+  #ph:placeholder-shown, #ta:placeholder-shown { background-color:rgb(0,255,0); }
+  #rin:in-range, #rout:in-range { background-color:rgb(0,180,255); }
+  #rin:out-of-range, #rout:out-of-range { background-color:rgb(255,180,0); }
+  #defcheck:default, #submitExternal:default, #fallback1:default { outline:4px solid rgb(120,0,255); }
+  #defopt:default { outline:4px solid rgb(255,0,180); }
+  #pattern:invalid, #requiredta:invalid { border:5px solid rgb(255,0,0); }
+  #pattern:valid, #requiredta:valid { border:5px solid rgb(0,255,0); }
+</style>
+<input id="ph" class="box" placeholder="name">
+<textarea id="ta" class="box" placeholder="message"></textarea>
+<input id="rin" class="box" type="number" min="1" max="10" value="5">
+<input id="rout" class="box" type="number" min="1" max="10" value="20">
+<input id="norange" class="box" type="number" value="5">
+<input id="emptyrange" class="box" type="number" min="1" max="10">
+<input id="numberph" class="box" type="number" placeholder="not supported">
+<input id="defcheck" class="box" type="checkbox" checked>
+<select id="explicitSelect" class="box"><option id="defopt" selected>Default</option><option id="otheropt">Other</option></select>
+<select id="fallbackSelect" class="box"><option id="fallbackDisabled" disabled>Disabled</option><option id="fallback1">First enabled</option><option id="fallback2">Second</option></select>
+<div id="radioGroup"><input id="r1" type="radio" name="rg"><input id="r2" type="radio" name="rg"></div>
+<input id="indcheck" type="checkbox">
+<div id="fakeRequired" required></div>
+<input id="rangeRequired" type="range" required value="50">
+<input id="submitExternal" type="submit" form="validityForm" value="External first">
+<form id="validityForm"><fieldset id="validityFieldset">
+  <input id="pattern" class="box" pattern="[A-Z]{3}" value="abc">
+  <textarea id="requiredta" class="box" required></textarea>
+  <input id="plainvalid" class="box" value="ok">
+  <input id="disabledInvalid" class="box" required disabled>
+  <input id="hiddenInvalid" type="hidden" required>
+  <input id="submit1" type="submit" value="First submit"><button id="submit2" type="submit">Second submit</button>
+</fieldset></form>

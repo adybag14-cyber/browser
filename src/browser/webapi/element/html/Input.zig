@@ -158,6 +158,39 @@ pub fn getRedactedValue(self: *const Input) []const u8 {
     return self.getValue();
 }
 
+pub fn isPlaceholderShown(self: *const Input) bool {
+    const supports_placeholder = switch (self._input_type) {
+        .text, .search, .url, .tel, .email, .password => true,
+        else => false,
+    };
+    if (!supports_placeholder) return false;
+    if (self.asConstElement().getAttributeSafe(comptime .wrap("placeholder")) == null) return false;
+    return self.getValue().len == 0;
+}
+
+pub const RangePseudoState = enum { not_applicable, in_range, out_of_range };
+
+pub fn rangePseudoState(self: *const Input) RangePseudoState {
+    switch (self._input_type) {
+        .number, .range => {},
+        else => return .not_applicable,
+    }
+
+    const value = self.getValue();
+    if (value.len == 0 or !isValidFloatingPoint(value)) return .not_applicable;
+
+    const has_range_limit = switch (self._input_type) {
+        // Range controls have implicit 0..100 limits even when min/max are absent.
+        .range => true,
+        .number => isValidFloatingPoint(self.getMin()) or isValidFloatingPoint(self.getMax()),
+        else => unreachable,
+    };
+    if (!has_range_limit) return .not_applicable;
+
+    if (self.suffersRangeUnderflow() or self.suffersRangeOverflow()) return .out_of_range;
+    return .in_range;
+}
+
 pub fn setValue(self: *Input, value: []const u8, frame: *Frame) !void {
     // File inputs: setting to empty string is a no-op, anything else throws
     if (self._input_type == .file) {
@@ -465,6 +498,14 @@ fn numericRangeBreach(self: *const Input, comptime kind: enum { underflow, overf
     return switch (kind) {
         .underflow => v < bound,
         .overflow => v > bound,
+    };
+}
+
+pub fn isIndeterminateForSelector(self: *Input, frame: *Frame) bool {
+    return switch (self._input_type) {
+        .checkbox => self.getIndeterminate(),
+        .radio => !self.radioGroupHasChecked(frame),
+        else => false,
     };
 }
 
@@ -1270,6 +1311,13 @@ pub fn getMax(self: *const Input) []const u8 {
 
 pub fn getMin(self: *const Input) []const u8 {
     return self.asConstElement().getAttributeSafe(comptime .wrap("min")) orelse "";
+}
+
+pub fn supportsRequired(self: *const Input) bool {
+    return switch (self._input_type) {
+        .hidden, .range, .color, .submit, .image, .reset, .button => false,
+        else => true,
+    };
 }
 
 pub fn getRequired(self: *const Input) bool {
