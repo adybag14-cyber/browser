@@ -508,6 +508,46 @@ jobs:
           if ($hoverBefore.sha256 -eq $hoverActive.sha256) { throw 'Native hover produced no visible PNG change' }
           if ($hoverActive.sha256 -eq $hoverCleared.sha256) { throw 'Moving away did not clear the visible hover state' }
 
+          $focusVisibleResult = (Get-Content (Get-EvidenceFile 'focus-visible-result.txt') -Raw).Trim()
+          if ($focusVisibleResult -ne 'NATIVE_FOCUS_VISIBLE_OK') { throw "Unexpected focus-visible marker: $focusVisibleResult" }
+          $focusVisibleGeometry = Get-Content (Get-EvidenceFile 'focus-visible-geometry.json') -Raw | ConvertFrom-Json
+          foreach ($property in @('a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','t_x','t_y','t_w','t_h')) {
+            if ($null -eq $focusVisibleGeometry.PSObject.Properties[$property]) { throw "focus-visible-geometry.json is missing $property" }
+          }
+          function Get-FocusVisibleRegionCounts([string]$Name, [string]$Prefix) {
+            $path = Get-EvidenceFile $Name
+            $bitmap = [System.Drawing.Bitmap]::new($path)
+            try {
+              $x = [double]$focusVisibleGeometry.PSObject.Properties[($Prefix + '_x')].Value + 12.0
+              $y = [double]$focusVisibleGeometry.PSObject.Properties[($Prefix + '_y')].Value + 100.0
+              $w = [double]$focusVisibleGeometry.PSObject.Properties[($Prefix + '_w')].Value
+              $h = [double]$focusVisibleGeometry.PSObject.Properties[($Prefix + '_h')].Value
+              $x0 = [int][Math]::Round($x + 16); $y0 = [int][Math]::Round($y + 12)
+              $x1 = [int][Math]::Round($x + $w - 16); $y1 = [int][Math]::Round($y + $h - 12)
+              $blue=0; $green=0; $cyan=0
+              for($yy=$y0; $yy -le $y1; $yy++){
+                for($xx=$x0; $xx -le $x1; $xx++){
+                  $pixel=$bitmap.GetPixel($xx,$yy)
+                  if($pixel.R -eq 0 -and $pixel.G -eq 80 -and $pixel.B -eq 255){$blue++}
+                  elseif($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 0){$green++}
+                  elseif($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 255){$cyan++}
+                }
+              }
+              return [pscustomobject]@{blue=$blue;green=$green;cyan=$cyan}
+            } finally { $bitmap.Dispose() }
+          }
+          $fvPointer = Get-FocusVisibleRegionCounts 'focus-visible-pointer-button.png' 'a'
+          $fvKeyboard = Get-FocusVisibleRegionCounts 'focus-visible-keyboard-same.png' 'a'
+          $fvTab = Get-FocusVisibleRegionCounts 'focus-visible-tab-button.png' 'b'
+          $fvText = Get-FocusVisibleRegionCounts 'focus-visible-pointer-text.png' 't'
+          if($fvPointer.blue -lt 5000 -or $fvPointer.green -gt 50){ throw "Pointer-focused button unexpectedly focus-visible: blue=$($fvPointer.blue) green=$($fvPointer.green)" }
+          if($fvKeyboard.green -lt 5000 -or $fvKeyboard.blue -gt 50){ throw "Keyboard activity did not enable focus-visible: green=$($fvKeyboard.green) blue=$($fvKeyboard.blue)" }
+          if($fvTab.green -lt 5000 -or $fvTab.blue -gt 50){ throw "Tab-focused button is not focus-visible: green=$($fvTab.green) blue=$($fvTab.blue)" }
+          if($fvText.cyan -lt 7000){ throw "Pointer-focused text input is not focus-visible: cyan=$($fvText.cyan)" }
+          $fvPointerInfo = Get-PngInfo 'focus-visible-pointer-button.png'
+          $fvKeyboardInfo = Get-PngInfo 'focus-visible-keyboard-same.png'
+          if($fvPointerInfo.sha256 -eq $fvKeyboardInfo.sha256){ throw 'Keyboard modality produced no focus-visible PNG change' }
+
           $resizeResultPath = Get-EvidenceFile 'resize-result.txt'
           $resizeResult = (Get-Content $resizeResultPath -Raw).Trim()
           if ($resizeResult -ne 'NATIVE_RESIZE_OK') { throw "Unexpected native-resize marker: $resizeResult" }

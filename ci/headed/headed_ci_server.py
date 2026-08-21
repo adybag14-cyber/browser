@@ -189,6 +189,7 @@ class Handler(BaseHTTPRequestHandler):
     wikipedia_portal_file: str | None = None
     wikipedia_search_file: str | None = None
     hover_geometry_file: str | None = None
+    focus_visible_geometry_file: str | None = None
     resize_load_file: str | None = None
     resize_after_file: str | None = None
 
@@ -227,6 +228,30 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, _fixture("wikipedia_portal_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/wikipedia-search.html":
             return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/focus-visible.html":
+            reporter = b"""<script>
+(function(){
+  var attempts=0;
+  function n(v){return Math.round(v)}
+  function report(){
+    attempts++;
+    var a=document.getElementById('pointer-button').getBoundingClientRect();
+    var b=document.getElementById('keyboard-button').getBoundingClientRect();
+    var t=document.getElementById('focus-text').getBoundingClientRect();
+    var sane=a.width>=220&&a.height>=56&&b.y>a.y&&t.y>b.y;
+    if(sane||attempts>=10){
+      var q='a_x='+n(a.x)+'&a_y='+n(a.y)+'&a_w='+n(a.width)+'&a_h='+n(a.height)+
+        '&b_x='+n(b.x)+'&b_y='+n(b.y)+'&b_w='+n(b.width)+'&b_h='+n(b.height)+
+        '&t_x='+n(t.x)+'&t_y='+n(t.y)+'&t_w='+n(t.width)+'&t_h='+n(t.height);
+      fetch('/focus-visible-geometry?'+q,{method:'POST'}).catch(function(){});
+      return;
+    }
+    setTimeout(report,200);
+  }
+  addEventListener('load',function(){setTimeout(report,250)});
+})();
+</script>"""
+            return self._body(200, _fixture("focus_visible_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/hover-state.html":
             reporter = b"""<script>
 (function(){
@@ -315,6 +340,14 @@ class Handler(BaseHTTPRequestHandler):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/focus-visible-geometry":
+            if self.focus_visible_geometry_file:
+                params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+                payload = {name: values[0] if values else "" for name, values in params.items()}
+                path = pathlib.Path(self.focus_visible_geometry_file)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/hover-geometry":
             if self.hover_geometry_file:
                 params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
@@ -394,6 +427,7 @@ def main() -> int:
     parser.add_argument("--wikipedia-portal-file")
     parser.add_argument("--wikipedia-search-file")
     parser.add_argument("--hover-geometry-file")
+    parser.add_argument("--focus-visible-geometry-file")
     parser.add_argument("--resize-load-file")
     parser.add_argument("--resize-after-file")
     args = parser.parse_args()
@@ -410,6 +444,7 @@ def main() -> int:
     Handler.wikipedia_portal_file = args.wikipedia_portal_file
     Handler.wikipedia_search_file = args.wikipedia_search_file
     Handler.hover_geometry_file = args.hover_geometry_file
+    Handler.focus_visible_geometry_file = args.focus_visible_geometry_file
     Handler.resize_load_file = args.resize_load_file
     Handler.resize_after_file = args.resize_after_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]

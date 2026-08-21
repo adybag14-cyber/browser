@@ -34,9 +34,10 @@ $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
 $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
 $hoverGeometry = Join-Path $state 'hover-geometry.json'
+$focusVisibleGeometry = Join-Path $state 'focus-visible-geometry.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -268,6 +269,7 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--wikipedia-portal-file', $wikipediaPortalGeometry,
     '--wikipedia-search-file', $wikipediaSearchGeometry,
     '--hover-geometry-file', $hoverGeometry,
+    '--focus-visible-geometry-file', $focusVisibleGeometry,
     '--resize-load-file', $resizeLoadState,
     '--resize-after-file', $resizeAfterState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
@@ -612,6 +614,52 @@ try {
             Start-Sleep -Milliseconds 350
             [void](Request-PngEvidence $hwnd $Artifacts 'hover-cleared.png')
             'NATIVE_HOVER_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'hover-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # :focus-visible modality regression. Pointer-focused non-text controls
+        # show :focus only; keyboard interaction/Tab shows :focus-visible; text
+        # entry keeps :focus-visible even when focus came from a pointer.
+        Remove-Item $focusVisibleGeometry -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'focus-visible-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'focus-visible.stdout.log'
+        $stderr = Join-Path $Artifacts 'focus-visible.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/focus-visible.html','--width','900','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $focusVisibleGeometry 15 2)
+            Copy-Item $focusVisibleGeometry (Join-Path $Artifacts 'focus-visible-geometry.json') -Force
+            $fv = Get-Content $focusVisibleGeometry -Raw | ConvertFrom-Json
+            foreach ($property in @('a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','t_x','t_y','t_w','t_h')) {
+                if ($null -eq $fv.PSObject.Properties[$property]) { throw "focus-visible geometry is missing $property" }
+            }
+            $aClientX = [int][Math]::Round([double]$fv.a_x + ([double]$fv.a_w / 2.0) + 12.0)
+            $aClientY = [int][Math]::Round([double]$fv.a_y + ([double]$fv.a_h / 2.0) + 100.0)
+            $tClientX = [int][Math]::Round([double]$fv.t_x + ([double]$fv.t_w / 2.0) + 12.0)
+            $tClientY = [int][Math]::Round([double]$fv.t_y + ([double]$fv.t_h / 2.0) + 100.0)
+
+            Send-Click $hwnd $aClientX $aClientY
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'focus-visible-pointer-button.png')
+
+            Send-PhysicalKey $hwnd 0x41 # A: keyboard modality changes without moving focus
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'focus-visible-keyboard-same.png')
+
+            Send-Click $hwnd $aClientX $aClientY # restore pointer modality on first button
+            Send-PhysicalKey $hwnd 0x09 # Tab to second button
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'focus-visible-tab-button.png')
+
+            Send-Click $hwnd $tClientX $tClientY
+            Start-Sleep -Milliseconds 300
+            [void](Request-PngEvidence $hwnd $Artifacts 'focus-visible-pointer-text.png')
+            'NATIVE_FOCUS_VISIBLE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'focus-visible-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd
