@@ -507,6 +507,39 @@ jobs:
           foreach($id in @('plain','text','disabledText','ta','readonlyTa','ceTrue','ceChild','ceInvalid','ceFalse','ceFalseChild')){Assert-Rw $rwMutated $id $false 'mutated'}
           [void](Get-PngInfo 'readwrite-state-mutated.png')
 
+          $modalResult = (Get-Content (Get-EvidenceFile 'modal-state-result.txt') -Raw).Trim()
+          if ($modalResult -ne 'MODAL_STATE_OK') { throw "Unexpected modal-state marker: $modalResult" }
+          $modalNonmodal = Get-Content (Get-EvidenceFile 'modal-state-nonmodal.json') -Raw | ConvertFrom-Json
+          $modalModal = Get-Content (Get-EvidenceFile 'modal-state-modal.json') -Raw | ConvertFrom-Json
+          if ($modalNonmodal.kind -ne 'nonmodal' -or -not [bool]$modalNonmodal.open -or [bool]$modalNonmodal.modal -or $modalNonmodal.color -ne 'rgb(255,0,0)') {
+            throw "Unexpected nonmodal dialog state: $($modalNonmodal | ConvertTo-Json -Compress)"
+          }
+          if ($modalModal.kind -ne 'modal' -or -not [bool]$modalModal.open -or -not [bool]$modalModal.modal -or $modalModal.color -ne 'rgb(0,255,0)') {
+            throw "Unexpected modal dialog state: $($modalModal | ConvertTo-Json -Compress)"
+          }
+          $modalNonmodalPng = Get-PngInfo 'modal-state-nonmodal.png'
+          $modalModalPng = Get-PngInfo 'modal-state-modal.png'
+          function Get-ModalColorCounts([string]$Name) {
+            $path = Get-EvidenceFile $Name
+            $bitmap = [System.Drawing.Bitmap]::new($path)
+            try {
+              $red=0; $green=0
+              for($y=100;$y -lt [Math]::Min($bitmap.Height,600);$y++){
+                for($x=20;$x -lt [Math]::Min($bitmap.Width,850);$x++){
+                  $pixel=$bitmap.GetPixel($x,$y)
+                  if($pixel.R -eq 255 -and $pixel.G -eq 0 -and $pixel.B -eq 0){$red++}
+                  elseif($pixel.R -eq 0 -and $pixel.G -eq 255 -and $pixel.B -eq 0){$green++}
+                }
+              }
+              return [pscustomobject]@{red=$red;green=$green}
+            } finally { $bitmap.Dispose() }
+          }
+          $modalNonmodalColors=Get-ModalColorCounts 'modal-state-nonmodal.png'
+          $modalModalColors=Get-ModalColorCounts 'modal-state-modal.png'
+          if($modalNonmodalColors.red -lt 30000 -or $modalNonmodalColors.green -gt 50){throw "Nonmodal dialog pixels are wrong: red=$($modalNonmodalColors.red) green=$($modalNonmodalColors.green)"}
+          if($modalModalColors.green -lt 30000 -or $modalModalColors.red -gt 50){throw "Modal dialog pixels are wrong: red=$($modalModalColors.red) green=$($modalModalColors.green)"}
+          if($modalNonmodalPng.sha256 -eq $modalModalPng.sha256){throw 'showModal produced no visible PNG change'}
+
           $hoverResultPath = Get-EvidenceFile 'hover-result.txt'
           $hoverResult = (Get-Content $hoverResultPath -Raw).Trim()
           if ($hoverResult -ne 'NATIVE_HOVER_OK') {

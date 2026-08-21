@@ -13,6 +13,7 @@ const Dialog = @This();
 pub const Proto = HtmlElement;
 
 _pad: bool = false,
+_is_modal: bool = false,
 _proto_canary: if (lp.IS_DEBUG) *HtmlElement else void = undefined,
 
 pub fn asElement(self: *Dialog) *Element {
@@ -41,13 +42,21 @@ pub fn show(self: *Dialog, frame: *Frame) !void {
 pub fn showModal(self: *Dialog, frame: *Frame) !void {
     if (self.getOpen()) return error.InvalidStateError;
     try self.asElement().setAttributeSafe(comptime .wrap("open"), .wrap(""), frame);
+    self._is_modal = true;
+    // `open` already invalidated rendering, but modal-vs-nonmodal is separate
+    // state and computed-style caches are keyed by render_version.
+    frame.renderChanged();
 }
 
 /// https://html.spec.whatwg.org/multipage/interactive-elements.html#dom-dialog-close
 /// If [open] is unset, return. Otherwise remove [open], optionally update
 /// returnValue, and fire a `close` event (non-bubbling, non-cancelable).
 pub fn close(self: *Dialog, return_value: ?[]const u8, frame: *Frame) !void {
-    if (!self.getOpen()) return;
+    if (!self.getOpen()) {
+        self._is_modal = false;
+        return;
+    }
+    self._is_modal = false;
     try self.asElement().removeAttribute(comptime .wrap("open"), frame);
     if (return_value) |v| {
         try self.asElement().setAttributeSafe(comptime .wrap("returnvalue"), .wrap(v), frame);
@@ -59,6 +68,17 @@ pub fn close(self: *Dialog, return_value: ?[]const u8, frame: *Frame) !void {
 pub fn getOpen(self: *const Dialog) bool {
     return self.asConstElement().getAttributeSafe(comptime .wrap("open")) != null;
 }
+
+pub fn isModal(self: *const Dialog) bool {
+    return self._is_modal and self.getOpen();
+}
+
+pub const Build = struct {
+    pub fn attributeRemove(element: *Element, name: lp.String, _: *Frame) !void {
+        if (!name.eql(comptime .wrap("open"))) return;
+        element.as(Dialog)._is_modal = false;
+    }
+};
 
 pub const JsApi = struct {
     pub const bridge = js.Bridge(Dialog);

@@ -194,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
     form_state_mutated_file: str | None = None
     readwrite_state_initial_file: str | None = None
     readwrite_state_mutated_file: str | None = None
+    modal_state_nonmodal_file: str | None = None
+    modal_state_modal_file: str | None = None
     resize_load_file: str | None = None
     resize_after_file: str | None = None
 
@@ -290,6 +292,21 @@ class Handler(BaseHTTPRequestHandler):
 })();
 </script>"""
             return self._body(200, _fixture("readwrite_state_layout.html") + reporter, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/modal-state.html":
+            reporter = b"""<script>
+(function(){
+  var d=document.getElementById('modal-probe');
+  function state(kind){return {kind:kind,open:d.open,modal:d.matches(':modal'),color:getComputedStyle(d).getPropertyValue('background-color')}}
+  function report(value){return fetch('/modal-state-report?kind='+encodeURIComponent(value.kind),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(value)})}
+  addEventListener('load',function(){setTimeout(function(){
+    d.show();
+    setTimeout(function(){report(state('nonmodal')).then(function(){
+      setTimeout(function(){d.close();d.showModal();setTimeout(function(){report(state('modal')).catch(function(){})},220)},1800);
+    }).catch(function(){})},180);
+  },180)});
+})();
+</script>"""
+            return self._body(200, _fixture("modal_state_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/focus-visible.html":
             reporter = b"""<script>
 (function(){
@@ -422,6 +439,21 @@ class Handler(BaseHTTPRequestHandler):
                     payload = {"kind": kind, "parse_error": True}
                 path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/modal-state-report":
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            kind = params.get("kind", [""])[0]
+            output = self.modal_state_nonmodal_file if kind == "nonmodal" else self.modal_state_modal_file if kind == "modal" else None
+            content_length = int(self.headers.get("Content-Length", "0") or 0)
+            body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            if output:
+                path = pathlib.Path(output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    payload = json.loads(body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = {"kind": kind, "parse_error": True}
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/resize-state-report":
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             payload = {name: values[0] if values else "" for name, values in params.items()}
@@ -524,6 +556,8 @@ def main() -> int:
     parser.add_argument("--form-state-mutated-file")
     parser.add_argument("--readwrite-state-initial-file")
     parser.add_argument("--readwrite-state-mutated-file")
+    parser.add_argument("--modal-state-nonmodal-file")
+    parser.add_argument("--modal-state-modal-file")
     parser.add_argument("--resize-load-file")
     parser.add_argument("--resize-after-file")
     args = parser.parse_args()
@@ -545,6 +579,8 @@ def main() -> int:
     Handler.form_state_mutated_file = args.form_state_mutated_file
     Handler.readwrite_state_initial_file = args.readwrite_state_initial_file
     Handler.readwrite_state_mutated_file = args.readwrite_state_mutated_file
+    Handler.modal_state_nonmodal_file = args.modal_state_nonmodal_file
+    Handler.modal_state_modal_file = args.modal_state_modal_file
     Handler.resize_load_file = args.resize_load_file
     Handler.resize_after_file = args.resize_after_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]

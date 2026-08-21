@@ -39,9 +39,11 @@ $formStateInitial = Join-Path $state 'form-state-initial.json'
 $formStateMutated = Join-Path $state 'form-state-mutated.json'
 $readWriteStateInitial = Join-Path $state 'readwrite-state-initial.json'
 $readWriteStateMutated = Join-Path $state 'readwrite-state-mutated.json'
+$modalStateNonmodal = Join-Path $state 'modal-state-nonmodal.json'
+$modalStateModal = Join-Path $state 'modal-state-modal.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$modalStateNonmodal,$modalStateModal,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -278,6 +280,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--form-state-mutated-file', $formStateMutated,
     '--readwrite-state-initial-file', $readWriteStateInitial,
     '--readwrite-state-mutated-file', $readWriteStateMutated,
+    '--modal-state-nonmodal-file', $modalStateNonmodal,
+    '--modal-state-modal-file', $modalStateModal,
     '--resize-load-file', $resizeLoadState,
     '--resize-after-file', $resizeAfterState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
@@ -616,6 +620,32 @@ try {
             Start-Sleep -Milliseconds 250
             [void](Request-PngEvidence $hwnd $Artifacts 'readwrite-state-mutated.png')
             'READWRITE_STATE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'readwrite-state-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Dialog :modal regression. A normal show() is captured first; the
+        # fixture then closes/reopens with showModal() and reports the modal state.
+        Remove-Item $modalStateNonmodal,$modalStateModal -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'modal-state-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'modal-state.stdout.log'
+        $stderr = Join-Path $Artifacts 'modal-state.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/modal-state.html','--width','900','--height','760','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $modalStateNonmodal 15 2)
+            Copy-Item $modalStateNonmodal (Join-Path $Artifacts 'modal-state-nonmodal.json') -Force
+            Start-Sleep -Milliseconds 120
+            [void](Request-PngEvidence $hwnd $Artifacts 'modal-state-nonmodal.png')
+            [void](Wait-File $modalStateModal 15 2)
+            Copy-Item $modalStateModal (Join-Path $Artifacts 'modal-state-modal.json') -Force
+            Start-Sleep -Milliseconds 160
+            [void](Request-PngEvidence $hwnd $Artifacts 'modal-state-modal.png')
+            'MODAL_STATE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'modal-state-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

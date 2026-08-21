@@ -110,6 +110,28 @@
   }
 </script>
 
+<script id="modal_pseudo_class_tracks_showModal_only">
+  {
+    const dialog = document.createElement('dialog')
+    document.body.appendChild(dialog)
+
+    dialog.show()
+    testing.expectFalse(dialog.matches(':modal'))
+    dialog.close()
+
+    dialog.showModal()
+    testing.expectTrue(dialog.matches(':modal'))
+    // Re-setting an already-present open attribute must not demote a modal.
+    dialog.open = true
+    testing.expectTrue(dialog.matches(':modal'))
+
+    // Removing `open` directly exits the modal state just like close().
+    dialog.open = false
+    testing.expectFalse(dialog.matches(':modal'))
+    testing.expectFalse(dialog.open)
+  }
+</script>
+
 <script id="showModal_throws_when_already_open">
   {
     const dialog = document.createElement('dialog')
