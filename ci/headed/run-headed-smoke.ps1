@@ -37,9 +37,11 @@ $hoverGeometry = Join-Path $state 'hover-geometry.json'
 $focusVisibleGeometry = Join-Path $state 'focus-visible-geometry.json'
 $formStateInitial = Join-Path $state 'form-state-initial.json'
 $formStateMutated = Join-Path $state 'form-state-mutated.json'
+$readWriteStateInitial = Join-Path $state 'readwrite-state-initial.json'
+$readWriteStateMutated = Join-Path $state 'readwrite-state-mutated.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -274,6 +276,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--focus-visible-geometry-file', $focusVisibleGeometry,
     '--form-state-initial-file', $formStateInitial,
     '--form-state-mutated-file', $formStateMutated,
+    '--readwrite-state-initial-file', $readWriteStateInitial,
+    '--readwrite-state-mutated-file', $readWriteStateMutated,
     '--resize-load-file', $resizeLoadState,
     '--resize-after-file', $resizeAfterState
 ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
@@ -587,6 +591,31 @@ try {
             Start-Sleep -Milliseconds 250
             [void](Request-PngEvidence $hwnd $Artifacts 'form-state-mutated.png')
             'FORM_STATE_PSEUDOS_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'form-state-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Mutability pseudo-class regression. Ordinary elements must remain
+        # :read-only while writable controls and effective contenteditable chains
+        # are :read-write; the second report gates live attribute/type invalidation.
+        Remove-Item $readWriteStateInitial,$readWriteStateMutated -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'readwrite-state-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'readwrite-state.stdout.log'
+        $stderr = Join-Path $Artifacts 'readwrite-state.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/readwrite-state.html','--width','1000','--height','900','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $readWriteStateInitial 15 2)
+            [void](Wait-File $readWriteStateMutated 15 2)
+            Copy-Item $readWriteStateInitial (Join-Path $Artifacts 'readwrite-state-initial.json') -Force
+            Copy-Item $readWriteStateMutated (Join-Path $Artifacts 'readwrite-state-mutated.json') -Force
+            Start-Sleep -Milliseconds 250
+            [void](Request-PngEvidence $hwnd $Artifacts 'readwrite-state-mutated.png')
+            'READWRITE_STATE_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'readwrite-state-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd

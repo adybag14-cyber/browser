@@ -192,6 +192,8 @@ class Handler(BaseHTTPRequestHandler):
     focus_visible_geometry_file: str | None = None
     form_state_initial_file: str | None = None
     form_state_mutated_file: str | None = None
+    readwrite_state_initial_file: str | None = None
+    readwrite_state_mutated_file: str | None = None
     resize_load_file: str | None = None
     resize_after_file: str | None = None
 
@@ -268,6 +270,26 @@ class Handler(BaseHTTPRequestHandler):
 })();
 </script>"""
             return self._body(200, _fixture("form_state_layout.html") + reporter, "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/readwrite-state.html":
+            reporter = b"""<script>
+(function(){
+  function byId(id){return document.getElementById(id)}
+  function m(id,selector){return byId(id).matches(selector)}
+  function color(id){return getComputedStyle(byId(id)).getPropertyValue('background-color')}
+  var ids=['plain','text','readonlyText','disabledText','range','ta','readonlyTa','ceTrue','ceChild','ceInvalid','ceFalse','ceFalseChild','ceReenabled','ceEmpty','invalidTop'];
+  function state(kind){var out={kind:kind};for(var i=0;i<ids.length;i++){var id=ids[i];out[id+'RW']=m(id,':read-write');out[id+'RO']=m(id,':read-only');out[id+'Color']=color(id)}return out}
+  function report(value){return fetch('/readwrite-state-report?kind='+encodeURIComponent(value.kind),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(value)})}
+  addEventListener('load',function(){setTimeout(function(){
+    report(state('initial')).then(function(){
+      byId('text').readOnly=true; byId('readonlyText').readOnly=false; byId('ta').readOnly=true;
+      byId('ceTrue').setAttribute('contenteditable','false'); byId('invalidTop').setAttribute('contenteditable','true');
+      byId('range').type='text'; byId('range').readOnly=false;
+      setTimeout(function(){report(state('mutated')).catch(function(){})},180);
+    }).catch(function(){});
+  },250)});
+})();
+</script>"""
+            return self._body(200, _fixture("readwrite_state_layout.html") + reporter, "text/html; charset=utf-8")
         if port == 18773 and self.path == "/focus-visible.html":
             reporter = b"""<script>
 (function(){
@@ -385,6 +407,21 @@ class Handler(BaseHTTPRequestHandler):
                     payload = {"kind": kind, "parse_error": True}
                 path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/readwrite-state-report":
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            kind = params.get("kind", [""])[0]
+            output = self.readwrite_state_initial_file if kind == "initial" else self.readwrite_state_mutated_file if kind == "mutated" else None
+            content_length = int(self.headers.get("Content-Length", "0") or 0)
+            body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            if output:
+                path = pathlib.Path(output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    payload = json.loads(body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = {"kind": kind, "parse_error": True}
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/resize-state-report":
             params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             payload = {name: values[0] if values else "" for name, values in params.items()}
@@ -485,6 +522,8 @@ def main() -> int:
     parser.add_argument("--focus-visible-geometry-file")
     parser.add_argument("--form-state-initial-file")
     parser.add_argument("--form-state-mutated-file")
+    parser.add_argument("--readwrite-state-initial-file")
+    parser.add_argument("--readwrite-state-mutated-file")
     parser.add_argument("--resize-load-file")
     parser.add_argument("--resize-after-file")
     args = parser.parse_args()
@@ -504,6 +543,8 @@ def main() -> int:
     Handler.focus_visible_geometry_file = args.focus_visible_geometry_file
     Handler.form_state_initial_file = args.form_state_initial_file
     Handler.form_state_mutated_file = args.form_state_mutated_file
+    Handler.readwrite_state_initial_file = args.readwrite_state_initial_file
+    Handler.readwrite_state_mutated_file = args.readwrite_state_mutated_file
     Handler.resize_load_file = args.resize_load_file
     Handler.resize_after_file = args.resize_after_file
     servers = [ThreadingHTTPServer(("127.0.0.1", p), Handler) for p in (18773, 18774, 18775)]

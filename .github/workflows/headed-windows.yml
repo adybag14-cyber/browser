@@ -488,6 +488,25 @@ jobs:
           }
           [void](Get-PngInfo 'form-state-mutated.png')
 
+          $readWriteResult = (Get-Content (Get-EvidenceFile 'readwrite-state-result.txt') -Raw).Trim()
+          if ($readWriteResult -ne 'READWRITE_STATE_OK') { throw "Unexpected read/write-state marker: $readWriteResult" }
+          $rwInitial = Get-Content (Get-EvidenceFile 'readwrite-state-initial.json') -Raw | ConvertFrom-Json
+          $rwMutated = Get-Content (Get-EvidenceFile 'readwrite-state-mutated.json') -Raw | ConvertFrom-Json
+          if ($rwInitial.kind -ne 'initial' -or $rwMutated.kind -ne 'mutated') { throw "Unexpected read/write state kinds" }
+          function Assert-Rw([object]$Object,[string]$Id,[bool]$ReadWrite,[string]$Label){
+            $rw=$Object.PSObject.Properties[($Id+'RW')]; $ro=$Object.PSObject.Properties[($Id+'RO')]
+            if($null -eq $rw -or $null -eq $ro){throw "$Label read/write state missing $Id"}
+            if([bool]$rw.Value -ne $ReadWrite -or [bool]$ro.Value -eq $ReadWrite){throw "$Label $Id RW=$($rw.Value) RO=$($ro.Value), expected RW=$ReadWrite"}
+            $expectedColor=if($ReadWrite){'rgb(0,255,0)'}else{'rgb(255,0,0)'}
+            $color=$Object.PSObject.Properties[($Id+'Color')]
+            if($null -eq $color -or $color.Value -ne $expectedColor){throw "$Label $Id color=$($color.Value), expected $expectedColor"}
+          }
+          foreach($id in @('text','ta','ceTrue','ceChild','ceInvalid','ceReenabled','ceEmpty')){Assert-Rw $rwInitial $id $true 'initial'}
+          foreach($id in @('plain','readonlyText','disabledText','range','readonlyTa','ceFalse','ceFalseChild','invalidTop')){Assert-Rw $rwInitial $id $false 'initial'}
+          foreach($id in @('readonlyText','range','ceReenabled','ceEmpty','invalidTop')){Assert-Rw $rwMutated $id $true 'mutated'}
+          foreach($id in @('plain','text','disabledText','ta','readonlyTa','ceTrue','ceChild','ceInvalid','ceFalse','ceFalseChild')){Assert-Rw $rwMutated $id $false 'mutated'}
+          [void](Get-PngInfo 'readwrite-state-mutated.png')
+
           $hoverResultPath = Get-EvidenceFile 'hover-result.txt'
           $hoverResult = (Get-Content $hoverResultPath -Raw).Trim()
           if ($hoverResult -ne 'NATIVE_HOVER_OK') {
