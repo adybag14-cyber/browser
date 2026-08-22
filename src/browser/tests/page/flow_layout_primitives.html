@@ -9,6 +9,10 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #inline-link { display: block; width: 15.6rem; }
 #mixed-inline { display: inline-block; font-size: 1.3rem; line-height: 1.6; }
 #word-row { width: 135px; font-size: 1.3rem; }
+#padded-host { width: 260px; }
+#padded-link { display: inline-block; width: 90%; padding: 13px; }
+#padded-icon { display: inline-block; width: 50px; height: 47px; }
+#padded-text { display: inline-block; width: 122px; height: 40px; }
 #input-wrap { display: inline-block; width: 394px; background: rgb(230,240,250); }
 #flow-input { display: inline-block; box-sizing: border-box; width: 100%; height: 44px; margin: 0; border: 0; padding: 0; }
 #empty-helper { }
@@ -24,6 +28,7 @@ body { margin: 0; font-family: Arial, sans-serif; }
 <body>
 <div id="inline-host"><a id="inline-link"><small id="mixed-inline">7,189,000+ <span>articles</span></small></a></div>
 <div id="word-row">Free media collection</div>
+<div id="padded-host"><a id="padded-link"><span id="padded-icon"></span><span id="padded-text"></span></a></div>
 <div id="input-wrap"><input id="flow-input"><div id="empty-helper"></div></div>
 <div id="float-host">
   <div class="float-tile" id="float-a"></div>
@@ -39,11 +44,16 @@ body { margin: 0; font-family: Arial, sans-serif; }
 function reportFlowLayout(){
   function r(id){return document.getElementById(id).getBoundingClientRect()}
   const mixed=r('mixed-inline'), wordRow=r('word-row'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
+  const paddedHost=r('padded-host'), paddedLink=r('padded-link'), paddedIcon=r('padded-icon'), paddedText=r('padded-text');
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
   const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
     'mixed_w='+Math.round(mixed.width),'mixed_h='+Math.round(mixed.height),
     'word_row_w='+Math.round(wordRow.width),'word_row_h='+Math.round(wordRow.height),
+    'padded_host_x='+Math.round(paddedHost.x),'padded_host_w='+Math.round(paddedHost.width),
+    'padded_link_x='+Math.round(paddedLink.x),'padded_link_w='+Math.round(paddedLink.width),
+    'padded_icon_x='+Math.round(paddedIcon.x),'padded_icon_w='+Math.round(paddedIcon.width),
+    'padded_text_x='+Math.round(paddedText.x),'padded_text_w='+Math.round(paddedText.width),
     'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
     'input_w='+Math.round(input.width),'input_h='+Math.round(input.height),
     'empty_h='+Math.round(empty.height),

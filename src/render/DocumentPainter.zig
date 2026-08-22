@@ -1108,11 +1108,13 @@ const Painter = struct {
         var offset_x = content_x;
         if (bounds) |child_bounds| {
             if (std.ascii.eqlIgnoreCase(text_align, "center")) {
-                offset_x += @max(@as(i32, 0), @divTrunc(content_width - child_bounds.width, 2));
+                offset_x += @max(@as(i32, 0), @divTrunc(content_width - child_bounds.width, 2)) - child_bounds.x;
             } else if (std.ascii.eqlIgnoreCase(text_align, "right") or std.ascii.eqlIgnoreCase(text_align, "end")) {
-                offset_x += @max(@as(i32, 0), content_width - child_bounds.width);
+                offset_x += @max(@as(i32, 0), content_width - child_bounds.width) - child_bounds.x;
             }
-            offset_x -= child_bounds.x;
+            // Left/start alignment uses the inline formatting coordinates as-is.
+            // Normalizing to the first painted command would erase authored
+            // leading padding/margins when that command begins inside the box.
         }
 
         try self.appendDisplayListWithOffset(&temp_list, offset_x, content_y, null);
@@ -4554,7 +4556,10 @@ fn resolveBorderHorizontalPx(decl: anytype, page: *Page) i32 {
 
 fn isContentBoxSizing(decl: anytype, page: *Page) bool {
     const box_sizing = std.mem.trim(u8, decl.getPropertyValue("box-sizing", page), &std.ascii.whitespace);
-    return std.ascii.eqlIgnoreCase(box_sizing, "content-box");
+    // CSS initializes box-sizing to content-box. Computed-style plumbing may
+    // leave an unauthored property empty, so only an explicit border-box value
+    // should suppress content-box padding/border expansion.
+    return !std.ascii.eqlIgnoreCase(box_sizing, "border-box");
 }
 
 fn authoredCssPropertyValue(element: *Element, page: *Page, property_name: []const u8) []const u8 {
