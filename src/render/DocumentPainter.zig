@@ -140,7 +140,10 @@ const FlowCursor = struct {
     fn beginInlineLeaf(self: *FlowCursor, width: i32, margins: EdgeSizes, spacing: i32) Position {
         const total_width = margins.left + width + margins.right + spacing;
         if (self.line_height > 0 and self.cursor_x + total_width > self.left + self.width) {
-            self.finishInlineRow(2);
+            // A natural inline wrap starts the next line immediately. CSS
+            // line-height owns vertical rhythm; adding a renderer-only gap here
+            // compounds on every wrapped line.
+            self.finishInlineRow(0);
         }
         return .{
             .x = self.cursor_x + margins.left,
@@ -1181,7 +1184,11 @@ const Painter = struct {
 
         const raw_font_family = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-family"));
         if (raw_font_family.len > 0) {
-            resolved.font_family = raw_font_family;
+            // Font stacks frequently come through custom properties (for example
+            // Wikipedia's --font-family-system-sans). Resolve the exact var()
+            // reference before measuring/painting so the platform backend sees
+            // the real family stack instead of a literal "var(--...)" face name.
+            resolved.font_family = resolveExactCssVariableReference(self.page, element, raw_font_family, 0);
         }
 
         const raw_font_weight = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-weight"));
@@ -1291,9 +1298,12 @@ const Painter = struct {
     ) !void {
         if (segment.len == 0) return;
 
-        const base_height = @max(
-            text_style.font_size + 8,
-            estimateTextHeight(segment, @max(@as(i32, 40), cursor.width), text_style.font_size, text_style.font_family, text_style.font_weight, text_style.italic) + 8,
+        // Line layout follows CSS line-height rather than adding a synthetic
+        // 8px gutter to every word fragment. The Win32 painter can use a taller
+        // glyph draw rect without that visual overflow increasing the line box.
+        const normal_height = @max(
+            text_style.font_size + 4,
+            estimateTextHeight(segment, @max(@as(i32, 40), cursor.width), text_style.font_size, text_style.font_family, text_style.font_weight, text_style.italic),
         );
         // The segment already contains its trailing collapsed space, and the
         // measured styled width already includes CSS word/letter spacing. A
@@ -1311,9 +1321,9 @@ const Painter = struct {
             1,
             @max(@as(i32, 16), cursor.width),
         );
-        const height = @max(base_height, resolveTextLineHeightPx(text_style.line_height, text_style.font_size) orelse 0);
+        const height = @max(@as(i32, 1), resolveTextLineHeightPx(text_style.line_height, text_style.font_size) orelse normal_height);
         const pos = cursor.beginInlineLeaf(width, .{}, spacing);
-        const text_y = pos.y + @divTrunc(@max(@as(i32, 0), height - base_height), 2);
+        const text_y = pos.y + @divTrunc(@max(@as(i32, 0), height - normal_height), 2);
 
         try self.list.addText(self.allocator, .{
             .x = pos.x,
@@ -6152,9 +6162,20 @@ fn estimateStyledTextHeight(
     italic: bool,
     line_height: TextLineHeight,
 ) i32 {
-    const measured = @max(font_size + 8, estimateTextHeight(text, width, font_size, font_family, font_weight, italic) + 8);
+    const measured = @max(
+        @as(i32, 1),
+        estimateTextHeight(text, width, font_size, font_family, font_weight, italic),
+    );
     if (resolveTextLineHeightPx(line_height, font_size)) |line_height_px| {
-        return @max(measured, line_height_px);
+        const native_line_height = @max(
+            @as(i32, 1),
+            estimateTextHeight("Mg", @max(@as(i32, 40), width), font_size, font_family, font_weight, italic),
+        );
+        const line_count = @max(
+            @as(i32, 1),
+            @divTrunc(measured + native_line_height - 1, native_line_height),
+        );
+        return @max(measured, line_count * line_height_px);
     }
     return measured;
 }
@@ -6307,7 +6328,9 @@ fn measuredGenericFontSpec(family: []const u8) ?MeasuredFontSpec {
     if (std.ascii.eqlIgnoreCase(family, "sans-serif") or
         std.ascii.eqlIgnoreCase(family, "system-ui") or
         std.ascii.eqlIgnoreCase(family, "ui-sans-serif") or
-        std.ascii.eqlIgnoreCase(family, "ui-rounded"))
+        std.ascii.eqlIgnoreCase(family, "ui-rounded") or
+        std.ascii.eqlIgnoreCase(family, "-apple-system") or
+        std.ascii.eqlIgnoreCase(family, "BlinkMacSystemFont"))
     {
         return .{ .face_name = "Segoe UI", .pitch_family = @as(u32, win.DEFAULT_PITCH | win.FF_SWISS) };
     }
@@ -7582,6 +7605,33 @@ test "paintDocument carries authored font family style and weight on text comman
 
     try std.testing.expect(found_mono);
     try std.testing.expect(found_serif);
+}
+
+test "paintDocument resolves custom-property system font stacks" {
+    var page = try testing.pageTest("page/font_variable_render.html");
+    defer page._session.removePage();
+
+    var display_list = try paintDocument(std.testing.allocator, page, .{
+        .viewport_width = 640,
+    });
+    defer display_list.deinit(std.testing.allocator);
+
+    var found = false;
+    for (display_list.commands.items) |command| {
+        switch (command) {
+            .text => |text| {
+                if (std.mem.eql(u8, text.text, "Variable system stack")) {
+                    try std.testing.expect(std.mem.indexOf(u8, text.font_family, "var(") == null);
+                    try std.testing.expect(std.mem.indexOf(u8, text.font_family, "Segoe UI") != null);
+                    found = true;
+                    break;
+                }
+            },
+            else => {},
+        }
+    }
+
+    try std.testing.expect(found);
 }
 
 test "paintDocument measures button widths from authored font families" {

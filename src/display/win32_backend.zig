@@ -4514,7 +4514,9 @@ fn presentationGenericFontSpec(family: []const u8) ?PresentationFontSpec {
     if (std.ascii.eqlIgnoreCase(family, "sans-serif") or
         std.ascii.eqlIgnoreCase(family, "system-ui") or
         std.ascii.eqlIgnoreCase(family, "ui-sans-serif") or
-        std.ascii.eqlIgnoreCase(family, "ui-rounded"))
+        std.ascii.eqlIgnoreCase(family, "ui-rounded") or
+        std.ascii.eqlIgnoreCase(family, "-apple-system") or
+        std.ascii.eqlIgnoreCase(family, "BlinkMacSystemFont"))
     {
         return .{
             .face_name = "Segoe UI",
@@ -9524,6 +9526,10 @@ test "win32 resolvePresentationFontSpec maps generic families and keeps specific
     const sans = resolvePresentationFontSpec("system-ui, sans-serif");
     try std.testing.expectEqualStrings("Segoe UI", sans.face_name);
     try std.testing.expectEqual(@as(c.DWORD, c.DEFAULT_PITCH | c.FF_SWISS), sans.pitch_family);
+
+    const css_system = resolvePresentationFontSpec("-apple-system, \"BlinkMacSystemFont\", \"Segoe UI\", sans-serif");
+    try std.testing.expectEqualStrings("Segoe UI", css_system.face_name);
+    try std.testing.expectEqual(@as(c.DWORD, c.DEFAULT_PITCH | c.FF_SWISS), css_system.pitch_family);
 
     const mono = resolvePresentationFontSpec("\"Consolas\", monospace");
     try std.testing.expectEqualStrings("Consolas", mono.face_name);
