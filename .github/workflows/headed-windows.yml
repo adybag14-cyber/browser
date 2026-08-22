@@ -266,6 +266,46 @@ jobs:
           if ($navigationResult -ne 'NATIVE_NAVIGATION_OK') {
             throw "Unexpected native text-navigation marker: $navigationResult"
           }
+
+          $selectionResult = (Get-Content (Get-EvidenceFile 'selection-result.txt') -Raw).Trim()
+          if ($selectionResult -ne 'NATIVE_SELECTION_HIGHLIGHT_OK') {
+            throw "Unexpected native selection-highlight marker: $selectionResult"
+          }
+          $selectionCollapsed = Get-PngInfo 'selection-collapsed.png'
+          $selectionActive = Get-PngInfo 'selection-active.png'
+          if ($selectionCollapsed.sha256 -eq $selectionActive.sha256) {
+            throw 'Shift+Left selection produced no visible PNG change'
+          }
+          Add-Type @'
+          using System.Runtime.InteropServices;
+          public static class LPSelectionColorProbe {
+            [DllImport("user32.dll")] public static extern uint GetSysColor(int index);
+          }
+          '@
+          $selectionColor = [LPSelectionColorProbe]::GetSysColor(13) # COLOR_HIGHLIGHT
+          $selectionR = [int]($selectionColor -band 0xff)
+          $selectionG = [int](($selectionColor -shr 8) -band 0xff)
+          $selectionB = [int](($selectionColor -shr 16) -band 0xff)
+          function Get-SelectionHighlightPixelCount([string]$Name) {
+            $path = Get-EvidenceFile $Name
+            $bitmap = [System.Drawing.Bitmap]::new($path)
+            try {
+              $count = 0
+              for ($y=80; $y -lt [Math]::Min(320,$bitmap.Height); $y++) {
+                for ($x=10; $x -lt [Math]::Min(520,$bitmap.Width); $x++) {
+                  $pixel=$bitmap.GetPixel($x,$y)
+                  if ($pixel.R -eq $selectionR -and $pixel.G -eq $selectionG -and $pixel.B -eq $selectionB) { $count++ }
+                }
+              }
+              return $count
+            } finally { $bitmap.Dispose() }
+          }
+          $selectionCollapsedPixels = Get-SelectionHighlightPixelCount 'selection-collapsed.png'
+          $selectionActivePixels = Get-SelectionHighlightPixelCount 'selection-active.png'
+          if ($selectionActivePixels -lt 80 -or $selectionActivePixels -le ($selectionCollapsedPixels + 60)) {
+            throw "Native selection highlight was not visible: collapsed=$selectionCollapsedPixels active=$selectionActivePixels rgb=$selectionR,$selectionG,$selectionB"
+          }
+
           $caretFocused = Get-PngInfo 'caret-focused.png'
           $caretBlurred = Get-PngInfo 'caret-blurred.png'
           $caretEdited = Get-PngInfo 'caret-edited.png'

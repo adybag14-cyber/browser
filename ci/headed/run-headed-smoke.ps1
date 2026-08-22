@@ -395,9 +395,17 @@ try {
                 Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
                 Send-PhysicalKey $hwnd 0x25 # Left => 4
                 Wait-NavigationState $navigationState $navCase.Target 'a2cde' '4' '4' 'none'
+                if ($navCase.Target -eq 'nav-input') {
+                    Start-Sleep -Milliseconds 180
+                    [void](Request-PngEvidence $hwnd $Artifacts 'selection-collapsed.png')
+                }
                 Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
                 Send-PhysicalShiftKey $hwnd 0x25 # Shift+Left => select d backward
                 Wait-NavigationState $navigationState $navCase.Target 'a2cde' '3' '4' 'backward'
+                if ($navCase.Target -eq 'nav-input') {
+                    Start-Sleep -Milliseconds 180
+                    [void](Request-PngEvidence $hwnd $Artifacts 'selection-active.png')
+                }
                 Remove-Item $navigationState -Force -ErrorAction SilentlyContinue
                 Send-PhysicalKey $hwnd 0x33 # 3 replaces d => a2c3e
                 Wait-NavigationState $navigationState $navCase.Target $navCase.ExpectedAfter $navCase.ExpectedStart $navCase.ExpectedStart 'none'
@@ -407,6 +415,7 @@ try {
             }
         }
         'NATIVE_NAVIGATION_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'navigation-result.txt')
+        'NATIVE_SELECTION_HIGHLIGHT_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'selection-result.txt')
 
         # A real headed pointer click must move the insertion caret inside a
         # single-line input according to the text the native backend actually
