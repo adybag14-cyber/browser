@@ -488,7 +488,7 @@ jobs:
           foreach ($property in @('mixed_w','mixed_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h','wrap_float_host_w','wrap_float_host_h','clear_a_x','clear_a_y','clear_a_w','clear_a_h','clear_b_x','clear_b_y','clear_b_w','clear_b_h','float_main_x','float_main_y','float_main_w','float_main_h')) {
             if ($null -eq $flowLayout.PSObject.Properties[$property]) { throw "flow-layout-geometry.json is missing $property" }
           }
-          if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 24 -or [int]$flowLayout.mixed_h -gt 34) {
+          if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 23 -or [int]$flowLayout.mixed_h -gt 27) {
             throw "Mixed inline-block wrapped unexpectedly: $($flowLayout | ConvertTo-Json -Compress)"
           }
           if ([int]$flowLayout.input_h -ne 44 -or [int]$flowLayout.wrap_h -lt 44 -or [int]$flowLayout.wrap_h -gt 46 -or [int]$flowLayout.empty_h -gt 1) {
