@@ -269,6 +269,16 @@
     testing.expectEqual(expected, getComputedStyle(el).getPropertyValue('display'));
   }
   const hidden = document.createElement('input'); hidden.type = 'hidden'; document.body.appendChild(hidden); testing.expectEqual('none', getComputedStyle(hidden).getPropertyValue('display'));
+
+  // Native controls remain atomic inline-level boxes even when author CSS asks
+  // for pure `inline`; Chrome exposes `inline-block` as the computed display.
+  for (const tag of ['input','button','select','textarea','meter','progress']) {
+    const el = document.createElement(tag);
+    el.style.display = 'inline';
+    document.body.appendChild(el);
+    testing.expectEqual('inline', el.style.getPropertyValue('display'));
+    testing.expectEqual('inline-block', getComputedStyle(el).getPropertyValue('display'));
+  }
 }
 </script>
 

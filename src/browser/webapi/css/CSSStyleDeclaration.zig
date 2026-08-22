@@ -79,10 +79,24 @@ pub fn item(self: *const CSSStyleDeclaration, index: u32) []const u8 {
 fn computedCascadeValue(element: *Element, wrapped: String, frame: *Frame) ?[]const u8 {
     if (wrapped.eql(comptime .wrap("display"))) {
         if (frame._style_manager.hasDisplayNone(element)) return "none";
+        if (frame._style_manager.computedStyleValue(element, wrapped)) |value| {
+            return normalizeComputedDisplayForElement(element, value);
+        }
+        return null;
     } else if (wrapped.eql(comptime .wrap("visibility"))) {
         if (frame._style_manager.hasVisibilityHiddenInherited(element)) return "hidden";
     }
     return frame._style_manager.computedStyleValue(element, wrapped);
+}
+
+fn normalizeComputedDisplayForElement(element: *const Element, value: []const u8) []const u8 {
+    if (!std.ascii.eqlIgnoreCase(std.mem.trim(u8, value, &std.ascii.whitespace), "inline")) return value;
+    return switch (element.getTag()) {
+        // Browser used/computed display for native form/replaced controls maps a
+        // specified `inline` outer display to an atomic inline-level box.
+        .input, .button, .select, .textarea, .meter, .progress => "inline-block",
+        else => value,
+    };
 }
 
 pub fn getPropertyValue(self: *const CSSStyleDeclaration, property_name: []const u8, frame: *Frame) []const u8 {
