@@ -675,6 +675,11 @@ fn matchesUaDisplayNoneRule(el: *Element) bool {
     const tag = el.getTag();
     if (tag.isHiddenByUaStylesheet()) return true;
 
+    // HTML Rendering: dialog:not([open]) { display: none }. This is a UA-origin
+    // fallback, so an explicit author display rule may still override it through
+    // the normal cascade above.
+    if (tag == .dialog and !el.hasAttributeSafe(comptime .wrap("open"))) return true;
+
     if (el.hasAttributeSafe(comptime .wrap("hidden"))) return true;
 
     // input[type="hidden" i] { display: none !important }

@@ -271,6 +271,39 @@
   }
 </script>
 
+<script id="ua_closed_dialog_is_display_none">
+  {
+    const dialog = document.createElement('dialog');
+    dialog.textContent = 'closed dialog content';
+    document.body.appendChild(dialog);
+
+    // Closed dialogs are hidden by the browser UA stylesheet.
+    testing.expectEqual(false, dialog.open);
+    testing.expectEqual('none', window.getComputedStyle(dialog).display);
+    testing.expectEqual(false, dialog.checkVisibility());
+
+    // Opening restores the normal dialog box.
+    dialog.show();
+    testing.expectEqual(true, dialog.open);
+    testing.expectEqual('block', window.getComputedStyle(dialog).display);
+    testing.expectEqual(true, dialog.checkVisibility());
+
+    // Closing restores the UA display:none fallback.
+    dialog.close();
+    testing.expectEqual('none', window.getComputedStyle(dialog).display);
+    testing.expectEqual(false, dialog.checkVisibility());
+
+    // Author origin beats the UA fallback, just like other UA display rules.
+    dialog.style.display = 'block';
+    testing.expectEqual('block', window.getComputedStyle(dialog).display);
+    testing.expectEqual(true, dialog.checkVisibility());
+    dialog.style.removeProperty('display');
+    testing.expectEqual(false, dialog.checkVisibility());
+
+    dialog.remove();
+  }
+</script>
+
 <script id="hidden_attribute_propagates_through_check_visibility">
   {
     // [hidden] { display: none } applies to the element itself...
