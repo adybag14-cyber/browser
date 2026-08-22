@@ -1686,10 +1686,13 @@ const Painter = struct {
         const bg = parseCssColor(resolveCssPropertyValue(decl, self.page, element, "background-color"));
         const fg = text_style.color;
         const corner_radius = resolveBorderRadiusPx(decl, self.page, rect.width, rect.height, self.opts.viewport_width, self.opts.viewport_height);
+        const default_choice_control = usesDefaultChoiceControlAppearance(element, self.page);
 
         if (shouldPaintBox(tag)) {
             try appendResolvedBoxShadow(self, decl, rect, paint_z_index, combined_opacity, corner_radius, overflow_clip_rect);
-            if (bg) |background| {
+            if (default_choice_control) {
+                try appendDefaultChoiceControlAppearance(self, element.as(Element.Html.Input), rect, paint_z_index, combined_opacity);
+            } else if (bg) |background| {
                 if (background.a > 0 and shouldPaintBackground(tag, has_child_elements)) {
                     try self.list.addFillRect(self.allocator, .{
                         .x = rect.x,
@@ -1731,18 +1734,20 @@ const Painter = struct {
         }
         try appendResolvedBackgroundImage(self, decl, rect, paint_z_index, combined_opacity);
 
-        if (resolveStrokeColor(decl, self.page, tag)) |stroke| {
-            try self.list.addStrokeRect(self.allocator, .{
-                .x = rect.x,
-                .y = rect.y,
-                .width = rect.width,
-                .height = rect.height,
-                .z_index = paint_z_index,
-                .corner_radius = corner_radius,
-                .clip_rect = null,
-                .opacity = combined_opacity,
-                .color = stroke,
-            });
+        if (!default_choice_control) {
+            if (resolveStrokeColor(decl, self.page, tag)) |stroke| {
+                try self.list.addStrokeRect(self.allocator, .{
+                    .x = rect.x,
+                    .y = rect.y,
+                    .width = rect.width,
+                    .height = rect.height,
+                    .z_index = paint_z_index,
+                    .corner_radius = corner_radius,
+                    .clip_rect = null,
+                    .opacity = combined_opacity,
+                    .color = stroke,
+                });
+            }
         }
 
         const scrolled_command_start = self.list.commands.items.len;
@@ -3053,7 +3058,7 @@ const Painter = struct {
             },
             .input => {
                 const input = element.as(Element.Html.Input);
-                if (input._input_type == .hidden) {
+                if (input._input_type == .hidden or input._input_type == .checkbox or input._input_type == .radio) {
                     return self.allocator.dupe(u8, "");
                 }
                 if (input._input_type == .file) {
@@ -5475,7 +5480,8 @@ fn resolveLayoutWidth(
         self.root_font_size_px,
     );
     if (self.forced_item_node == element.asNode() and self.forced_item_width > 0) {
-        var forced = std.math.clamp(self.forced_item_width, 60, available_width);
+        const forced_min: i32 = if (usesDefaultChoiceControlAppearance(element, page)) 1 else 60;
+        var forced = std.math.clamp(self.forced_item_width, forced_min, available_width);
         forced = @max(forced, min_width);
         if (max_width) |limit| forced = @min(forced, limit);
         return forced;
@@ -5551,6 +5557,7 @@ fn resolveLayoutWidth(
             .input => blk: {
                 const input = element.as(Element.Html.Input);
                 break :blk switch (input._input_type) {
+                    .checkbox, .radio => if (usesDefaultChoiceControlAppearance(element, page)) 18 else 180,
                     .submit, .reset, .button => @max(
                         self.opts.inline_min_width,
                         estimateStyledTextWidth(painted_label, font_size, font_family, font_weight, italic, text_style.letter_spacing, text_style.word_spacing) + 24,
@@ -5706,7 +5713,9 @@ fn resolveOwnContentHeight(
         }
     } else if (tag == .textarea) {
         height = @max(height, 100);
-    } else if (tag == .input or tag == .select or (tag == .button and !hasRenderableChildElements(element))) {
+    } else if (tag == .input) {
+        height = @max(height, if (usesDefaultChoiceControlAppearance(element, self.page)) @as(i32, 18) else @as(i32, 30));
+    } else if (tag == .select or (tag == .button and !hasRenderableChildElements(element))) {
         height = @max(height, 30);
     } else if (label.len > 0 and shouldPaintText(tag)) {
         height = @max(height, estimateStyledTextHeight(
@@ -5885,6 +5894,96 @@ fn resolveMinimumHeight(self: *const Painter, tag: Element.Tag, block_like: bool
     // CSS auto height for an empty ordinary box is zero. A synthetic 20/24px
     // floor makes empty helper elements create phantom rows in compact layouts.
     return 0;
+}
+
+fn usesDefaultChoiceControlAppearance(element: *Element, page: *Page) bool {
+    const input = element.is(Element.Html.Input) orelse return false;
+    if (input._input_type != .checkbox and input._input_type != .radio) return false;
+    // Explicit geometry or visual box styling indicates an author-customized
+    // control. Keep the existing CSS box path instead of forcing a small native
+    // glyph into that authored appearance. Margins intentionally do not opt out.
+    if (hasExplicitDimensionValue(element, page, "width") or hasExplicitDimensionValue(element, page, "height")) return false;
+    inline for (.{ "background-color", "border", "border-style", "border-width", "border-color", "border-radius", "padding", "appearance", "-webkit-appearance" }) |property| {
+        if (std.mem.trim(u8, authoredCssPropertyValue(element, page, property), &std.ascii.whitespace).len > 0) return false;
+    }
+    return true;
+}
+
+fn appendDefaultChoiceControlAppearance(
+    self: *Painter,
+    input: *Element.Html.Input,
+    rect: Bounds,
+    z_index: i32,
+    opacity: u8,
+) !void {
+    const blue = Color{ .r = 26, .g = 115, .b = 232 };
+    const white = Color{ .r = 255, .g = 255, .b = 255 };
+    const border = Color{ .r = 95, .g = 99, .b = 104 };
+    const is_radio = input._input_type == .radio;
+    const active = input._checked or (!is_radio and input._indeterminate);
+    const radius = if (is_radio) @divTrunc(@min(rect.width, rect.height), 2) else 3;
+    try self.list.addFillRect(self.allocator, .{
+        .x = rect.x,
+        .y = rect.y,
+        .width = rect.width,
+        .height = rect.height,
+        .z_index = z_index,
+        .corner_radius = radius,
+        .opacity = opacity,
+        .color = if (active and !is_radio) blue else white,
+    });
+    try self.list.addStrokeRect(self.allocator, .{
+        .x = rect.x,
+        .y = rect.y,
+        .width = rect.width,
+        .height = rect.height,
+        .z_index = z_index,
+        .corner_radius = radius,
+        .opacity = opacity,
+        .color = if (active) blue else border,
+    });
+    if (is_radio and input._checked) {
+        const inset = @max(@as(i32, 4), @divTrunc(@min(rect.width, rect.height), 4));
+        const inner_width = @max(@as(i32, 2), rect.width - inset * 2);
+        const inner_height = @max(@as(i32, 2), rect.height - inset * 2);
+        try self.list.addFillRect(self.allocator, .{
+            .x = rect.x + inset,
+            .y = rect.y + inset,
+            .width = inner_width,
+            .height = inner_height,
+            .z_index = z_index + 1,
+            .corner_radius = @divTrunc(@min(inner_width, inner_height), 2),
+            .opacity = opacity,
+            .color = blue,
+        });
+    } else if (!is_radio and input._indeterminate) {
+        try self.list.addFillRect(self.allocator, .{
+            .x = rect.x + 4,
+            .y = rect.y + @divTrunc(rect.height, 2) - 1,
+            .width = @max(@as(i32, 2), rect.width - 8),
+            .height = 2,
+            .z_index = z_index + 1,
+            .opacity = opacity,
+            .color = white,
+        });
+    } else if (!is_radio and input._checked) {
+        // Use the native text renderer for the check mark so it scales with the
+        // control while keeping the outer box in normal display-list primitives.
+        try self.list.addText(self.allocator, .{
+            .x = rect.x + 2,
+            .y = rect.y,
+            .width = @max(@as(i32, 1), rect.width - 4),
+            .height = rect.height,
+            .z_index = z_index + 1,
+            .font_size = @max(@as(i32, 10), rect.height - 4),
+            .font_family = @constCast("Segoe UI Symbol"),
+            .font_weight = 700,
+            .color = white,
+            .opacity = opacity,
+            .single_line = true,
+            .text = @constCast("✓"),
+        });
+    }
 }
 
 fn shouldPaintBackground(tag: Element.Tag, has_child_elements: bool) bool {
