@@ -15,6 +15,11 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #padded-text { display: inline-block; width: 122px; height: 40px; }
 #control-wrap { width: 500px; }
 #inline-control { display: inline; padding: 6px 12px; font-size: 14px; line-height: 1; }
+#nested-control-wrap { width: 500px; text-align: center; }
+#nested-control { display: inline-block; padding: 6px 12px; font-size: 14px; line-height: 1; }
+#nested-leading { display: inline-block; width: 22px; height: 22px; vertical-align: middle; }
+#nested-control-text { padding: 0 6px; vertical-align: middle; }
+#nested-trailing { display: inline-block; width: 14px; height: 14px; vertical-align: middle; }
 #input-wrap { display: inline-block; width: 394px; background: rgb(230,240,250); }
 #flow-input { display: inline-block; box-sizing: border-box; width: 100%; height: 44px; margin: 0; border: 0; padding: 0; }
 #empty-helper { }
@@ -32,6 +37,7 @@ body { margin: 0; font-family: Arial, sans-serif; }
 <div id="word-row">Free media collection</div>
 <div id="padded-host"><a id="padded-link"><span id="padded-icon"></span><span id="padded-text"></span></a></div>
 <div id="control-wrap"><button id="inline-control">Read Wikipedia in your language</button></div>
+<div id="nested-control-wrap"><button id="nested-control"><span id="nested-leading"></span><span id="nested-control-text">Read Wikipedia in your language</span><span id="nested-trailing"></span></button></div>
 <div id="input-wrap"><input id="flow-input"><div id="empty-helper"></div></div>
 <div id="float-host">
   <div class="float-tile" id="float-a"></div>
@@ -49,6 +55,7 @@ function reportFlowLayout(){
   const mixed=r('mixed-inline'), wordRow=r('word-row'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
   const paddedHost=r('padded-host'), paddedLink=r('padded-link'), paddedIcon=r('padded-icon'), paddedText=r('padded-text');
   const controlWrap=r('control-wrap'), inlineControl=r('inline-control');
+  const nestedWrap=r('nested-control-wrap'), nestedControl=r('nested-control'), nestedText=r('nested-control-text');
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
   const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
@@ -59,6 +66,7 @@ function reportFlowLayout(){
     'padded_icon_x='+Math.round(paddedIcon.x),'padded_icon_w='+Math.round(paddedIcon.width),
     'padded_text_x='+Math.round(paddedText.x),'padded_text_w='+Math.round(paddedText.width),
     'control_display='+encodeURIComponent(getComputedStyle(document.getElementById('inline-control')).getPropertyValue('display')),'control_wrap_h='+Math.round(controlWrap.height),'control_w='+Math.round(inlineControl.width),'control_h='+Math.round(inlineControl.height),
+    'nested_control_display='+encodeURIComponent(getComputedStyle(document.getElementById('nested-control')).getPropertyValue('display')),'nested_wrap_h='+Math.round(nestedWrap.height),'nested_control_w='+Math.round(nestedControl.width),'nested_control_h='+Math.round(nestedControl.height),'nested_text_w='+Math.round(nestedText.width),'nested_text_h='+Math.round(nestedText.height),
     'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
     'input_w='+Math.round(input.width),'input_h='+Math.round(input.height),
     'empty_h='+Math.round(empty.height),

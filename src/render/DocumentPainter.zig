@@ -1786,7 +1786,8 @@ const Painter = struct {
         const focused_caret_index = try focusedInputCaretCharacterIndex(element, self.page);
         const focused_selection = try focusedInputSelectionCharacterRange(element, self.page);
         if ((label.len > 0 or focused_caret_index != null or focused_selection != null) and shouldPaintText(tag) and image_command == null and canvas_command == null) {
-            const text_area_width = @max(@as(i32, 40), rect.width - padding.horizontal() - 12);
+            const text_inset = defaultTextContentInset(tag);
+            const text_area_width = @max(@as(i32, 40), rect.width - padding.horizontal() - text_inset * 2);
             const painted_label = if (text_style.text_transform == .none) label else blk: {
                 const transformed = try transformTextForPaint(self.allocator, label, text_style.text_transform);
                 break :blk transformed;
@@ -1819,7 +1820,7 @@ const Painter = struct {
                     italic,
                     text_style.line_height,
                 );
-            var text_x = rect.x + padding.left + 6;
+            var text_x = rect.x + padding.left + text_inset;
             const text_indent = parseCssLengthPxWithFontContext(
                 resolveCssPropertyValue(decl, self.page, element, "text-indent"),
                 rect.width,
@@ -5741,9 +5742,10 @@ fn resolveOwnContentHeight(
     } else if (tag == .select or (tag == .button and !hasRenderableChildElements(element))) {
         height = @max(height, 30);
     } else if (label.len > 0 and shouldPaintText(tag)) {
+        const text_inset = defaultTextContentInset(tag);
         height = @max(height, estimateStyledTextHeight(
             painted_label,
-            @max(40, content_width - 12),
+            @max(40, content_width - text_inset * 2),
             font_size,
             font_family,
             font_weight,
@@ -6041,6 +6043,17 @@ fn shouldPaintText(tag: Element.Tag) bool {
     return switch (tag) {
         .html, .body, .head, .meta, .link, .script, .style, .template, .img => false,
         else => true,
+    };
+}
+
+fn defaultTextContentInset(tag: Element.Tag) i32 {
+    // Keep the legacy/native inner gutter for form controls. Ordinary authored
+    // boxes already define their text content edge through CSS padding; adding
+    // another synthetic 6px per side can force otherwise-fitting inline text
+    // to wrap and incorrectly enlarge ancestor layout boxes.
+    return switch (tag) {
+        .input, .textarea, .button, .select, .option, .meter, .progress => 6,
+        else => 0,
     };
 }
 
