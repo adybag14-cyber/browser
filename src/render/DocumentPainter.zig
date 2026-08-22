@@ -1130,6 +1130,7 @@ const Painter = struct {
     }
 
     fn resolvePaintTextStyle(self: *Painter, element: *Element, decl: anytype, tag: Element.Tag) !PaintTextStyle {
+        _ = decl;
         const key = @intFromPtr(element);
         if (self.paint_text_styles.get(key)) |cached| {
             return cached;
@@ -1148,7 +1149,7 @@ const Painter = struct {
             resolved = try self.resolvePaintTextStyle(parent, parent_style.asCSSStyleDeclaration(), parent.getTag());
         }
 
-        const raw_font_size = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("font-size", self.page));
+        const raw_font_size = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-size"));
         if (raw_font_size.len > 0) {
             resolved.font_size = parseFontSizePxWithContext(
                 raw_font_size,
@@ -1158,50 +1159,50 @@ const Painter = struct {
             ) orelse resolved.font_size;
         }
 
-        const raw_line_height = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("line-height", self.page));
+        const raw_line_height = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "line-height"));
         if (raw_line_height.len > 0) {
             if (parseTextLineHeight(raw_line_height, resolved.font_size, self.opts.viewport_height)) |line_height| {
                 resolved.line_height = line_height;
             }
         }
 
-        const raw_font_family = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("font-family", self.page));
+        const raw_font_family = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-family"));
         if (raw_font_family.len > 0) {
             resolved.font_family = raw_font_family;
         }
 
-        const raw_font_weight = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("font-weight", self.page));
+        const raw_font_weight = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-weight"));
         if (raw_font_weight.len > 0) {
             resolved.font_weight = parseCssFontWeight(raw_font_weight);
         }
 
-        const raw_font_style = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("font-style", self.page));
+        const raw_font_style = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "font-style"));
         if (raw_font_style.len > 0) {
             resolved.italic = parseCssFontItalic(raw_font_style);
         }
 
-        const raw_letter_spacing = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("letter-spacing", self.page));
+        const raw_letter_spacing = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "letter-spacing"));
         if (raw_letter_spacing.len > 0) {
             if (parseTextSpacingPx(raw_letter_spacing, resolved.font_size, self.opts.viewport_height)) |letter_spacing| {
                 resolved.letter_spacing = letter_spacing;
             }
         }
 
-        const raw_word_spacing = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("word-spacing", self.page));
+        const raw_word_spacing = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "word-spacing"));
         if (raw_word_spacing.len > 0) {
             if (parseTextSpacingPx(raw_word_spacing, resolved.font_size, self.opts.viewport_height)) |word_spacing| {
                 resolved.word_spacing = word_spacing;
             }
         }
 
-        const raw_text_transform = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("text-transform", self.page));
+        const raw_text_transform = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "text-transform"));
         if (raw_text_transform.len > 0) {
             if (parseTextTransform(raw_text_transform)) |text_transform| {
                 resolved.text_transform = text_transform;
             }
         }
 
-        const raw_color = normalizeInheritedTextPropertyValue(decl.getSpecifiedPropertyValue("color", self.page));
+        const raw_color = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "color"));
         const resolved_color = resolveExactCssVariableReference(self.page, element, raw_color, 0);
         if (parseCssColor(resolved_color)) |color| {
             resolved.color = color;
