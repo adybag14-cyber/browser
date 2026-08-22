@@ -445,7 +445,7 @@ jobs:
           $flowLayoutResult = (Get-Content (Get-EvidenceFile 'flow-layout-result.txt') -Raw).Trim()
           if ($flowLayoutResult -ne 'FLOW_LAYOUT_OK') { throw "Unexpected flow-layout marker: $flowLayoutResult" }
           $flowLayout = Get-Content (Get-EvidenceFile 'flow-layout-geometry.json') -Raw | ConvertFrom-Json
-          foreach ($property in @('mixed_w','mixed_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h')) {
+          foreach ($property in @('mixed_w','mixed_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h','wrap_float_host_w','wrap_float_host_h','clear_a_x','clear_a_y','clear_a_w','clear_a_h','clear_b_x','clear_b_y','clear_b_w','clear_b_h','float_main_x','float_main_y','float_main_w','float_main_h')) {
             if ($null -eq $flowLayout.PSObject.Properties[$property]) { throw "flow-layout-geometry.json is missing $property" }
           }
           if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 24 -or [int]$flowLayout.mixed_h -gt 34) {
@@ -459,6 +459,15 @@ jobs:
           }
           if ([int]$flowLayout.a_y -ne [int]$flowLayout.b_y -or [int]$flowLayout.a_y -ne [int]$flowLayout.c_y -or [int]$flowLayout.a_x -ge [int]$flowLayout.b_x -or [int]$flowLayout.b_x -ge [int]$flowLayout.c_x) {
             throw "Whitespace broke the float row: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.wrap_float_host_w -ne 780 -or [int]$flowLayout.wrap_float_host_h -lt 178 -or [int]$flowLayout.wrap_float_host_h -gt 182) {
+            throw "Float-clear wrapper size is wrong: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.clear_a_x -ne [int]$flowLayout.clear_b_x -or [int]$flowLayout.clear_b_y -lt ([int]$flowLayout.clear_a_y + [int]$flowLayout.clear_a_h) -or [int]$flowLayout.clear_a_h -ne 70 -or [int]$flowLayout.clear_b_h -ne 90) {
+            throw "clear:left did not stack the sidebar floats: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([int]$flowLayout.float_main_y -ne [int]$flowLayout.clear_a_y -or [int]$flowLayout.float_main_x -ne ([int]$flowLayout.clear_a_x + [int]$flowLayout.clear_a_w) -or [int]$flowLayout.float_main_w -lt 505 -or [int]$flowLayout.float_main_w -gt 508 -or [int]$flowLayout.float_main_h -ne 180) {
+            throw "Normal inline-block did not flow beside the float column: $($flowLayout | ConvertTo-Json -Compress)"
           }
 
           $formStateResult = (Get-Content (Get-EvidenceFile 'form-state-result.txt') -Raw).Trim()

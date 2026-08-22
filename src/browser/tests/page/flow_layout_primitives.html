@@ -13,6 +13,11 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #empty-helper { }
 #float-host { width: 780px; background: rgb(245,245,245); }
 .float-tile { float: left; width: 33%; height: 90px; background: rgb(210,220,230); }
+#float-wrap-host { width: 780px; background: rgb(248,248,248); }
+.clear-float { float: left; clear: left; width: 35%; }
+#clear-a { height: 70px; }
+#clear-b { height: 90px; }
+#float-main { display: inline-block; width: 65%; height: 180px; background: rgb(225,235,245); }
 </style>
 </head>
 <body>
@@ -23,11 +28,17 @@ body { margin: 0; font-family: Arial, sans-serif; }
   <div class="float-tile" id="float-b"></div>
   <div class="float-tile" id="float-c"></div>
 </div>
+<div id="float-wrap-host">
+  <div class="clear-float" id="clear-a"></div>
+  <div class="clear-float" id="clear-b"></div>
+  <div id="float-main"></div>
+</div>
 <script>
 function reportFlowLayout(){
   function r(id){return document.getElementById(id).getBoundingClientRect()}
   const mixed=r('mixed-inline'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
+  const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
     'mixed_w='+Math.round(mixed.width),'mixed_h='+Math.round(mixed.height),
     'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
@@ -36,7 +47,11 @@ function reportFlowLayout(){
     'float_host_w='+Math.round(host.width),'float_host_h='+Math.round(host.height),
     'a_x='+Math.round(a.x),'a_y='+Math.round(a.y),'a_w='+Math.round(a.width),'a_h='+Math.round(a.height),
     'b_x='+Math.round(b.x),'b_y='+Math.round(b.y),'b_w='+Math.round(b.width),'b_h='+Math.round(b.height),
-    'c_x='+Math.round(c.x),'c_y='+Math.round(c.y),'c_w='+Math.round(c.width),'c_h='+Math.round(c.height)
+    'c_x='+Math.round(c.x),'c_y='+Math.round(c.y),'c_w='+Math.round(c.width),'c_h='+Math.round(c.height),
+    'wrap_float_host_w='+Math.round(wrapHost.width),'wrap_float_host_h='+Math.round(wrapHost.height),
+    'clear_a_x='+Math.round(clearA.x),'clear_a_y='+Math.round(clearA.y),'clear_a_w='+Math.round(clearA.width),'clear_a_h='+Math.round(clearA.height),
+    'clear_b_x='+Math.round(clearB.x),'clear_b_y='+Math.round(clearB.y),'clear_b_w='+Math.round(clearB.width),'clear_b_h='+Math.round(clearB.height),
+    'float_main_x='+Math.round(main.x),'float_main_y='+Math.round(main.y),'float_main_w='+Math.round(main.width),'float_main_h='+Math.round(main.height)
   ];
   fetch('/flow-layout-geometry?'+q.join('&'),{method:'POST'}).catch(()=>{});
 }
