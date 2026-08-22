@@ -189,6 +189,8 @@ class Handler(BaseHTTPRequestHandler):
     wikipedia_portal_file: str | None = None
     wikipedia_search_file: str | None = None
     flow_layout_file: str | None = None
+    choice_control_initial_file: str | None = None
+    choice_control_clicked_file: str | None = None
     hover_geometry_file: str | None = None
     focus_visible_geometry_file: str | None = None
     form_state_initial_file: str | None = None
@@ -237,6 +239,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._body(200, _fixture("wikipedia_search_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/flow-layout.html":
             return self._body(200, _fixture("flow_layout_primitives.html"), "text/html; charset=utf-8")
+        if port == 18773 and self.path == "/choice-control.html":
+            return self._body(200, _fixture("choice_control_layout.html"), "text/html; charset=utf-8")
         if port == 18773 and self.path == "/form-state.html":
             reporter = b"""<script>
 (function(){
@@ -483,6 +487,21 @@ class Handler(BaseHTTPRequestHandler):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
             return self._body(204, b"")
+        if self.server.server_port == 18773 and parsed.path == "/choice-control-report":
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            kind = params.get("kind", [""])[0]
+            output = self.choice_control_initial_file if kind == "initial" else self.choice_control_clicked_file if kind == "clicked" else None
+            content_length = int(self.headers.get("Content-Length", "0") or 0)
+            body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            if output:
+                path = pathlib.Path(output)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    payload = json.loads(body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = {"kind": kind, "parse_error": True}
+                path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+            return self._body(204, b"")
         if self.server.server_port == 18773 and parsed.path == "/hover-geometry":
             if self.hover_geometry_file:
                 params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
@@ -562,6 +581,8 @@ def main() -> int:
     parser.add_argument("--wikipedia-portal-file")
     parser.add_argument("--wikipedia-search-file")
     parser.add_argument("--flow-layout-file")
+    parser.add_argument("--choice-control-initial-file")
+    parser.add_argument("--choice-control-clicked-file")
     parser.add_argument("--hover-geometry-file")
     parser.add_argument("--focus-visible-geometry-file")
     parser.add_argument("--form-state-initial-file")
@@ -586,6 +607,8 @@ def main() -> int:
     Handler.wikipedia_portal_file = args.wikipedia_portal_file
     Handler.wikipedia_search_file = args.wikipedia_search_file
     Handler.flow_layout_file = args.flow_layout_file
+    Handler.choice_control_initial_file = args.choice_control_initial_file
+    Handler.choice_control_clicked_file = args.choice_control_clicked_file
     Handler.hover_geometry_file = args.hover_geometry_file
     Handler.focus_visible_geometry_file = args.focus_visible_geometry_file
     Handler.form_state_initial_file = args.form_state_initial_file

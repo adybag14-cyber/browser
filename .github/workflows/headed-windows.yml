@@ -510,6 +510,29 @@ jobs:
             throw "Normal inline-block did not flow beside the float column: $($flowLayout | ConvertTo-Json -Compress)"
           }
 
+          $choiceResult = (Get-Content (Get-EvidenceFile 'choice-control-result.txt') -Raw).Trim()
+          if ($choiceResult -ne 'NATIVE_CHOICE_CONTROLS_OK') { throw "Unexpected choice-control marker: $choiceResult" }
+          $choiceInitial = Get-Content (Get-EvidenceFile 'choice-control-initial.json') -Raw | ConvertFrom-Json
+          $choiceClicked = Get-Content (Get-EvidenceFile 'choice-control-clicked.json') -Raw | ConvertFrom-Json
+          foreach ($id in @('check-empty','check-on','check-mixed','radio-empty','radio-on')) {
+            $w=[int]$choiceInitial.PSObject.Properties[($id+'W')].Value; $h=[int]$choiceInitial.PSObject.Properties[($id+'H')].Value
+            if ($w -lt 16 -or $w -gt 20 -or $h -lt 16 -or $h -gt 20) { throw "Default $id geometry is ${w}x${h}" }
+          }
+          if ([int]$choiceInitial.'styled-choiceW' -lt 148 -or [int]$choiceInitial.'styled-choiceW' -gt 152 -or [int]$choiceInitial.'styled-choiceH' -lt 36) {
+            throw "Author-styled checkbox lost its authored box: $($choiceInitial.'styled-choiceW')x$($choiceInitial.'styled-choiceH')"
+          }
+          if ([bool]$choiceInitial.'check-emptyChecked' -or -not [bool]$choiceInitial.'check-onChecked' -or -not [bool]$choiceInitial.'check-mixedIndeterminate' -or [bool]$choiceInitial.'radio-emptyChecked' -or -not [bool]$choiceInitial.'radio-onChecked') {
+            throw "Unexpected initial choice-control state: $($choiceInitial | ConvertTo-Json -Compress)"
+          }
+          if (-not [bool]$choiceClicked.'check-emptyChecked') { throw 'Native click did not toggle the default checkbox' }
+          $choiceBefore = Get-PngInfo 'choice-control-initial.png'; $choiceAfter = Get-PngInfo 'choice-control-clicked.png'
+          if ($choiceBefore.sha256 -eq $choiceAfter.sha256) { throw 'Checkbox click produced no native visual change' }
+          function Get-ChoiceBluePixels([string]$Name) {
+            $bitmap=[System.Drawing.Bitmap]::new((Get-EvidenceFile $Name)); try { $count=0; for($y=60;$y -lt [Math]::Min(360,$bitmap.Height);$y++){for($x=20;$x -lt [Math]::Min(560,$bitmap.Width);$x++){ $p=$bitmap.GetPixel($x,$y); if($p.R -eq 26 -and $p.G -eq 115 -and $p.B -eq 232){$count++}}}; return $count } finally {$bitmap.Dispose()}
+          }
+          $choiceBlueBefore=Get-ChoiceBluePixels 'choice-control-initial.png'; $choiceBlueAfter=Get-ChoiceBluePixels 'choice-control-clicked.png'
+          if ($choiceBlueBefore -lt 100 -or $choiceBlueAfter -lt ($choiceBlueBefore + 100)) { throw "Default choice controls were not visibly painted/toggled: blue $choiceBlueBefore -> $choiceBlueAfter" }
+
           $formStateResult = (Get-Content (Get-EvidenceFile 'form-state-result.txt') -Raw).Trim()
           if ($formStateResult -ne 'FORM_STATE_PSEUDOS_OK') { throw "Unexpected form-state marker: $formStateResult" }
           $formInitial = Get-Content (Get-EvidenceFile 'form-state-initial.json') -Raw | ConvertFrom-Json

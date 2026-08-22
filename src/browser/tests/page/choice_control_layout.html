@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { margin:40px; font-family:Arial,sans-serif; background:white; color:#202124; }
+.panel { width:420px; padding:20px; border:2px solid rgb(66,133,244); }
+.row { height:42px; display:flex; align-items:center; gap:12px; }
+.row label { font-size:17px; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="row"><input id="check-empty" type="checkbox"><label for="check-empty">Unchecked verification</label></div>
+  <div class="row"><input id="check-on" type="checkbox" checked><label for="check-on">Checked verification</label></div>
+  <div class="row"><input id="check-mixed" type="checkbox"><label for="check-mixed">Indeterminate verification</label></div>
+  <div class="row"><input id="radio-empty" type="radio" name="choice"><label for="radio-empty">Unselected radio</label></div>
+  <div class="row"><input id="radio-on" type="radio" name="choice" checked><label for="radio-on">Selected radio</label></div>
+  <div class="row"><input id="styled-choice" type="checkbox" style="display:inline;background-color:#d38a1d;padding:6px 10px;width:150px;border:0"><label for="styled-choice">Author styled choice</label></div>
+</div>
+<script>
+(function(){
+  const mixed=document.getElementById('check-mixed');
+  mixed.indeterminate=true;
+  function report(kind){
+    const ids=['check-empty','check-on','check-mixed','radio-empty','radio-on','styled-choice'];
+    const out={kind:kind};
+    for(const id of ids){
+      const e=document.getElementById(id),r=e.getBoundingClientRect();
+      out[id+'X']=Math.round(r.x);out[id+'Y']=Math.round(r.y);out[id+'W']=Math.round(r.width);out[id+'H']=Math.round(r.height);
+      out[id+'Checked']=e.checked;out[id+'Indeterminate']=!!e.indeterminate;
+    }
+    fetch('/choice-control-report?kind='+encodeURIComponent(kind),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(out)}).catch(function(){});
+  }
+  document.getElementById('check-empty').addEventListener('change',function(){setTimeout(function(){report('clicked')},80)});
+  addEventListener('load',function(){setTimeout(function(){report('initial')},250)});
+})();
+</script>
+</body>
+</html>

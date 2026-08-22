@@ -34,6 +34,8 @@ $googleLayoutFail = Join-Path $state 'google-layout-fail.json'
 $wikipediaPortalGeometry = Join-Path $state 'wikipedia-portal-geometry.json'
 $wikipediaSearchGeometry = Join-Path $state 'wikipedia-search-geometry.json'
 $flowLayoutGeometry = Join-Path $state 'flow-layout-geometry.json'
+$choiceControlInitial = Join-Path $state 'choice-control-initial.json'
+$choiceControlClicked = Join-Path $state 'choice-control-clicked.json'
 $hoverGeometry = Join-Path $state 'hover-geometry.json'
 $focusVisibleGeometry = Join-Path $state 'focus-visible-geometry.json'
 $formStateInitial = Join-Path $state 'form-state-initial.json'
@@ -44,7 +46,7 @@ $modalStateNonmodal = Join-Path $state 'modal-state-nonmodal.json'
 $modalStateModal = Join-Path $state 'modal-state-modal.json'
 $resizeLoadState = Join-Path $state 'resize-load.json'
 $resizeAfterState = Join-Path $state 'resize-after.json'
-Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$flowLayoutGeometry,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$modalStateNonmodal,$modalStateModal,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
+Remove-Item $ready,$verified,$styled,$bootstrapOk,$bootstrapFallback,$bootstrapCookieMissing,$keyboardValue,$caretValue,$navigationState,$googleLayoutGeometry,$googleLayoutFail,$wikipediaPortalGeometry,$wikipediaSearchGeometry,$flowLayoutGeometry,$choiceControlInitial,$choiceControlClicked,$hoverGeometry,$focusVisibleGeometry,$formStateInitial,$formStateMutated,$readWriteStateInitial,$readWriteStateMutated,$modalStateNonmodal,$modalStateModal,$resizeLoadState,$resizeAfterState -Force -ErrorAction SilentlyContinue
 
 Add-Type @'
 using System;
@@ -276,6 +278,8 @@ $server = Start-Process -FilePath $python -ArgumentList @(
     '--wikipedia-portal-file', $wikipediaPortalGeometry,
     '--wikipedia-search-file', $wikipediaSearchGeometry,
     '--flow-layout-file', $flowLayoutGeometry,
+    '--choice-control-initial-file', $choiceControlInitial,
+    '--choice-control-clicked-file', $choiceControlClicked,
     '--hover-geometry-file', $hoverGeometry,
     '--focus-visible-geometry-file', $focusVisibleGeometry,
     '--form-state-initial-file', $formStateInitial,
@@ -602,6 +606,37 @@ try {
             [void](Wait-File $flowLayoutGeometry 15 2)
             Copy-Item $flowLayoutGeometry (Join-Path $Artifacts 'flow-layout-geometry.json') -Force
             'FLOW_LAYOUT_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'flow-layout-result.txt')
+        }
+        finally {
+            Stop-Browser $browser $hwnd
+        }
+
+        # Default checkbox/radio appearance and native click-state regression.
+        Remove-Item $choiceControlInitial,$choiceControlClicked -Force -ErrorAction SilentlyContinue
+        $profile = Join-Path $state 'choice-control-profile'
+        Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+        $stdout = Join-Path $Artifacts 'choice-control.stdout.log'
+        $stderr = Join-Path $Artifacts 'choice-control.stderr.log'
+        $args = @('browse','http://127.0.0.1:18773/choice-control.html','--width','760','--height','520','--profile-dir',$profile)
+        $browser = Start-Process -FilePath $Executable -ArgumentList $args -WorkingDirectory $Artifacts -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        $hwnd = [IntPtr]::Zero
+        try {
+            $hwnd = Get-LightpandaWindow $browser.Id 30
+            [void](Wait-File $choiceControlInitial 15 2)
+            Copy-Item $choiceControlInitial (Join-Path $Artifacts 'choice-control-initial.json') -Force
+            Start-Sleep -Milliseconds 220
+            [void](Request-PngEvidence $hwnd $Artifacts 'choice-control-initial.png')
+            $choiceInitial = Get-Content $choiceControlInitial -Raw | ConvertFrom-Json
+            # Cached CSSOM boxes use display-list coordinates (including page margin);
+            # native client conversion therefore adds only headed chrome offsets.
+            $clientX = [int]$choiceInitial.'check-emptyX' + [Math]::Max(1,[int]([int]$choiceInitial.'check-emptyW'/2)) + 12
+            $clientY = [int]$choiceInitial.'check-emptyY' + [Math]::Max(1,[int]([int]$choiceInitial.'check-emptyH'/2)) + 100
+            Send-Click $hwnd $clientX $clientY
+            [void](Wait-File $choiceControlClicked 10 1)
+            Copy-Item $choiceControlClicked (Join-Path $Artifacts 'choice-control-clicked.json') -Force
+            Start-Sleep -Milliseconds 220
+            [void](Request-PngEvidence $hwnd $Artifacts 'choice-control-clicked.png')
+            'NATIVE_CHOICE_CONTROLS_OK' | Set-Content -Encoding utf8 (Join-Path $Artifacts 'choice-control-result.txt')
         }
         finally {
             Stop-Browser $browser $hwnd
