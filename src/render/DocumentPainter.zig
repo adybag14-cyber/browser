@@ -1430,7 +1430,7 @@ const Painter = struct {
         if (width <= 0) {
             return;
         }
-        const content_box_sizing = isContentBoxSizing(decl, self.page);
+        const content_box_sizing = isContentBoxSizing(element, decl, self.page);
         const has_explicit_width = hasExplicitDimensionValue(element, self.page, "width");
         if (inline_atomic_box and !has_explicit_width) {
             width = @min(available_width, width + padding.horizontal() + resolveBorderHorizontalPx(decl, self.page));
@@ -2060,7 +2060,7 @@ const Painter = struct {
         const min_required_height = @max(resolveMinimumHeight(self, tag, block_like, 0), min_height_css);
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
         const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
-        const box_sizing_extra_height = if (isContentBoxSizing(decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
+        const box_sizing_extra_height = if (isContentBoxSizing(element, decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
 
         const rect: Bounds = .{
             .x = x,
@@ -2418,7 +2418,7 @@ const Painter = struct {
         const min_required_height = @max(resolveMinimumHeight(self, tag, block_like, 0), min_height_css);
         const has_forced_height = self.forced_item_node == element.asNode() and self.forced_item_height > 0;
         const has_explicit_height = hasExplicitDimensionValue(element, self.page, "height") or has_forced_height;
-        const box_sizing_extra_height = if (isContentBoxSizing(decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
+        const box_sizing_extra_height = if (isContentBoxSizing(element, decl, self.page) and has_explicit_height and !has_forced_height) padding.vertical() else 0;
 
         const rect: Bounds = .{
             .x = x,
@@ -4554,12 +4554,26 @@ fn resolveBorderHorizontalPx(decl: anytype, page: *Page) i32 {
     return left + right;
 }
 
-fn isContentBoxSizing(decl: anytype, page: *Page) bool {
+fn isContentBoxSizing(element: *Element, decl: anytype, page: *Page) bool {
     const box_sizing = std.mem.trim(u8, decl.getPropertyValue("box-sizing", page), &std.ascii.whitespace);
-    // CSS initializes box-sizing to content-box. Computed-style plumbing may
-    // leave an unauthored property empty, so only an explicit border-box value
-    // should suppress content-box padding/border expansion.
-    return !std.ascii.eqlIgnoreCase(box_sizing, "border-box");
+    if (box_sizing.len > 0) {
+        return !std.ascii.eqlIgnoreCase(box_sizing, "border-box");
+    }
+
+    // CSS initializes ordinary boxes to content-box, while browser UA styles use
+    // border-box for several native form controls. Mirror those defaults when the
+    // computed-style layer has no authored box-sizing value.
+    switch (element.getTag()) {
+        .button, .select => return false,
+        .input => {
+            const input_type = element.getAttributeSafe(comptime .wrap("type")) orelse "text";
+            inline for (.{ "search", "checkbox", "radio", "button", "submit", "reset", "color" }) |border_box_type| {
+                if (std.ascii.eqlIgnoreCase(input_type, border_box_type)) return false;
+            }
+        },
+        else => {},
+    }
+    return true;
 }
 
 fn authoredCssPropertyValue(element: *Element, page: *Page, property_name: []const u8) []const u8 {
