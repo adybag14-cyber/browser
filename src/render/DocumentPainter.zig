@@ -565,6 +565,13 @@ const FloatMode = enum {
     right,
 };
 
+const ClearMode = enum {
+    none,
+    left,
+    right,
+    both,
+};
+
 const TextTransform = enum {
     none,
     uppercase,
@@ -2686,6 +2693,11 @@ const Painter = struct {
         var float_right_x = child_left + child_width;
         var float_row_y = child_top;
         var float_row_bottom = child_top;
+        var float_max_bottom = child_top;
+        var float_left_bottom = child_top;
+        var float_right_bottom = child_top;
+        var float_left_extent: i32 = 0;
+        var float_right_extent: i32 = 0;
         var float_active = false;
         const legacy_center = isLegacyCenterElement(element);
 
@@ -2734,6 +2746,20 @@ const Painter = struct {
                             float_active = true;
                         }
 
+                        const clear_mode = try resolveClearMode(child_el, self.page);
+                        const clear_y = switch (clear_mode) {
+                            .none => float_row_y,
+                            .left => float_left_bottom,
+                            .right => float_right_bottom,
+                            .both => @max(float_left_bottom, float_right_bottom),
+                        };
+                        if (clear_y > float_row_y) {
+                            float_row_y = clear_y;
+                            float_row_bottom = float_row_y;
+                            float_left_x = child_left;
+                            float_right_x = child_left + child_width;
+                        }
+
                         if (float_left_x + float_width > float_right_x) {
                             float_row_y = float_row_bottom + 4;
                             float_row_bottom = float_row_y;
@@ -2759,19 +2785,61 @@ const Painter = struct {
                         self.forced_item_width = previous_forced_width;
 
                         const float_height = @max(@as(i32, 1), float_cursor.consumedHeightSince(float_row_y));
+                        const item_bottom = float_row_y + float_height;
                         switch (float_mode) {
-                            .left => float_left_x = item_x + float_width + 4,
-                            .right => float_right_x = item_x - 4,
+                            .left => {
+                                float_left_x = item_x + float_width + 4;
+                                float_left_bottom = @max(float_left_bottom, item_bottom);
+                                float_left_extent = @max(float_left_extent, item_x + float_width - child_left);
+                            },
+                            .right => {
+                                float_right_x = item_x - 4;
+                                float_right_bottom = @max(float_right_bottom, item_bottom);
+                                float_right_extent = @max(float_right_extent, child_left + child_width - item_x);
+                            },
                             .none => {},
                         }
-                        float_row_bottom = @max(float_row_bottom, float_row_y + float_height);
+                        float_row_bottom = @max(float_row_bottom, item_bottom);
+                        float_max_bottom = @max(float_max_bottom, item_bottom);
                         continue;
                     }
                 }
             }
 
             if (float_active) {
-                child_cursor.cursor_y = @max(child_cursor.cursor_y, float_row_bottom);
+                var placed_beside_floats = false;
+                if (child.is(Element)) |normal_el| {
+                    const normal_style = try self.page.window.getComputedStyle(normal_el, null, self.page);
+                    const normal_decl = normal_style.asCSSStyleDeclaration();
+                    const normal_display = resolvedDisplayValue(normal_decl, self.page, normal_el);
+                    if (isInlineDisplay(normal_display) or isAtomicInlineDisplay(normal_display)) {
+                        const normal_width = try self.resolveFloatPaintWidth(normal_el, child_width);
+                        const available_left = child_left + float_left_extent;
+                        const available_right = child_left + child_width - float_right_extent;
+                        if (normal_width > 0 and available_left + normal_width <= available_right) {
+                            const previous_forced_node = self.forced_item_node;
+                            const previous_forced_width = self.forced_item_width;
+                            self.forced_item_node = child;
+                            self.forced_item_width = normal_width;
+
+                            const normal_y = child_cursor.cursor_y;
+                            var around_cursor = FlowCursor.init(available_left, normal_y, @max(@as(i32, 40), normal_width));
+                            try self.paintNodeWithOpacity(child, &around_cursor, opacity);
+
+                            self.forced_item_node = previous_forced_node;
+                            self.forced_item_width = previous_forced_width;
+
+                            const normal_height = @max(@as(i32, 1), around_cursor.consumedHeightSince(normal_y));
+                            child_cursor.cursor_y = normal_y + normal_height;
+                            child_cursor.cursor_x = child_cursor.left;
+                            child_cursor.line_height = 0;
+                            placed_beside_floats = true;
+                        }
+                    }
+                }
+                if (placed_beside_floats) continue;
+
+                child_cursor.cursor_y = @max(child_cursor.cursor_y, float_max_bottom);
                 child_cursor.cursor_x = child_cursor.left;
                 child_cursor.line_height = 0;
                 float_active = false;
@@ -2789,7 +2857,7 @@ const Painter = struct {
         }
 
         if (float_active) {
-            child_cursor.cursor_y = @max(child_cursor.cursor_y, float_row_bottom);
+            child_cursor.cursor_y = @max(child_cursor.cursor_y, float_max_bottom);
             child_cursor.cursor_x = child_cursor.left;
             child_cursor.line_height = 0;
         }
@@ -4862,6 +4930,16 @@ fn resolveFloatMode(element: *Element, page: *Page) !FloatMode {
     const float_value = std.mem.trim(u8, resolveCssPropertyValue(decl, page, element, "float"), &std.ascii.whitespace);
     if (std.ascii.eqlIgnoreCase(float_value, "left")) return .left;
     if (std.ascii.eqlIgnoreCase(float_value, "right")) return .right;
+    return .none;
+}
+
+fn resolveClearMode(element: *Element, page: *Page) !ClearMode {
+    const style = try page.window.getComputedStyle(element, null, page);
+    const decl = style.asCSSStyleDeclaration();
+    const clear_value = std.mem.trim(u8, resolveCssPropertyValue(decl, page, element, "clear"), &std.ascii.whitespace);
+    if (std.ascii.eqlIgnoreCase(clear_value, "left") or std.ascii.eqlIgnoreCase(clear_value, "inline-start")) return .left;
+    if (std.ascii.eqlIgnoreCase(clear_value, "right") or std.ascii.eqlIgnoreCase(clear_value, "inline-end")) return .right;
+    if (std.ascii.eqlIgnoreCase(clear_value, "both")) return .both;
     return .none;
 }
 
