@@ -302,8 +302,10 @@ class Handler(BaseHTTPRequestHandler):
         if port == 18773 and self.path == "/modal-state.html":
             reporter = b"""<script>
 (function(){
-  var d=document.getElementById('modal-probe');
-  function state(kind){return {kind:kind,open:d.open,modal:d.matches(':modal'),color:getComputedStyle(d).getPropertyValue('background-color')}}
+  var d=document.getElementById('modal-probe'),closedProbe=document.getElementById('closed-probe');
+  var closedRect=closedProbe.getBoundingClientRect(),closedStyle=getComputedStyle(closedProbe);
+  var closedState={open:closedProbe.open,modal:closedProbe.matches(':modal'),display:closedStyle.getPropertyValue('display'),w:Math.round(closedRect.width),h:Math.round(closedRect.height)};
+  function state(kind){return {kind:kind,open:d.open,modal:d.matches(':modal'),color:getComputedStyle(d).getPropertyValue('background-color'),closedOpen:closedState.open,closedModal:closedState.modal,closedDisplay:closedState.display,closedW:closedState.w,closedH:closedState.h}}
   function report(value){return fetch('/modal-state-report?kind='+encodeURIComponent(value.kind),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(value)})}
   addEventListener('load',function(){setTimeout(function(){
     d.show();

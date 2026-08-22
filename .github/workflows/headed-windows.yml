@@ -611,6 +611,9 @@ jobs:
           if ($modalResult -ne 'MODAL_STATE_OK') { throw "Unexpected modal-state marker: $modalResult" }
           $modalNonmodal = Get-Content (Get-EvidenceFile 'modal-state-nonmodal.json') -Raw | ConvertFrom-Json
           $modalModal = Get-Content (Get-EvidenceFile 'modal-state-modal.json') -Raw | ConvertFrom-Json
+          if ([bool]$modalNonmodal.closedOpen -or [bool]$modalNonmodal.closedModal -or $modalNonmodal.closedDisplay -ne 'none' -or [int]$modalNonmodal.closedW -ne 0 -or [int]$modalNonmodal.closedH -ne 0) {
+            throw "Closed dialog was laid out before show(): $($modalNonmodal | ConvertTo-Json -Compress)"
+          }
           if ($modalNonmodal.kind -ne 'nonmodal' -or -not [bool]$modalNonmodal.open -or [bool]$modalNonmodal.modal -or $modalNonmodal.color -ne 'rgb(255,0,0)') {
             throw "Unexpected nonmodal dialog state: $($modalNonmodal | ConvertTo-Json -Compress)"
           }
@@ -650,7 +653,7 @@ jobs:
           foreach ($property in @('outer_x','outer_y','outer_w','outer_h','target_x','target_y','target_w','target_h')) {
             if ($null -eq $hoverGeometry.PSObject.Properties[$property]) { throw "hover-geometry.json is missing $property" }
           }
-          if ([double]$hoverGeometry.target_w -lt 308 -or [double]$hoverGeometry.target_w -gt 324) { throw "Hover target width is $($hoverGeometry.target_w)px" }
+          if ([double]$hoverGeometry.target_w -lt 328 -or [double]$hoverGeometry.target_w -gt 332) { throw "Hover target width is $($hoverGeometry.target_w)px" }
           if ([double]$hoverGeometry.target_h -lt 64 -or [double]$hoverGeometry.target_h -gt 76) { throw "Hover target height is $($hoverGeometry.target_h)px" }
           $hoverBefore = Get-PngInfo 'hover-before.png'
           $hoverActive = Get-PngInfo 'hover-active.png'
