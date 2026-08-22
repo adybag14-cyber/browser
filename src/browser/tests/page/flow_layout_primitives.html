@@ -20,6 +20,10 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #nested-leading { display: inline-block; width: 22px; height: 22px; vertical-align: middle; }
 #nested-control-text { padding: 0 6px; vertical-align: middle; }
 #nested-trailing { display: inline-block; width: 14px; height: 14px; vertical-align: middle; }
+#center-fieldset { width: 540px; text-align: center; }
+#center-fieldset fieldset { margin: 0; border: 0; padding: 0; }
+.center-wide { display: inline-block; width: 394px; height: 20px; background: rgb(200,210,220); }
+.center-narrow { display: inline-block; width: 54px; height: 20px; background: rgb(220,210,200); }
 #input-wrap { display: inline-block; width: 394px; background: rgb(230,240,250); }
 #flow-input { display: inline-block; box-sizing: border-box; width: 100%; height: 44px; margin: 0; border: 0; padding: 0; }
 #empty-helper { }
@@ -38,6 +42,7 @@ body { margin: 0; font-family: Arial, sans-serif; }
 <div id="padded-host"><a id="padded-link"><span id="padded-icon"></span><span id="padded-text"></span></a></div>
 <div id="control-wrap"><button id="inline-control">Read Wikipedia in your language</button></div>
 <div id="nested-control-wrap"><button id="nested-control"><span id="nested-leading"></span><span id="nested-control-text">Read Wikipedia in your language</span><span id="nested-trailing"></span></button></div>
+<div id="center-fieldset"><fieldset><input type="hidden" value="ignored"><span id="field-wide" class="center-wide"></span><span id="field-narrow" class="center-narrow"></span></fieldset></div>
 <div id="input-wrap"><input id="flow-input"><div id="empty-helper"></div></div>
 <div id="float-host">
   <div class="float-tile" id="float-a"></div>
@@ -56,6 +61,7 @@ function reportFlowLayout(){
   const paddedHost=r('padded-host'), paddedLink=r('padded-link'), paddedIcon=r('padded-icon'), paddedText=r('padded-text');
   const controlWrap=r('control-wrap'), inlineControl=r('inline-control');
   const nestedWrap=r('nested-control-wrap'), nestedControl=r('nested-control'), nestedText=r('nested-control-text');
+  const centerFieldset=r('center-fieldset'), fieldWide=r('field-wide'), fieldNarrow=r('field-narrow');
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
   const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
@@ -67,6 +73,7 @@ function reportFlowLayout(){
     'padded_text_x='+Math.round(paddedText.x),'padded_text_w='+Math.round(paddedText.width),
     'control_display='+encodeURIComponent(getComputedStyle(document.getElementById('inline-control')).getPropertyValue('display')),'control_wrap_h='+Math.round(controlWrap.height),'control_w='+Math.round(inlineControl.width),'control_h='+Math.round(inlineControl.height),
     'nested_control_display='+encodeURIComponent(getComputedStyle(document.getElementById('nested-control')).getPropertyValue('display')),'nested_wrap_h='+Math.round(nestedWrap.height),'nested_control_w='+Math.round(nestedControl.width),'nested_control_h='+Math.round(nestedControl.height),'nested_text_w='+Math.round(nestedText.width),'nested_text_h='+Math.round(nestedText.height),
+    'field_host_x='+Math.round(centerFieldset.x),'field_wide_x='+Math.round(fieldWide.x),'field_narrow_x='+Math.round(fieldNarrow.x),
     'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
     'input_w='+Math.round(input.width),'input_h='+Math.round(input.height),
     'empty_h='+Math.round(empty.height),

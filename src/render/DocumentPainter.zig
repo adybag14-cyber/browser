@@ -1139,10 +1139,11 @@ const Painter = struct {
                 try self.paintNodeWithOpacity(child, &overlay_cursor, opacity);
             }
         }
-        return if (bounds) |child_bounds|
-            @max(child_height, child_bounds.y + child_bounds.height)
-        else
-            child_height;
+        // Normal-flow height comes from the inline cursor. Paint bounds may
+        // include absolutely positioned descendants (dropdowns, overlays,
+        // hidden-control helpers) that must not increase their containing
+        // block's auto height.
+        return child_height;
     }
 
     fn resolvePaintTextStyle(self: *Painter, element: *Element, decl: anytype, tag: Element.Tag) !PaintTextStyle {
@@ -1562,7 +1563,7 @@ const Painter = struct {
                     x + padding.left,
                     y + padding.top,
                     @max(@as(i32, 40), width - padding.left - padding.right),
-                    resolveCssPropertyValue(decl, self.page, element, "text-align"),
+                    resolvedTextAlignValue(element, self.page),
                     combined_opacity,
                 )
             else
@@ -1862,7 +1863,7 @@ const Painter = struct {
                 return;
             }
             text_x += text_indent;
-            const text_align = resolveCssPropertyValue(decl, self.page, element, "text-align");
+            const text_align = resolvedTextAlignValue(element, self.page);
             if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, text_align, &std.ascii.whitespace), "center")) {
                 const measured_text_width = estimateStyledTextWidth(
                     painted_label,
@@ -4602,6 +4603,18 @@ fn authoredCssPropertyValue(element: *Element, page: *Page, property_name: []con
     return page._style_manager.computedStyleValue(element, String.wrap(property_name)) orelse "";
 }
 
+fn resolvedTextAlignValue(element: *Element, page: *Page) []const u8 {
+    var current: ?*Element = element;
+    while (current) |candidate| : (current = candidate.asNode().parentElement()) {
+        const raw = resolveExactCssVariableReference(page, candidate, authoredCssPropertyValue(candidate, page, "text-align"), 0);
+        const value = std.mem.trim(u8, raw, &std.ascii.whitespace);
+        if (value.len == 0 or std.ascii.eqlIgnoreCase(value, "inherit") or std.ascii.eqlIgnoreCase(value, "unset")) continue;
+        if (std.ascii.eqlIgnoreCase(value, "initial") or std.ascii.eqlIgnoreCase(value, "revert") or std.ascii.eqlIgnoreCase(value, "revert-layer")) return "";
+        return value;
+    }
+    return "";
+}
+
 fn hasAuthoredMargin(element: *Element, page: *Page) bool {
     inline for (.{ "margin", "margin-top", "margin-right", "margin-bottom", "margin-left" }) |property| {
         if (std.mem.trim(u8, authoredCssPropertyValue(element, page, property), &std.ascii.whitespace).len > 0) return true;
@@ -4812,6 +4825,7 @@ fn hasOnlyInlineFlowChildren(element: *Element, page: *Page) !bool {
                 .script, .style, .template, .head, .meta, .link, .title => true,
                 else => false,
             }) continue;
+            if (isHiddenFormControl(child_el)) continue;
             if (child_el.getTag() == .br) {
                 saw_flow_child = true;
                 continue;
