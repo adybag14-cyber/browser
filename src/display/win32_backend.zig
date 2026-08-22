@@ -4256,6 +4256,36 @@ fn presentationTextPrefixWidth(hdc: c.HDC, text_cmd: TextCommand, character_inde
     return size.cx + utf16PrefixSpaceCount(utf16[0..units]) * text_cmd.word_spacing;
 }
 
+fn presentationTextSelectionRect(hdc: c.HDC, visible_rect: c.RECT, draw_rect: c.RECT, text_cmd: TextCommand) ?c.RECT {
+    if (!text_cmd.single_line) return null;
+    const start = text_cmd.selection_start_character_index orelse return null;
+    const end = text_cmd.selection_end_character_index orelse return null;
+    if (end <= start) return null;
+    const start_offset = presentationTextPrefixWidth(hdc, text_cmd, start) orelse return null;
+    const end_offset = presentationTextPrefixWidth(hdc, text_cmd, end) orelse return null;
+    const left = @max(visible_rect.left, draw_rect.left + start_offset);
+    const right = @min(visible_rect.right, draw_rect.left + end_offset);
+    if (right <= left) return null;
+    return .{ .left = left, .top = visible_rect.top, .right = right, .bottom = visible_rect.bottom };
+}
+
+fn fillPresentationTextSelection(hdc: c.HDC, rect: c.RECT) void {
+    const brush = c.CreateSolidBrush(c.GetSysColor(c.COLOR_HIGHLIGHT));
+    if (brush == null) return;
+    defer _ = c.DeleteObject(brush);
+    _ = c.FillRect(hdc, &rect, brush);
+}
+
+fn drawPresentationTextSelectionForeground(hdc: c.HDC, selection_rect: c.RECT, draw_rect: c.RECT, text_cmd: TextCommand) void {
+    const saved_dc = c.SaveDC(hdc);
+    if (saved_dc == 0) return;
+    defer _ = c.RestoreDC(hdc, saved_dc);
+    if (c.IntersectClipRect(hdc, selection_rect.left, selection_rect.top, selection_rect.right, selection_rect.bottom) == c.ERROR) return;
+    _ = c.SetTextColor(hdc, c.GetSysColor(c.COLOR_HIGHLIGHTTEXT));
+    var selected_draw_rect = draw_rect;
+    drawPresentationText(hdc, &selected_draw_rect, text_cmd.text, presentationTextFlags(text_cmd));
+}
+
 fn horizontallyScrolledTextRect(hdc: c.HDC, rect: c.RECT, text_cmd: TextCommand) c.RECT {
     if (!text_cmd.single_line) return rect;
     const caret_index = text_cmd.caret_character_index orelse return rect;
@@ -5789,12 +5819,15 @@ fn renderPresentationDisplayList(
                             defer _ = c.SetTextJustification(hdc, 0, 0);
                         }
                         var draw_rect = horizontallyScrolledTextRect(hdc, rect, text_cmd);
+                        const selection_rect = presentationTextSelectionRect(hdc, rect, draw_rect, text_cmd);
+                        if (selection_rect) |selected| fillPresentationTextSelection(hdc, selected);
                         drawPresentationText(
                             hdc,
                             &draw_rect,
                             text_cmd.text,
                             presentationTextFlags(text_cmd),
                         );
+                        if (selection_rect) |selected| drawPresentationTextSelectionForeground(hdc, selected, draw_rect, text_cmd);
                         drawPresentationTextCaret(hdc, draw_rect, text_cmd, font_size);
                         _ = c.SetTextColor(hdc, previous);
                     } else {
@@ -5840,12 +5873,15 @@ fn renderPresentationDisplayList(
                             defer _ = c.SetTextJustification(surface.mem_dc, 0, 0);
                         }
                         var draw_rect = horizontallyScrolledTextRect(surface.mem_dc, local_rect, text_cmd);
+                        const selection_rect = presentationTextSelectionRect(surface.mem_dc, local_rect, draw_rect, text_cmd);
+                        if (selection_rect) |selected| fillPresentationTextSelection(surface.mem_dc, selected);
                         drawPresentationText(
                             surface.mem_dc,
                             &draw_rect,
                             text_cmd.text,
                             presentationTextFlags(text_cmd),
                         );
+                        if (selection_rect) |selected| drawPresentationTextSelectionForeground(surface.mem_dc, selected, draw_rect, text_cmd);
                         drawPresentationTextCaret(surface.mem_dc, draw_rect, text_cmd, font_size);
                         _ = c.SetTextColor(surface.mem_dc, previous);
                         alphaBlendSurfaceToTarget(hdc, rect, &surface, text_alpha, true);

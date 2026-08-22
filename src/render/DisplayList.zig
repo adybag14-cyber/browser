@@ -45,6 +45,9 @@ pub const TextCommand = struct {
     /// Collapsed caret position in Unicode code points for the focused
     /// single-line input represented by this text command.
     caret_character_index: ?u32 = null,
+    /// Non-collapsed focused-input selection range in Unicode code points.
+    selection_start_character_index: ?u32 = null,
+    selection_end_character_index: ?u32 = null,
     /// Paint this command on one native line; used by single-line form controls.
     single_line: bool = false,
     text: []u8,
@@ -226,6 +229,8 @@ pub const Command = union(enum) {
                 .word_spacing = text.word_spacing,
                 .underline = text.underline,
                 .caret_character_index = text.caret_character_index,
+                .selection_start_character_index = text.selection_start_character_index,
+                .selection_end_character_index = text.selection_end_character_index,
                 .single_line = text.single_line,
                 .text = try allocator.dupe(u8, text.text),
             } },
@@ -420,6 +425,8 @@ pub fn addText(self: *DisplayList, allocator: std.mem.Allocator, text: TextComma
         .word_spacing = text.word_spacing,
         .underline = text.underline,
         .caret_character_index = text.caret_character_index,
+        .selection_start_character_index = text.selection_start_character_index,
+        .selection_end_character_index = text.selection_end_character_index,
         .single_line = text.single_line,
         .text = try allocator.dupe(u8, text.text),
     } });
@@ -576,6 +583,8 @@ pub fn hashInto(self: *const DisplayList, hasher: anytype) void {
                 hasher.update(std.mem.asBytes(&text.word_spacing));
                 hasher.update(std.mem.asBytes(&text.underline));
                 hasher.update(std.mem.asBytes(&text.caret_character_index));
+                hasher.update(std.mem.asBytes(&text.selection_start_character_index));
+                hasher.update(std.mem.asBytes(&text.selection_end_character_index));
                 hasher.update(std.mem.asBytes(&text.single_line));
                 hasher.update(text.text);
             },

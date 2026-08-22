@@ -795,6 +795,8 @@ const Painter = struct {
                     .word_spacing = text.word_spacing,
                     .underline = text.underline,
                     .caret_character_index = text.caret_character_index,
+                    .selection_start_character_index = text.selection_start_character_index,
+                    .selection_end_character_index = text.selection_end_character_index,
                     .single_line = text.single_line,
                     .text = text.text,
                 }),
@@ -1771,7 +1773,8 @@ const Painter = struct {
         }
 
         const focused_caret_index = try focusedInputCaretCharacterIndex(element, self.page);
-        if ((label.len > 0 or focused_caret_index != null) and shouldPaintText(tag) and image_command == null and canvas_command == null) {
+        const focused_selection = try focusedInputSelectionCharacterRange(element, self.page);
+        if ((label.len > 0 or focused_caret_index != null or focused_selection != null) and shouldPaintText(tag) and image_command == null and canvas_command == null) {
             const text_area_width = @max(@as(i32, 40), rect.width - padding.horizontal() - 12);
             const painted_label = if (text_style.text_transform == .none) label else blk: {
                 const transformed = try transformTextForPaint(self.allocator, label, text_style.text_transform);
@@ -1862,6 +1865,8 @@ const Painter = struct {
                 .word_spacing = text_style.word_spacing,
                 .underline = shouldUnderlineText(element, decl, self.page, tag),
                 .caret_character_index = focused_caret_index,
+                .selection_start_character_index = if (focused_selection) |range| range.start else null,
+                .selection_end_character_index = if (focused_selection) |range| range.end else null,
                 .single_line = single_line_text,
                 .text = @constCast(painted_label),
             });
@@ -3468,15 +3473,38 @@ fn resolvedLinkRegion(
     };
 }
 
+const FocusedInputSelectionRange = struct {
+    start: u32,
+    end: u32,
+};
+
+fn inputByteOffsetToCharacterIndex(value: []const u8, offset: u32) u32 {
+    const byte_index: usize = @min(@as(usize, offset), value.len);
+    return @intCast(std.unicode.utf8CountCodepoints(value[0..byte_index]) catch byte_index);
+}
+
 fn focusedInputCaretCharacterIndex(element: *Element, page: *Page) !?u32 {
     if (page.window._document._active_element != element) return null;
     const input = element.is(Element.Html.Input) orelse return null;
     const start = (try input.getSelectionStart()) orelse return null;
     const end = (try input.getSelectionEnd()) orelse return null;
     if (start != end) return null;
+    return inputByteOffsetToCharacterIndex(input.getValue(), start);
+}
+
+fn focusedInputSelectionCharacterRange(element: *Element, page: *Page) !?FocusedInputSelectionRange {
+    if (page.window._document._active_element != element) return null;
+    const input = element.is(Element.Html.Input) orelse return null;
+    const raw_start = (try input.getSelectionStart()) orelse return null;
+    const raw_end = (try input.getSelectionEnd()) orelse return null;
+    if (raw_start == raw_end) return null;
     const value = input.getValue();
-    const byte_index: usize = @min(@as(usize, start), value.len);
-    return @intCast(std.unicode.utf8CountCodepoints(value[0..byte_index]) catch byte_index);
+    const low = @min(raw_start, raw_end);
+    const high = @max(raw_start, raw_end);
+    const start = inputByteOffsetToCharacterIndex(value, low);
+    const end = inputByteOffsetToCharacterIndex(value, high);
+    if (start == end) return null;
+    return .{ .start = start, .end = end };
 }
 
 fn resolvedControlRegion(
