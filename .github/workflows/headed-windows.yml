@@ -485,7 +485,7 @@ jobs:
           $flowLayoutResult = (Get-Content (Get-EvidenceFile 'flow-layout-result.txt') -Raw).Trim()
           if ($flowLayoutResult -ne 'FLOW_LAYOUT_OK') { throw "Unexpected flow-layout marker: $flowLayoutResult" }
           $flowLayout = Get-Content (Get-EvidenceFile 'flow-layout-geometry.json') -Raw | ConvertFrom-Json
-          foreach ($property in @('mixed_w','mixed_h','word_row_w','word_row_h','padded_host_x','padded_host_w','padded_link_x','padded_link_w','padded_icon_x','padded_icon_w','padded_text_x','padded_text_w','control_display','control_wrap_h','control_w','control_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h','wrap_float_host_w','wrap_float_host_h','clear_a_x','clear_a_y','clear_a_w','clear_a_h','clear_b_x','clear_b_y','clear_b_w','clear_b_h','float_main_x','float_main_y','float_main_w','float_main_h')) {
+          foreach ($property in @('mixed_w','mixed_h','word_row_w','word_row_h','padded_host_x','padded_host_w','padded_link_x','padded_link_w','padded_icon_x','padded_icon_w','padded_text_x','padded_text_w','control_display','control_wrap_h','control_w','control_h','nested_control_display','nested_wrap_h','nested_control_w','nested_control_h','nested_text_w','nested_text_h','wrap_w','wrap_h','input_w','input_h','empty_h','float_host_w','float_host_h','a_x','a_y','a_w','a_h','b_x','b_y','b_w','b_h','c_x','c_y','c_w','c_h','wrap_float_host_w','wrap_float_host_h','clear_a_x','clear_a_y','clear_a_w','clear_a_h','clear_b_x','clear_b_y','clear_b_w','clear_b_h','float_main_x','float_main_y','float_main_w','float_main_h')) {
             if ($null -eq $flowLayout.PSObject.Properties[$property]) { throw "flow-layout-geometry.json is missing $property" }
           }
           if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 23 -or [int]$flowLayout.mixed_h -gt 27) {
@@ -502,6 +502,9 @@ jobs:
           }
           if ([string]$flowLayout.control_display -ne 'inline-block' -or [int]$flowLayout.control_w -lt 200 -or [int]$flowLayout.control_h -lt 24 -or [int]$flowLayout.control_h -gt 44 -or [Math]::Abs([int]$flowLayout.control_wrap_h - [int]$flowLayout.control_h) -gt 1) {
             throw "Native control display did not stay atomic inline-level: $($flowLayout | ConvertTo-Json -Compress)"
+          }
+          if ([string]$flowLayout.nested_control_display -ne 'inline-block' -or [int]$flowLayout.nested_control_h -ne 40 -or [int]$flowLayout.nested_wrap_h -ne 40 -or [int]$flowLayout.nested_text_h -ne 24 -or [int]$flowLayout.nested_text_w -lt 220) {
+            throw "Authored inline text padding introduced a synthetic inner gutter or wrapped a fitting label: $($flowLayout | ConvertTo-Json -Compress)"
           }
           if ([int]$flowLayout.input_h -ne 44 -or [int]$flowLayout.wrap_h -lt 44 -or [int]$flowLayout.wrap_h -gt 46 -or [int]$flowLayout.empty_h -gt 1) {
             throw "Empty helper inflated the input wrapper: $($flowLayout | ConvertTo-Json -Compress)"
