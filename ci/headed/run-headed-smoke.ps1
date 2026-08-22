@@ -442,10 +442,11 @@ try {
             Send-PhysicalKey $hwnd 0x09 # Tab => focus sink button
             Start-Sleep -Milliseconds 300
             [void](Request-PngEvidence $hwnd $Artifacts 'caret-blurred.png')
-            # The fixture's purple input box is x=70..430, y=187..225. Click
-            # inside the left text padding; its load handler deliberately put
+            # With the fixture's authored body margin replacing the renderer fallback,
+            # the purple input box is x=50..410, y=167..205. Click inside the
+            # left text padding; its load handler deliberately put
             # the caret at the end first, so this proves pointer relocation.
-            Send-Click $hwnd 74 206
+            Send-Click $hwnd 54 186
             Send-PhysicalKey $hwnd 0x31
             [void](Wait-File $caretValue 10 1)
             Start-Sleep -Milliseconds 250

@@ -494,7 +494,7 @@ jobs:
           if ([int]$flowLayout.word_row_w -ne 135 -or [int]$flowLayout.word_row_h -lt 20 -or [int]$flowLayout.word_row_h -gt 30) {
             throw "Inline word row wrapped unexpectedly: $($flowLayout | ConvertTo-Json -Compress)"
           }
-          if ([int]$flowLayout.padded_host_w -ne 260 -or [int]$flowLayout.padded_link_w -lt 258 -or [int]$flowLayout.padded_link_w -gt 262 -or [int]$flowLayout.padded_link_x -ne [int]$flowLayout.padded_host_x) {
+          if ([int]$flowLayout.padded_host_x -ne 0 -or [int]$flowLayout.padded_host_w -ne 260 -or [int]$flowLayout.padded_link_w -lt 258 -or [int]$flowLayout.padded_link_w -gt 262 -or [int]$flowLayout.padded_link_x -ne [int]$flowLayout.padded_host_x) {
             throw "Default content-box sizing did not preserve padded inline-block geometry: $($flowLayout | ConvertTo-Json -Compress)"
           }
           if ([int]$flowLayout.padded_icon_x -ne ([int]$flowLayout.padded_link_x + 13) -or [int]$flowLayout.padded_icon_w -ne 50 -or [int]$flowLayout.padded_text_x -ne ([int]$flowLayout.padded_icon_x + [int]$flowLayout.padded_icon_w) -or [int]$flowLayout.padded_text_w -ne 122) {

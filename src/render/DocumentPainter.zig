@@ -68,10 +68,21 @@ pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts)
         .paint_text_styles = &paint_text_styles,
         .root_font_size_px = root_font_size_px,
     };
+    // `page_margin` is our fallback for an unstyled document body. Once the
+    // page authors any body margin, that CSS replaces the UA/default margin;
+    // keeping the synthetic inset as well double-counts the body edge spacing.
+    const root_inset = if (root.is(Element)) |root_element|
+        if (hasAuthoredMargin(root_element, page)) @as(i32, 0) else opts.page_margin
+    else
+        opts.page_margin;
+    // Input/pointer coordinate conversion uses DisplayList.page_margin too; keep
+    // it identical to the actual root layout inset or hit testing drifts by the
+    // removed synthetic margin.
+    list.page_margin = root_inset;
     var cursor = FlowCursor.init(
-        opts.page_margin,
-        opts.page_margin,
-        @max(@as(i32, 160), opts.viewport_width - (opts.page_margin * 2)),
+        root_inset,
+        root_inset,
+        @max(@as(i32, 160), opts.viewport_width - (root_inset * 2)),
     );
     try painter.paintNode(root, &cursor);
     list.recomputeContentHeight();
@@ -4579,6 +4590,13 @@ fn isContentBoxSizing(element: *Element, decl: anytype, page: *Page) bool {
 
 fn authoredCssPropertyValue(element: *Element, page: *Page, property_name: []const u8) []const u8 {
     return page._style_manager.computedStyleValue(element, String.wrap(property_name)) orelse "";
+}
+
+fn hasAuthoredMargin(element: *Element, page: *Page) bool {
+    inline for (.{ "margin", "margin-top", "margin-right", "margin-bottom", "margin-left" }) |property| {
+        if (std.mem.trim(u8, authoredCssPropertyValue(element, page, property), &std.ascii.whitespace).len > 0) return true;
+    }
+    return false;
 }
 
 fn hasExplicitDimensionValue(element: *Element, page: *Page, property_name: []const u8) bool {
