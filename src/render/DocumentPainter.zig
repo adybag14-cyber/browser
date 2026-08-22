@@ -1282,6 +1282,9 @@ const Painter = struct {
             text_style.font_size + 8,
             estimateTextHeight(segment, @max(@as(i32, 40), cursor.width), text_style.font_size, text_style.font_family, text_style.font_weight, text_style.italic) + 8,
         );
+        // The segment already contains its trailing collapsed space, and the
+        // measured styled width already includes CSS word/letter spacing. A
+        // fixed pad per word artificially wraps otherwise fitting inline text.
         const width = std.math.clamp(
             estimateStyledTextWidth(
                 segment,
@@ -1291,8 +1294,8 @@ const Painter = struct {
                 text_style.italic,
                 text_style.letter_spacing,
                 text_style.word_spacing,
-            ) + 8,
-            8,
+            ),
+            1,
             @max(@as(i32, 16), cursor.width),
         );
         const height = @max(base_height, resolveTextLineHeightPx(text_style.line_height, text_style.font_size) orelse 0);
@@ -6107,7 +6110,11 @@ fn estimateStyledTextHeight(
 }
 
 fn resolveStyledTextGap(style: PaintTextStyle) i32 {
-    return 2 + style.word_spacing + (style.letter_spacing * 2);
+    // Text fragments retain their collapsed spaces and measured width already
+    // accounts for CSS spacing, so an additional synthetic fragment gap would
+    // count the same spacing twice.
+    _ = style;
+    return 0;
 }
 
 fn measureTextWidthWin32(
