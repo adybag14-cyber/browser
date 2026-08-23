@@ -37,6 +37,7 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #clear-a { height: 70px; }
 #clear-b { height: 90px; }
 #float-main { display: inline-block; width: 65%; height: 180px; background: rgb(225,235,245); }
+#overflow-spacer { height: 900px; }
 </style>
 </head>
 <body>
@@ -58,10 +59,11 @@ body { margin: 0; font-family: Arial, sans-serif; }
   <div class="clear-float" id="clear-b"></div>
   <div id="float-main"></div>
 </div>
+<div id="overflow-spacer"></div>
 <script>
 function reportFlowLayout(){
   function r(id){return document.getElementById(id).getBoundingClientRect()}
-  const mixed=r('mixed-inline'), wordRow=r('word-row'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
+  const body=document.body.getBoundingClientRect(), mixed=r('mixed-inline'), wordRow=r('word-row'), wrap=r('input-wrap'), input=r('flow-input'), empty=r('empty-helper');
   const paddedHost=r('padded-host'), paddedLink=r('padded-link'), paddedIcon=r('padded-icon'), paddedText=r('padded-text');
   const controlWrap=r('control-wrap'), inlineControl=r('inline-control');
   const nestedWrap=r('nested-control-wrap'), nestedControl=r('nested-control'), nestedText=r('nested-control-text');
@@ -70,6 +72,7 @@ function reportFlowLayout(){
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
   const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
+    'body_w='+Math.round(body.width),
     'mixed_w='+Math.round(mixed.width),'mixed_h='+Math.round(mixed.height),
     'word_row_w='+Math.round(wordRow.width),'word_row_h='+Math.round(wordRow.height),
     'padded_host_x='+Math.round(paddedHost.x),'padded_host_w='+Math.round(paddedHost.width),

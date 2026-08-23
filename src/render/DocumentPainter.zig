@@ -27,6 +27,9 @@ const win = if (builtin.os.tag == .windows) @import("win32") else struct {};
 pub const PaintOpts = struct {
     viewport_width: i32,
     viewport_height: i32 = 0,
+    // Layout viewport excludes persistent browser UI such as a classic vertical
+    // scrollbar, while CSS viewport units still resolve against viewport_width.
+    layout_viewport_width: i32 = 0,
     layout_scale: i32 = 100,
     page_margin: i32 = 20,
     block_min_width: i32 = 280,
@@ -79,13 +82,19 @@ pub fn paintDocument(allocator: std.mem.Allocator, page: *Page, opts: PaintOpts)
     // it identical to the actual root layout inset or hit testing drifts by the
     // removed synthetic margin.
     list.page_margin = root_inset;
+    const layout_viewport_width = if (opts.layout_viewport_width > 0) opts.layout_viewport_width else opts.viewport_width;
     var cursor = FlowCursor.init(
         root_inset,
         root_inset,
-        @max(@as(i32, 160), opts.viewport_width - (root_inset * 2)),
+        @max(@as(i32, 160), layout_viewport_width - (root_inset * 2)),
     );
     try painter.paintNode(root, &cursor);
+    // Paint-command bounds alone miss empty but layout-significant boxes (for
+    // example a tall spacer). Preserve the normal-flow extent so scrolling and
+    // scrollbar reservation follow layout, not only visible pixels.
+    const flow_content_height = cursor.consumedHeightSince(0);
     list.recomputeContentHeight();
+    list.content_height = @max(list.content_height, flow_content_height);
     try appendLoadedFontFacesToDisplayList(allocator, page, &list);
     return list;
 }
@@ -2761,14 +2770,14 @@ const Painter = struct {
             if (legacy_center) {
                 if (child.is(Node.CData.Text)) |_| {
                     legacy_center_use_viewport_width = true;
-                    legacy_center_width = @max(child_width, self.opts.viewport_width - (self.opts.page_margin * 2));
+                    legacy_center_width = @max(child_width, layoutViewportWidth(self) - (self.opts.page_margin * 2));
                 } else if (child.is(Element)) |child_el| {
                     const child_style = try self.page.window.getComputedStyle(child_el, null, self.page);
                     const child_decl = child_style.asCSSStyleDeclaration();
                     const child_display = resolvedDisplayValue(child_decl, self.page, child_el);
                     if (isInlineDisplay(child_display) or isAtomicInlineDisplay(child_display)) {
                         legacy_center_use_viewport_width = true;
-                        legacy_center_width = @max(child_width, self.opts.viewport_width - (self.opts.page_margin * 2));
+                        legacy_center_width = @max(child_width, layoutViewportWidth(self) - (self.opts.page_margin * 2));
                     }
                 }
             }
@@ -5126,13 +5135,17 @@ fn positioningContextTop(element: *Element, cursor: FlowCursor, position: []cons
     };
 }
 
+fn layoutViewportWidth(self: *const Painter) i32 {
+    return if (self.opts.layout_viewport_width > 0) self.opts.layout_viewport_width else self.opts.viewport_width;
+}
+
 fn positioningContextWidth(self: *const Painter, element: *Element, cursor: FlowCursor, position: []const u8) i32 {
     if (isFixedPosition(position)) {
-        return self.opts.viewport_width;
+        return layoutViewportWidth(self);
     }
-    const parent = element.asNode().parentElement() orelse return self.opts.viewport_width;
+    const parent = element.asNode().parentElement() orelse return layoutViewportWidth(self);
     return switch (parent.getTag()) {
-        .html, .body => self.opts.viewport_width,
+        .html, .body => layoutViewportWidth(self),
         else => cursor.width,
     };
 }

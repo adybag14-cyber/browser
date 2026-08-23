@@ -27,6 +27,10 @@ const MIN_ZOOM: i32 = 30;
 const MAX_ZOOM: i32 = 300;
 const ZOOM_STEP: i32 = 10;
 const MAX_CLOSED_TABS: usize = 32;
+// Chromium/Windows reserves a 15 CSS-pixel layout gutter when the page needs
+// a classic vertical scrollbar. window.innerWidth remains the full viewport;
+// only the root formatting width loses this gutter.
+const VERTICAL_SCROLLBAR_LAYOUT_WIDTH: i32 = 15;
 
 const ClosedTab = struct {
     url: []u8,
@@ -81,6 +85,7 @@ const Tab = struct {
     last_presented_hash: u64 = 0,
     last_presented_render_version: usize = 0,
     last_presented_loading: bool = false,
+    last_presented_vertical_scrollbar: bool = false,
     last_error: ?anyerror = null,
 
     fn init(
@@ -544,12 +549,40 @@ const Shell = struct {
         defer body.deinit();
         try markdown.dump(frame.window._document.asNode(), .{ .scratch_allocator = presentation_allocator }, &body.writer, frame);
 
+        const viewport_width: i32 = @intCast(self.display.viewport.width);
+        const viewport_height: i32 = @intCast(self.display.viewport.height);
+        var reserve_vertical_scrollbar = tab.last_presented_vertical_scrollbar;
+        var layout_viewport_width = @max(
+            @as(i32, 160),
+            viewport_width - if (reserve_vertical_scrollbar) VERTICAL_SCROLLBAR_LAYOUT_WIDTH else 0,
+        );
         var list = try DocumentPainter.paintDocument(presentation_allocator, frame, .{
-            .viewport_width = @intCast(self.display.viewport.width),
-            .viewport_height = @intCast(self.display.viewport.height),
+            .viewport_width = viewport_width,
+            .viewport_height = viewport_height,
+            .layout_viewport_width = layout_viewport_width,
             .layout_scale = tab.zoom_percent,
         });
         defer list.deinit(presentation_allocator);
+
+        // The vertical scrollbar changes the initial containing block width.
+        // Repaint once only when overflow state flips; steady-state renders reuse
+        // the previous state and therefore remain single-pass.
+        const needs_vertical_scrollbar = viewport_height > 0 and list.content_height > viewport_height;
+        if (needs_vertical_scrollbar != reserve_vertical_scrollbar) {
+            list.deinit(presentation_allocator);
+            reserve_vertical_scrollbar = needs_vertical_scrollbar;
+            layout_viewport_width = @max(
+                @as(i32, 160),
+                viewport_width - if (reserve_vertical_scrollbar) VERTICAL_SCROLLBAR_LAYOUT_WIDTH else 0,
+            );
+            list = try DocumentPainter.paintDocument(presentation_allocator, frame, .{
+                .viewport_width = viewport_width,
+                .viewport_height = viewport_height,
+                .layout_viewport_width = layout_viewport_width,
+                .layout_scale = tab.zoom_percent,
+            });
+        }
+        tab.last_presented_vertical_scrollbar = reserve_vertical_scrollbar;
 
         const title = (try frame.getTitle()) orelse "";
         const text = body.written();
