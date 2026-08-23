@@ -491,7 +491,7 @@ jobs:
           if ([int]$flowLayout.body_w -ne 985) {
             throw "Overflowing page did not reserve the 15px vertical scrollbar layout gutter: $($flowLayout | ConvertTo-Json -Compress)"
           }
-          if ([int]$flowLayout.mixed_w -lt 145 -or [int]$flowLayout.mixed_w -gt 156 -or [int]$flowLayout.mixed_h -lt 20 -or [int]$flowLayout.mixed_h -gt 25) {
+          if ([int]$flowLayout.mixed_w -lt 108 -or [int]$flowLayout.mixed_w -gt 114 -or [int]$flowLayout.mixed_h -lt 20 -or [int]$flowLayout.mixed_h -gt 25) {
             throw "Mixed inline-block wrapped unexpectedly: $($flowLayout | ConvertTo-Json -Compress)"
           }
           if ([int]$flowLayout.word_row_w -ne 135 -or [int]$flowLayout.word_row_h -lt 14 -or [int]$flowLayout.word_row_h -gt 19) {
@@ -506,7 +506,7 @@ jobs:
           if ([string]$flowLayout.control_display -ne 'inline-block' -or [int]$flowLayout.control_w -lt 200 -or [int]$flowLayout.control_h -lt 24 -or [int]$flowLayout.control_h -gt 44 -or [Math]::Abs([int]$flowLayout.control_wrap_h - [int]$flowLayout.control_h) -gt 1) {
             throw "Native control display did not stay atomic inline-level: $($flowLayout | ConvertTo-Json -Compress)"
           }
-          if ([string]$flowLayout.nested_control_display -ne 'inline-block' -or [int]$flowLayout.nested_control_h -ne 34 -or [int]$flowLayout.nested_wrap_h -ne 34 -or [int]$flowLayout.nested_text_h -ne 16 -or [int]$flowLayout.nested_text_w -lt 210) {
+          if ([string]$flowLayout.nested_control_display -ne 'inline-block' -or [int]$flowLayout.nested_control_h -ne 34 -or [int]$flowLayout.nested_wrap_h -ne 34 -or [int]$flowLayout.nested_control_w -lt 276 -or [int]$flowLayout.nested_control_w -gt 284 -or [int]$flowLayout.nested_text_h -ne 16 -or [int]$flowLayout.nested_text_w -lt 216 -or [int]$flowLayout.nested_text_w -gt 224) {
             throw "Authored inline text padding introduced a synthetic inner gutter or wrapped a fitting label: $($flowLayout | ConvertTo-Json -Compress)"
           }
           if ([int]$flowLayout.field_wide_x -ne ([int]$flowLayout.field_host_x + 46) -or [int]$flowLayout.field_narrow_x -ne ([int]$flowLayout.field_wide_x + 394)) {
