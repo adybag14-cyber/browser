@@ -1275,8 +1275,21 @@ const Painter = struct {
         const underline = shouldUnderlineText(parent, parent_decl, self.page, parent_tag);
         const segment_gap = resolveStyledTextGap(text_style);
         var segment_start: usize = 0;
+        // HTML whitespace between sibling inline boxes collapses to one space.
+        // Keep it when a line already has content; discard it only at line start.
+        if (painted_text.len > 0 and painted_text[0] == ' ' and cursor.line_height > 0) {
+            try self.paintInlineTextSegment(
+                " ",
+                text_style,
+                cursor,
+                paint_z_index,
+                underline,
+                segment_gap,
+                opacity,
+            );
+        }
+        while (segment_start < painted_text.len and painted_text[segment_start] == ' ') : (segment_start += 1) {}
         while (segment_start < painted_text.len) {
-            while (segment_start < painted_text.len and painted_text[segment_start] == ' ') : (segment_start += 1) {}
             if (segment_start >= painted_text.len) break;
 
             var segment_end = segment_start;
@@ -1457,6 +1470,7 @@ const Painter = struct {
             available_width,
             label,
             text_style,
+            padding,
         );
         if (width <= 0) {
             return;
@@ -5525,6 +5539,7 @@ fn resolveLayoutWidth(
     available_width: i32,
     label: []const u8,
     text_style: PaintTextStyle,
+    padding: EdgeSizes,
 ) !i32 {
     const font_size = text_style.font_size;
     const font_family = text_style.font_family;
@@ -5641,7 +5656,18 @@ fn resolveLayoutWidth(
             },
             .select => 180,
             .iframe => 300,
-            else => @max(self.opts.inline_min_width, estimateStyledTextWidth(painted_label, font_size, font_family, font_weight, italic, text_style.letter_spacing, text_style.word_spacing) + 16),
+            else => blk: {
+                const measured = estimateStyledTextWidth(painted_label, font_size, font_family, font_weight, italic, text_style.letter_spacing, text_style.word_spacing);
+                // Ordinary inline boxes have no synthetic inner gutter: their
+                // authored padding/border define the box around measured text.
+                // Preserve the legacy atomic-inline safety allowance here; its
+                // padding is added by the atomic box path after this estimate.
+                const inline_extra = if (inline_atomic_box)
+                    @as(i32, 16)
+                else
+                    padding.horizontal() + resolveBorderHorizontalPx(decl, page);
+                break :blk @max(self.opts.inline_min_width, measured + inline_extra);
+            },
         };
     }
     preferred = @max(preferred, min_width);
@@ -5678,10 +5704,14 @@ fn estimateInlineAtomicDescendantWidth(
         if (child.is(Node.CData.Text)) |text| {
             const normalized = try normalizeInlineText(self.allocator, try text.getWholeText(self.page));
             defer self.allocator.free(normalized);
-            const trimmed = std.mem.trim(u8, normalized, " ");
-            if (trimmed.len == 0) continue;
-            const painted = if (text_style.text_transform == .none) trimmed else blk: {
-                const transformed = try transformTextForPaint(self.allocator, trimmed, text_style.text_transform);
+            var measured_start: usize = 0;
+            if (inline_row_width == 0) {
+                while (measured_start < normalized.len and normalized[measured_start] == ' ') : (measured_start += 1) {}
+            }
+            const measured_text = normalized[measured_start..];
+            if (measured_text.len == 0) continue;
+            const painted = if (text_style.text_transform == .none) measured_text else blk: {
+                const transformed = try transformTextForPaint(self.allocator, measured_text, text_style.text_transform);
                 break :blk transformed;
             };
             defer if (text_style.text_transform != .none) self.allocator.free(painted);
@@ -5693,7 +5723,7 @@ fn estimateInlineAtomicDescendantWidth(
                 italic,
                 text_style.letter_spacing,
                 text_style.word_spacing,
-            ) + 16;
+            );
             best = @max(best, inline_row_width);
             continue;
         }
@@ -5724,13 +5754,16 @@ fn estimateInlineAtomicDescendantWidth(
                 defer self.allocator.free(child_label);
                 const trimmed_label = std.mem.trim(u8, child_label, &std.ascii.whitespace);
                 const has_text_label = trimmed_label.len > 0 and trimmed_label[0] != '[';
+                const has_structural_children = hasRenderableChildElements(child_el);
                 if (has_text_label) {
                     const painted_label = if (child_text_style.text_transform == .none) trimmed_label else blk: {
                         const transformed = try transformTextForPaint(self.allocator, trimmed_label, child_text_style.text_transform);
                         break :blk transformed;
                     };
                     defer if (child_text_style.text_transform != .none) self.allocator.free(painted_label);
-                    const inline_estimate_pad: i32 = if (child_flows_inline) 24 else 0;
+                    // Native text measurement already yields the content width.
+                    // Child padding/margins/borders are accounted in child_extra;
+                    // a second synthetic text pad overstates shrink-to-fit rows.
                     contribution = @max(contribution, estimateStyledTextWidth(
                         painted_label,
                         child_text_style.font_size,
@@ -5739,13 +5772,12 @@ fn estimateInlineAtomicDescendantWidth(
                         child_text_style.italic,
                         child_text_style.letter_spacing,
                         child_text_style.word_spacing,
-                    ) + inline_estimate_pad + child_extra);
+                    ) + child_extra);
                 }
-                // For a block child with direct text, its label already represents
-                // the shrink-to-fit width. Recursing would add the inline-row
-                // safety padding again. Keep recursion for inline/atomic children
-                // and structural block children that have no direct text label.
-                if (child_flows_inline or !has_text_label) {
+                // A text-only child is fully represented by its direct label.
+                // Recurse only when descendants contribute additional geometry,
+                // or when there was no direct text to measure.
+                if (has_structural_children or !has_text_label) {
                     contribution = @max(contribution, (try estimateInlineAtomicDescendantWidth(self, child_el, available_width)) + child_extra);
                 }
             }
