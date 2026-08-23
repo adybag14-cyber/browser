@@ -1187,7 +1187,7 @@ const Painter = struct {
 
         const raw_line_height = normalizeInheritedTextPropertyValue(authoredCssPropertyValue(element, self.page, "line-height"));
         if (raw_line_height.len > 0) {
-            if (parseTextLineHeight(raw_line_height, resolved.font_size, self.opts.viewport_height)) |line_height| {
+            if (parseTextLineHeight(raw_line_height, resolved.font_size, self.root_font_size_px, self.opts.viewport_height)) |line_height| {
                 resolved.line_height = line_height;
             }
         }
@@ -3354,29 +3354,28 @@ fn normalizeInheritedTextPropertyValue(value: []const u8) []const u8 {
     return trimmed;
 }
 
-fn parseTextLineHeight(value: []const u8, font_size: i32, viewport: i32) ?TextLineHeight {
+fn parseTextLineHeight(value: []const u8, font_size: i32, root_font_size: i32, viewport: i32) ?TextLineHeight {
     const trimmed = std.mem.trim(u8, value, &std.ascii.whitespace);
     if (trimmed.len == 0) return null;
     if (std.ascii.eqlIgnoreCase(trimmed, "normal")) {
         return .normal;
     }
-    if (std.mem.endsWith(u8, trimmed, "em") or std.mem.endsWith(u8, trimmed, "rem")) {
-        const raw = trimmed[0 .. trimmed.len - 2];
-        const multiplier = std.fmt.parseFloat(f32, raw) catch return null;
-        return .{ .multiplier = multiplier };
-    }
-    if (std.mem.endsWith(u8, trimmed, "%")) {
-        const raw = trimmed[0 .. trimmed.len - 1];
-        const multiplier = std.fmt.parseFloat(f32, raw) catch return null;
-        return .{ .multiplier = multiplier / 100.0 };
-    }
+
+    // Unitless line-height is the one form that inherits as a multiplier. CSS
+    // lengths and percentages compute to an absolute length on the element
+    // where they are declared, then descendants inherit that computed length.
     if (parseCssFloatValue(trimmed)) |multiplier| {
-        if (std.mem.indexOfAny(u8, trimmed, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") == null) {
+        if (std.mem.indexOfAny(u8, trimmed, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ%") == null) {
             return .{ .multiplier = multiplier };
         }
     }
-    if (parseCssLengthPxWithContext(trimmed, font_size, viewport)) |px| {
-        return .{ .px = px };
+    if (std.mem.endsWith(u8, trimmed, "%")) {
+        const raw = trimmed[0 .. trimmed.len - 1];
+        const percent = std.fmt.parseFloat(f64, raw) catch return null;
+        return .{ .px = @max(@as(i32, 0), @as(i32, @intFromFloat(@round(@as(f64, @floatFromInt(font_size)) * percent / 100.0)))) };
+    }
+    if (parseCssLengthPxWithFontContext(trimmed, font_size, viewport, font_size, root_font_size)) |px| {
+        return .{ .px = @max(@as(i32, 0), px) };
     }
     return null;
 }

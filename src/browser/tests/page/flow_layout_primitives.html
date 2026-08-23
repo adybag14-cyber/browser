@@ -27,6 +27,8 @@ body { margin: 0; font-family: Arial, sans-serif; }
 #shrink-wrap-host { width: 260px; }
 #shrink-wrap { display: inline-block; max-width: 65%; font-size: 14px; }
 #shrink-title, #shrink-tagline { display: block; }
+#line-height-parent { width: 240px; font-size: 30px; line-height: 3.3rem; }
+#line-height-child { display: block; font-size: 15px; }
 #input-wrap { display: inline-block; width: 394px; background: rgb(230,240,250); }
 #flow-input { display: inline-block; box-sizing: border-box; width: 100%; height: 44px; margin: 0; border: 0; padding: 0; }
 #empty-helper { }
@@ -48,6 +50,7 @@ body { margin: 0; font-family: Arial, sans-serif; }
 <div id="nested-control-wrap"><button id="nested-control"><span id="nested-leading"></span><span id="nested-control-text">Read Wikipedia in your language</span><span id="nested-trailing"></span></button></div>
 <div id="center-fieldset"><fieldset><input type="hidden" value="ignored"><span id="field-wide" class="center-wide"></span><span id="field-narrow" class="center-narrow"></span></fieldset></div>
 <div id="shrink-wrap-host"><span id="shrink-wrap"><span id="shrink-title">Commons</span><span id="shrink-tagline">Free media collection</span></span></div>
+<div id="line-height-parent"><strong id="line-height-child">Inherited line box</strong></div>
 <div id="input-wrap"><input id="flow-input"><div id="empty-helper"></div></div>
 <div id="float-host">
   <div class="float-tile" id="float-a"></div>
@@ -68,7 +71,7 @@ function reportFlowLayout(){
   const controlWrap=r('control-wrap'), inlineControl=r('inline-control');
   const nestedWrap=r('nested-control-wrap'), nestedControl=r('nested-control'), nestedText=r('nested-control-text');
   const centerFieldset=r('center-fieldset'), fieldWide=r('field-wide'), fieldNarrow=r('field-narrow');
-  const shrinkWrap=r('shrink-wrap'), shrinkTitle=r('shrink-title'), shrinkTagline=r('shrink-tagline');
+  const shrinkWrap=r('shrink-wrap'), shrinkTitle=r('shrink-title'), shrinkTagline=r('shrink-tagline'), lineParent=r('line-height-parent'), lineChild=r('line-height-child');
   const host=r('float-host'), a=r('float-a'), b=r('float-b'), c=r('float-c');
   const wrapHost=r('float-wrap-host'), clearA=r('clear-a'), clearB=r('clear-b'), main=r('float-main');
   const q=[
@@ -83,6 +86,7 @@ function reportFlowLayout(){
     'nested_control_display='+encodeURIComponent(getComputedStyle(document.getElementById('nested-control')).getPropertyValue('display')),'nested_wrap_h='+Math.round(nestedWrap.height),'nested_control_w='+Math.round(nestedControl.width),'nested_control_h='+Math.round(nestedControl.height),'nested_text_w='+Math.round(nestedText.width),'nested_text_h='+Math.round(nestedText.height),
     'field_host_x='+Math.round(centerFieldset.x),'field_wide_x='+Math.round(fieldWide.x),'field_narrow_x='+Math.round(fieldNarrow.x),
     'shrink_wrap_w='+Math.round(shrinkWrap.width),'shrink_title_w='+Math.round(shrinkTitle.width),'shrink_tagline_w='+Math.round(shrinkTagline.width),
+    'line_parent_h='+Math.round(lineParent.height),'line_child_h='+Math.round(lineChild.height),
     'wrap_w='+Math.round(wrap.width),'wrap_h='+Math.round(wrap.height),
     'input_w='+Math.round(input.width),'input_h='+Math.round(input.height),
     'empty_h='+Math.round(empty.height),
