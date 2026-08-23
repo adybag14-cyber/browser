@@ -4766,15 +4766,11 @@ fn isLegacyCenterElement(element: *Element) bool {
 }
 
 fn isInlineFlowDisplayForElement(element: *Element, display: []const u8) bool {
-    if (isInlineDisplay(display)) return true;
-
-    const trimmed = std.mem.trim(u8, display, &std.ascii.whitespace);
-    if (trimmed.len == 0 or std.ascii.eqlIgnoreCase(trimmed, "block")) {
-        if (inlineStylePropertyValue(element, "display") == null) {
-            return isInlineDisplay(defaultDisplayForTag(element.getTag()));
-        }
-    }
-    return false;
+    _ = element;
+    // resolvedDisplayValue already supplies the UA/default display if there is no
+    // authored declaration. Respect authored block values instead of falling back
+    // to the tag's default inline display.
+    return isInlineDisplay(display);
 }
 
 fn hasRenderableChildElements(element: *Element) bool {
@@ -5701,6 +5697,7 @@ fn estimateInlineAtomicDescendantWidth(
             const child_decl = child_style.asCSSStyleDeclaration();
             const child_display = resolvedDisplayValue(child_decl, self.page, child_el);
             if (std.ascii.eqlIgnoreCase(std.mem.trim(u8, child_display, &std.ascii.whitespace), "none")) continue;
+            const child_flows_inline = isInlineFlowDisplayForElement(child_el, child_display) or isAtomicInlineDisplay(child_display);
             const child_text_style = try self.resolvePaintTextStyle(child_el, child_decl, child_tag);
             const child_padding = resolveEdgeSizes(child_decl, self.page, "padding", child_text_style.font_size, self.root_font_size_px);
             const child_margins = resolveEdgeSizes(child_decl, self.page, "margin", child_text_style.font_size, self.root_font_size_px);
@@ -5714,12 +5711,14 @@ fn estimateInlineAtomicDescendantWidth(
                 const child_label = try self.elementLabel(child_el);
                 defer self.allocator.free(child_label);
                 const trimmed_label = std.mem.trim(u8, child_label, &std.ascii.whitespace);
-                if (trimmed_label.len > 0 and trimmed_label[0] != '[') {
+                const has_text_label = trimmed_label.len > 0 and trimmed_label[0] != '[';
+                if (has_text_label) {
                     const painted_label = if (child_text_style.text_transform == .none) trimmed_label else blk: {
                         const transformed = try transformTextForPaint(self.allocator, trimmed_label, child_text_style.text_transform);
                         break :blk transformed;
                     };
                     defer if (child_text_style.text_transform != .none) self.allocator.free(painted_label);
+                    const inline_estimate_pad: i32 = if (child_flows_inline) 24 else 0;
                     contribution = @max(contribution, estimateStyledTextWidth(
                         painted_label,
                         child_text_style.font_size,
@@ -5728,12 +5727,18 @@ fn estimateInlineAtomicDescendantWidth(
                         child_text_style.italic,
                         child_text_style.letter_spacing,
                         child_text_style.word_spacing,
-                    ) + 24 + child_extra);
+                    ) + inline_estimate_pad + child_extra);
                 }
-                contribution = @max(contribution, (try estimateInlineAtomicDescendantWidth(self, child_el, available_width)) + child_extra);
+                // For a block child with direct text, its label already represents
+                // the shrink-to-fit width. Recursing would add the inline-row
+                // safety padding again. Keep recursion for inline/atomic children
+                // and structural block children that have no direct text label.
+                if (child_flows_inline or !has_text_label) {
+                    contribution = @max(contribution, (try estimateInlineAtomicDescendantWidth(self, child_el, available_width)) + child_extra);
+                }
             }
 
-            if (isInlineFlowDisplayForElement(child_el, child_display) or isAtomicInlineDisplay(child_display)) {
+            if (child_flows_inline) {
                 inline_row_width += contribution;
                 best = @max(best, inline_row_width);
             } else {
