@@ -151,11 +151,9 @@ Status: Achieved
 - `Enter` submit path
 - stable Windows `SendInput`-driven headed probes
 
-## Remaining Gates
-
 ### Gate 1: Browser Shell MVP
 
-Status: Active next milestone
+Status: Achieved
 
 Goal:
 - turn the current single-page headed shell into a minimal real browser shell
@@ -630,6 +628,8 @@ Current state inside Gate 1:
 - next blocker: keep turning internal pages into richer live shell surfaces so
   fewer browser-shell flows still depend on address-bar routes or secondary
   overlay surfaces
+
+## Remaining Gates
 
 ### Gate 2: Shared Subresource Loader And Profile
 
